@@ -15,6 +15,32 @@
 
 import dbus
 import xml.etree.ElementTree as Et
+import sys
+
+
+def is_numeric(s):
+    try:
+        long(s)
+        return True
+    except ValueError:
+        return False
+
+
+def n(v):
+    if not v:
+        return 0L
+    if v.endswith('B'):
+        return long(v[:-1])
+    return long(v)
+
+
+# noinspection PyProtectedMember
+def init_class_from_arguments(obj_instance):
+    for k, v in sys._getframe(1).f_locals.items():
+        if k != 'self':
+            nt = '_' + k
+            # print 'Init class %s = %s' % (nt, str(v))
+            setattr(obj_instance, nt, v)
 
 
 def get_properties(f):
@@ -22,10 +48,14 @@ def get_properties(f):
     Walks through an object instance and determines which attributes are
     properties and if they were created to be used for dbus.
     :param f:
-    :return:    An array of dicts with the keys being: p_t, p_name, p_access
-                (type, name, access)
+    :return:    A tuple:
+                0 = An array of dicts with the keys being: p_t, p_name,
+                p_access(type, name, access)
+                1 = Hash of property names and current value
     """
     result = []
+    h_rc = {}
+
     h = vars(f.__class__)
     for p, value in h.iteritems():
         if isinstance(value, property):
@@ -40,7 +70,31 @@ def get_properties(f):
 
                 result.append(dict(p_t=getattr(f, key), p_name=p,
                                    p_access=access))
-    return result
+                h_rc[p] = getattr(f, p)
+    return result, h_rc
+
+
+def get_object_property_diff(o_obj, n_obj):
+    """
+    Walk through each object properties and report what has changed and with
+    the new values
+    :param o_obj:   Old object
+    :param n_obj:   New object
+    :return: hash of properties that have changed and their new value
+    """
+    rc = {}
+
+    if type(o_obj) != type(n_obj):
+        raise Exception("Objects of different types! %s %s" %
+                        (str(type(o_obj)), str(type(n_obj))))
+
+    o_prop = get_properties(o_obj)[1]
+    n_prop = get_properties(n_obj)[1]
+
+    for k, v in o_prop.items():
+        if o_prop[k] != n_prop[k]:
+            rc[k] = n_prop[k]
+    return rc
 
 
 def add_properties(xml, interface, props):
@@ -55,7 +109,7 @@ def add_properties(xml, interface, props):
     root = Et.fromstring(xml)
 
     for c in root:
-        print c.attrib['name']
+        # print c.attrib['name']
         if c.attrib['name'] == interface:
             for p in props:
                 temp = '<property type="%s" name="%s" access="%s"/>\n' % \
@@ -66,23 +120,38 @@ def add_properties(xml, interface, props):
     return xml
 
 
+# noinspection PyUnresolvedReferences
 class AutomatedProperties(dbus.service.Object):
     def __init__(self, conn, object_path, interface):
-        dbus.service.Object.__init__(self, conn, object_path)
-        self.interface = interface
+        #dbus.service.Object.__init__(self, conn, object_path)
+        super(AutomatedProperties, self).__init__(conn, object_path)
+        self._ap_c = conn
+        self._ap_interface = interface
+        self._ap_o_path = object_path
+
+    def emit_data(self):
+        return self._ap_o_path, self.GetAll(self._ap_interface)
+
+    def interface(self):
+        return self._ap_interface
 
     # Properties
     @dbus.service.method(dbus_interface=dbus.PROPERTIES_IFACE,
                          in_signature='ss', out_signature='v')
     def Get(self, interface_name, property_name):
-        return self.GetAll(interface_name)[property_name]
+        value = getattr(self, property_name)
+        # Note: If we get an exception in this handler we won't know about it,
+        # only the side effect of no returned value!
+        print 'Get (%s), type (%s), value(%s)' % \
+              (property_name, str(type(value)), str(value))
+        return value
 
     @dbus.service.method(dbus_interface=dbus.PROPERTIES_IFACE,
                          in_signature='s', out_signature='a{sv}')
     def GetAll(self, interface_name):
-        if interface_name == self.interface:
+        if interface_name == self._ap_interface:
             # Using introspection, lets build this dynamically
-            props = get_properties(self)
+            props = get_properties(self)[0]
 
             rc = {}
             for p in props:
@@ -90,7 +159,7 @@ class AutomatedProperties(dbus.service.Object):
             return rc
 
         raise dbus.exceptions.DBusException(
-            self.interface,
+            self._ap_interface,
             'The object %s does not implement the %s interface'
             % (self.__class__, interface_name))
 
@@ -104,10 +173,72 @@ class AutomatedProperties(dbus.service.Object):
     @dbus.service.method(dbus_interface=dbus.INTROSPECTABLE_IFACE,
                          out_signature='s')
     def Introspect(self):
-        r = super(AutomatedProperties, self).Introspect(self.o_path, self.c)
+        r = super(AutomatedProperties, self).Introspect(
+            self._ap_o_path, self._ap_c)
 
         # Look at the properties in the class
-        return add_properties(r, self.interface, get_properties(self))
+        return add_properties(r, self._ap_interface, get_properties(self)[0])
+
+    @dbus.service.signal(dbus_interface=dbus.PROPERTIES_IFACE,
+                         signature='sa{sv}as')
+    def PropertiesChanged(self, interface_name, changed_properties,
+                          invalidated_properties):
+        print('SIGNAL: PropertiesChanged(%s, %s, %s)' %
+              (str(interface_name), str(changed_properties),
+               str(invalidated_properties)))
+
+
+# noinspection PyUnresolvedReferences
+class ObjectManager(AutomatedProperties):
+
+    def __init__(self, conn, object_path, interface):
+        super(ObjectManager, self).__init__(conn, object_path, interface)
+        self._ap_c = conn
+        self._ap_interface = interface
+        self._ap_o_path = object_path
+        self._objects = {}
+
+    @dbus.service.method(dbus_interface="org.freedesktop.DBus.ObjectManager",
+                         out_signature='a{oa{sa{sv}}}')
+    def GetManagedObjects(self):
+        rc = {}
+        for k, v in self._objects.items():
+            path, props = v.emit_data()
+            i = {v.interface(): props}
+            rc[path] = i
+        return rc
+
+    @dbus.service.signal(dbus_interface="org.freedesktop.DBus.ObjectManager",
+                         signature='oa{sa{sv}}')
+    def InterfacesAdded(self, object_path, int_name_prop_dict):
+        print('SIGNAL: InterfacesAdded(%s, %s)' %
+              (str(object_path), str(int_name_prop_dict)))
+
+    @dbus.service.signal(dbus_interface="org.freedesktop.DBus.ObjectManager",
+                         signature='oas')
+    def InterfacesRemoved(self, object_path, interface_list):
+        print('SIGNAL: InterfacesRemoved(%s, %s)' %
+              (str(object_path), str(interface_list)))
+
+    def register_object(self, dbus_object, emit_signal=False):
+        path, props = dbus_object.emit_data()
+        self._objects[path] = dbus_object
+
+        if emit_signal:
+            i = {dbus_object.interface(): props}
+            self.InterfacesAdded(path, i)
+
+    def remove_object(self, dbus_object, emit_signal=False):
+        path, props = dbus_object.emit_data()
+
+        del self._objects[path]
+        if emit_signal:
+            self.InterfacesRemoved(path, dbus_object.interface())
+
+    def get_object(self, path):
+        if path in self._objects:
+            return self._objects[path]
+        return None
 
 
 def attribute_type_name(name):
@@ -123,7 +254,7 @@ def attribute_type_name(name):
 # This decorator creates a property to be used for dbus introspection
 #
 def dbus_property(name, dbus_type, default_value=None, writeable=False,
-                  doc=None):
+                  doc=None, custom_getter=None, custom_setter=None):
     """
     Creates the get/set properties for the given name.  It assumes that the
     actual attribute is '_' + name and the attribute metadata is stuffed in
@@ -146,7 +277,19 @@ def dbus_property(name, dbus_type, default_value=None, writeable=False,
     def setter(self, value):
         setattr(self, attribute_name, value)
 
-    prop = property(getter, setter if writeable else None, None, doc)
+    if custom_getter or custom_setter:
+        s = setter
+        g = getter
+
+        if custom_getter:
+            g = custom_getter
+        if custom_setter:
+            s = custom_setter
+
+        prop = property(g, s if writeable else None, None, doc)
+
+    else:
+        prop = property(getter, setter if writeable else None, None, doc)
 
     def decorator(cls):
         setattr(cls, attribute_name, default_value)
@@ -155,3 +298,11 @@ def dbus_property(name, dbus_type, default_value=None, writeable=False,
         return cls
 
     return decorator
+
+
+def parse_tags(tags):
+    if len(tags):
+        if ',' in tags:
+            return tags.split(',')
+        return [tags]
+    return dbus.Array([], signature='s')
