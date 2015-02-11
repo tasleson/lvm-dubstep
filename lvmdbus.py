@@ -427,13 +427,15 @@ def load_pvs(connection, obj_manager, device=None):
     rc = []
 
     for p in pvs:
-        p = Pv(connection, pv_obj_path(p["PV"]), obj_manager,
-               p["PV"], p["PV UUID"], p["PV"], p["Fmt"], n(p["PSize"]),
-               n(p["PFree"]), n(p["Used"]), n(p["DevSize"]),
-               n(p["PMdaSize"]), n(p["PMdaFree"]),
-               long(p["BA start"]), n(p["BA size"]),
-               n(p["1st PE"]), long(p["PE"]), long(p["Alloc"]),
-               p["Attr"], p["PV Tags"])
+        p = Pv(connection, pv_obj_path(p["pv_name"]), obj_manager,
+               p["pv_name"], p["pv_uuid"], p["pv_name"], p["pv_fmt"],
+               n(p["pv_size"]),
+               n(p["pv_free"]), n(p["pv_used"]), n(p["dev_size"]),
+               n(p["pv_mda_size"]), n(p["pv_mda_free"]),
+               long(p["pv_ba_start"]), n(p["pv_ba_size"]),
+               n(p["pe_start"]), long(p["pv_pe_count"]),
+               long(p["pv_pe_alloc_count"]),
+               p["pv_attr"], p["pv_tags"])
         rc.append(p)
     return rc
 
@@ -444,14 +446,16 @@ def load_vgs(connection, obj_manager, vg_specific=None):
     rc = []
 
     for v in vgs:
-        vg = Vg(connection, vg_obj_path(v['VG']), obj_manager,
-                v['VG UUID'], v['VG'], v['Fmt'], n(v['VSize']), n(v['VFree']),
-                v['SYS ID'], n(v['Ext']), n(v['#Ext']), n(v['Free']),
-                v['VProfile'], n(v['MaxLV']), n(v['MaxPV']), n(v['#PV']),
-                n(v['#LV']), n(v['#SN']),
-                n(v['Seq']), n(v['#VMda']), n(v['VMdaFree']),
-                n(v['VMdaSize']),
-                n(v['#VMdaUse']), v['Attr'], v['VG Tags'])
+        vg = Vg(connection, vg_obj_path(v['vg_name']), obj_manager,
+                v['vg_uuid'], v['vg_name'], v['vg_fmt'], n(v['vg_size']),
+                n(v['vg_free']),
+                v['vg_sysid'], n(v['vg_extent_size']), n(v['vg_extent_count']),
+                n(v['vg_free']), v['vg_profile'], n(v['max_lv']),
+                n(v['max_pv']), n(v['pv_count']),
+                n(v['lv_count']), n(v['snap_count']),
+                n(v['vg_seqno']), n(v['vg_mda_count']), n(v['vg_mda_free']),
+                n(v['vg_mda_size']),
+                n(v['vg_mda_used_count']), v['vg_attr'], v['vg_tags'])
         rc.append(vg)
 
     return rc
@@ -463,13 +467,15 @@ def load_lvs(connection, obj_manager, lv_name=None):
     rc = []
 
     for l in lvs:
-        lv = Lv(connection, lv_obj_path(l['LV'].split('/')[1]),
+        lv = Lv(connection, lv_obj_path(l['lv_name']),
                 obj_manager,
-                l['LV UUID'],
-                l['LV'], l['Path'], n(l['LSize']), n(l['Start']),
-                l['Devices'],
-                l['VG'], l['Type'], l['Pool'], l['Origin'], n(l['#Str']),
-                n(l['Data%']), l['Attr'], l['LV Tags'])
+                l['lv_uuid'],
+                l['lv_name'], l['lv_path'], n(l['lv_size']),
+                n(l['seg_start_pe']),
+                l['devices'],
+                l['vg_name'], l['segtype'], l['pool_lv'], l['origin'],
+                n(l['stripes']),
+                n(l['data_percent']), l['lv_attr'], l['lv_tags'])
 
         rc.append(lv)
     return rc

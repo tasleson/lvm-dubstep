@@ -59,21 +59,15 @@ def parse(out):
     return rc
 
 
-def parse_key_value(out):
-
+def parse_column_names(out, column_names):
     lines = parse(out)
-    keys = []
-    pvs = []
+    rc = []
 
-    # First line will be column headers
-    if len(lines) > 0:
-        keys = lines[0]
+    for i in range(0, len(lines)):
+        d = dict(zip(column_names, lines[i]))
+        rc.append(d)
 
-    for i in range(1, len(lines)):
-        d = dict(zip(keys, lines[i]))
-        pvs.append(d)
-
-    return pvs
+    return rc
 
 
 def options_to_cli_args(options):
@@ -133,8 +127,13 @@ def pv_segments(device):
 
 
 def pv_retrieve(connection, device=None):
-    cmd = ['pvs', '--separator', '%s' % SEP, '--nosuffix',
-                         '--units', 'b', '-o', 'pv_all']
+    columns = ['pv_name', 'pv_uuid', 'pv_fmt', 'pv_size', 'pv_free',
+               'pv_used', 'dev_size', 'pv_mda_size', 'pv_mda_free',
+               'pv_ba_start', 'pv_ba_size', 'pe_start', 'pv_pe_count',
+               'pv_pe_alloc_count', 'pv_attr', 'pv_tags']
+
+    cmd = ['pvs', '--noheadings', '--separator', '%s' % SEP, '--nosuffix',
+                         '--units', 'b', '-o', ','.join(columns)]
 
     if device:
         cmd.extend(device)
@@ -144,7 +143,7 @@ def pv_retrieve(connection, device=None):
     d = []
 
     if rc == 0:
-        d = parse_key_value(out)
+        d = parse_column_names(out, columns)
 
     return d
 
@@ -182,21 +181,33 @@ def vg_change(change_options, name):
 
 
 def vg_retrieve(connection):
-    rc, out, err = call(['vgs', '--separator', '%s' % SEP, '--nosuffix',
-                         '--units', 'b', '-o', 'vg_all'])
+    columns = ['vg_name', 'vg_uuid', 'vg_fmt', 'vg_size', 'vg_free',
+               'vg_sysid', 'vg_extent_size', 'vg_extent_count',
+               'vg_free_count', 'vg_profile', 'max_lv', 'max_pv',
+               'pv_count', 'lv_count', 'snap_count', 'vg_seqno',
+               'vg_mda_count', 'vg_mda_free', 'vg_mda_size',
+               'vg_mda_used_count', 'vg_attr', 'vg_tags']
+
+    rc, out, err = call(['vgs', '--noheadings', '--separator', '%s' % SEP,
+                         '--nosuffix', '--units', 'b', '-o',
+                         ','.join(columns)])
 
     d = []
 
     if rc == 0:
-        d = parse_key_value(out)
+        d = parse_column_names(out, columns)
 
     return d
 
 
 def lv_retrieve(connection, lv_name):
-    cmd = ['lvs', '--separator', '%s' % SEP, '--nosuffix',
-         '--units', 'b', '-o',
-         'lv_all,seg_start,devices,vg_name,segtype,stripes,tags']
+    columns = ['lv_uuid', 'lv_name', 'lv_path', 'lv_size', 'seg_start_pe',
+               'seg_start', 'devices', 'vg_name', 'segtype', 'pool_lv',
+                'stripes', 'origin', 'stripes', 'data_percent',
+               'lv_attr', 'lv_tags']
+
+    cmd = ['lvs', '--noheadings', '--separator', '%s' % SEP, '--nosuffix',
+            '--units', 'b', '-o', ','.join(columns)]
 
     if lv_name:
         cmd.append(lv_name)
@@ -206,7 +217,7 @@ def lv_retrieve(connection, lv_name):
     d = []
 
     if rc == 0:
-        d = parse_key_value(out)
+        d = parse_column_names(out, columns)
 
     return d
 
