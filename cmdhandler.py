@@ -23,9 +23,9 @@ def call(command):
     """
     Call an executable and return a tuple of exitcode, stdout, stderr
     """
-    print 'STACK:'
-    for line in traceback.format_stack():
-        print line.strip()
+    #print 'STACK:'
+    #for line in traceback.format_stack():
+    #    print line.strip()
 
     print 'CMD:', str(command)
 
@@ -210,7 +210,7 @@ def lv_retrieve(connection, lv_name):
             '--units', 'b', '-o', ','.join(columns)]
 
     if lv_name:
-        cmd.append(lv_name)
+        cmd.extend(lv_name)
 
     rc, out, err = call(cmd)
 

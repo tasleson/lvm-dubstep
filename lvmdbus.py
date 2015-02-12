@@ -248,6 +248,12 @@ class Vg(utils.AutomatedProperties):
 
         if rc == 0:
             self.refresh_object(load_vgs, self._name)
+
+            if 'activate' in change_options:
+                for lv in self.lvs:
+                    lv_obj = self._object_manager.get_object(lv)
+                    lv_obj.refresh_object(load_lvs,
+                                          "%s/%s" % (self._name, lv_obj.name))
         else:
             raise dbus.exceptions.DBusException(
                 VG_INTERFACE,
@@ -365,6 +371,7 @@ class Lv(utils.AutomatedProperties):
 
     _tags_type = "as"
     _vg_type = "o"
+    _attr_type = "s"
 
     def __init__(self, c, object_path, object_manager,
                  uuid, name, path, size_bytes,
@@ -394,6 +401,10 @@ class Lv(utils.AutomatedProperties):
     @property
     def vg(self):
         return "/com/redhat/lvm/vg/%s" % self._vg_name
+
+    @property
+    def attr(self):
+        return self._attr
 
 
 def load_pvs(connection, obj_manager, device=None):
