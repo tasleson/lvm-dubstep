@@ -130,21 +130,7 @@ class Pv(utils.AutomatedProperties):
 
         rc, out, err = cmdhandler.pv_resize(pv_device_path, new_size_bytes)
         if rc == 0:
-            # TODO consolidate this common code for adding/removing etc.
-            # Not sure if there is a better way to do this, instead of
-            # resorting to removing the existing object and inserting a new
-            # one.
-            self.remove_from_connection(self._c, self._object_path)
-            self._object_manager.remove_object(self)
-
-            pvs = load_pvs(self._ap_c, self._object_manager,
-                           [pv_device_path])
-            for p in pvs:
-                self._object_manager.register_object(p)
-                changed = utils.get_object_property_diff(self, p)
-
-                if changed:
-                    self.PropertiesChanged(self.interface(), changed, None)
+            self.refresh_object(load_pvs, pv_device_path)
         else:
             raise dbus.exceptions.DBusException(
                 PV_INTERFACE,
@@ -261,18 +247,7 @@ class Vg(utils.AutomatedProperties):
         # {"activate": __import__('gi.repository.GLib', globals(), locals(), ['Variant']).Variant("s", "n")}
 
         if rc == 0:
-            # TODO consolidate this common code for adding/removing etc.
-            self.remove_from_connection(self._c, self._object_path)
-            self._object_manager.remove_object(self)
-
-            vgs = load_vgs(self._ap_c, self._object_manager,
-                           [self._name])
-            for v in vgs:
-                self._object_manager.register_object(v)
-                changed = utils.get_object_property_diff(self, v)
-
-                if changed:
-                    self.PropertiesChanged(self.interface(), changed, None)
+            self.refresh_object(load_vgs, self._name)
         else:
             raise dbus.exceptions.DBusException(
                 VG_INTERFACE,

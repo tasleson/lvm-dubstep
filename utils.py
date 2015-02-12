@@ -187,6 +187,25 @@ class AutomatedProperties(dbus.service.Object):
               (str(interface_name), str(changed_properties),
                str(invalidated_properties)))
 
+    def refresh_object(self, search_method, search_value):
+        """
+        Not sure if there is a better way to do this, instead of
+        resorting to removing the existing object and inserting a new
+        one.
+        """
+
+        self.remove_from_connection(self._c, self._object_path)
+        self._object_manager.remove_object(self)
+
+        found = search_method(self._ap_c, self._object_manager,
+                                [search_value])
+        for i in found:
+            self._object_manager.register_object(i)
+            changed = get_object_property_diff(self, i)
+
+            if changed:
+                self.PropertiesChanged(self.interface(), changed, None)
+
 
 # noinspection PyUnresolvedReferences
 class ObjectManager(AutomatedProperties):
