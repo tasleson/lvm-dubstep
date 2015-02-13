@@ -180,7 +180,20 @@ def vg_change(change_options, name):
     return call(cmd)
 
 
-def vg_retrieve(connection):
+def vg_reduce(vg_name, missing, pv_devices):
+    cmd = ['vgreduce']
+    if len(pv_devices) == 0:
+        cmd.append('--all')
+    if missing:
+        cmd.append('--removemissing')
+
+    cmd.append(vg_name)
+
+    cmd.extend(pv_devices)
+    return call(cmd)
+
+
+def vg_retrieve(connection, vg_specific):
     columns = ['vg_name', 'vg_uuid', 'vg_fmt', 'vg_size', 'vg_free',
                'vg_sysid', 'vg_extent_size', 'vg_extent_count',
                'vg_free_count', 'vg_profile', 'max_lv', 'max_pv',
@@ -188,12 +201,15 @@ def vg_retrieve(connection):
                'vg_mda_count', 'vg_mda_free', 'vg_mda_size',
                'vg_mda_used_count', 'vg_attr', 'vg_tags']
 
-    rc, out, err = call(['vgs', '--noheadings', '--separator', '%s' % SEP,
+    cmd = ['vgs', '--noheadings', '--separator', '%s' % SEP,
                          '--nosuffix', '--units', 'b', '-o',
-                         ','.join(columns)])
+                         ','.join(columns)]
+
+    if vg_specific:
+        cmd.extend(vg_specific)
 
     d = []
-
+    rc, out, err = call(cmd)
     if rc == 0:
         d = parse_column_names(out, columns)
 

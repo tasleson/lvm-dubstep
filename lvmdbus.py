@@ -136,13 +136,11 @@ class Pv(utils.AutomatedProperties):
                 PV_INTERFACE,
                 'Exit code %s, stderr = %s' % (str(rc), err))
 
-
     @dbus.service.method(dbus_interface=PV_INTERFACE,
                          in_signature='a{sv}(tt)o(tt)')
     def Move(self, move_options, source_range, dest_pv_path, dest_range):
         # TODO implement
         pass
-
 
     @property
     def tags(self):
@@ -244,7 +242,8 @@ class Vg(utils.AutomatedProperties):
         rc, out, err = cmdhandler.vg_change(change_options, self._name)
 
         ## To use an example with d-feet (Method input)
-        # {"activate": __import__('gi.repository.GLib', globals(), locals(), ['Variant']).Variant("s", "n")}
+        # {"activate": __import__('gi.repository.GLib', globals(), locals(),
+        # ['Variant']).Variant("s", "n")}
 
         if rc == 0:
             self.refresh_object(load_vgs, self._name)
@@ -262,8 +261,26 @@ class Vg(utils.AutomatedProperties):
     @dbus.service.method(dbus_interface=VG_INTERFACE,
                          in_signature='bao')
     def Reduce(self, missing, pv_object_paths):
-        # TODO implement
-        pass
+
+        pv_devices = []
+
+        # If pv_object_paths is not empty, then get the device paths
+        if pv_object_paths and len(pv_object_paths) > 0:
+            for pv_op in pv_object_paths:
+                print('pv_op=', pv_op)
+                pv = self._object_manager.get_object(pv_op)
+                if pv:
+                    pv_devices.append(pv._lvm_path)
+                else:
+                    raise dbus.exceptions.DBusException(
+                    VG_INTERFACE, 'PV Object path not fount = %s!' % pv_op)
+
+        rc, out, err = cmdhandler.vg_reduce(self._name, missing, pv_devices)
+        if rc == 0:
+            self.refresh_object(load_vgs, self._name)
+        else:
+            raise dbus.exceptions.DBusException(
+                VG_INTERFACE, 'Exit code %s, stderr = %s' % (str(rc), err))
 
     @dbus.service.method(dbus_interface=VG_INTERFACE,
                          in_signature='a{sv}ao')
@@ -427,7 +444,7 @@ def load_pvs(connection, obj_manager, device=None):
 
 
 def load_vgs(connection, obj_manager, vg_specific=None):
-    vgs = cmdhandler.vg_retrieve(None)
+    vgs = cmdhandler.vg_retrieve(None, vg_specific)
 
     rc = []
 
