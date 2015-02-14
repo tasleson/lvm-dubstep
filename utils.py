@@ -92,6 +92,8 @@ def get_object_property_diff(o_obj, n_obj):
     n_prop = get_properties(n_obj)[1]
 
     for k, v in o_prop.items():
+        #print('Comparing %s:%s to %s:%s' %
+        #      (k, str(o_prop[k]), k, str(n_prop[k])))
         if o_prop[k] != n_prop[k]:
             rc[k] = n_prop[k]
     return rc

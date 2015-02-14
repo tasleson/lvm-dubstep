@@ -193,6 +193,12 @@ def vg_reduce(vg_name, missing, pv_devices):
     return call(cmd)
 
 
+def vg_extend(vg_name, extend_devices):
+    cmd = ['vgextend', vg_name]
+    cmd.extend(extend_devices)
+    return call(cmd)
+
+
 def vg_retrieve(connection, vg_specific):
     columns = ['vg_name', 'vg_uuid', 'vg_fmt', 'vg_size', 'vg_free',
                'vg_sysid', 'vg_extent_size', 'vg_extent_count',

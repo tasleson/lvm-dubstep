@@ -283,10 +283,29 @@ class Vg(utils.AutomatedProperties):
                 VG_INTERFACE, 'Exit code %s, stderr = %s' % (str(rc), err))
 
     @dbus.service.method(dbus_interface=VG_INTERFACE,
-                         in_signature='a{sv}ao')
-    def Extend(self, extend_options, pv_object_paths):
-        # TODO Implement
-        pass
+                         in_signature='ao')
+    def Extend(self, pv_object_paths):
+        extend_devices = []
+
+        for i in pv_object_paths:
+            pv = self._object_manager.get_object(i)
+            if pv:
+                extend_devices.append(pv._lvm_path)
+            else:
+                raise dbus.exceptions.DBusException(
+                    VG_INTERFACE, 'PV Object path not fount = %s!' % i)
+
+        if len(extend_devices):
+            rc, out, err = cmdhandler.vg_extend(self._name, extend_devices)
+            if rc == 0:
+                self.refresh_object(load_vgs, self._name)
+            else:
+                raise dbus.exceptions.DBusException(
+                    VG_INTERFACE,
+                    'Exit code %s, stderr = %s' % (str(rc), err))
+        else:
+            raise dbus.exceptions.DBusException(
+                    VG_INTERFACE, 'No pv_object_paths provided!')
 
     @dbus.service.method(dbus_interface=VG_INTERFACE,
                          in_signature='a{sv}st',
