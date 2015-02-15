@@ -165,6 +165,26 @@ def pv_create(create_options, devices):
     return call(cmd)
 
 
+def pv_move(move_options, pv_source, pv_source_range, pv_dest, pv_dest_range):
+    cmd = ['pvmove']
+    cmd.extend(options_to_cli_args(move_options))
+
+    if pv_source_range[1] != 0:
+        cmd.append("%s-%d:%d" %
+                   (pv_source, pv_source_range[0], pv_source_range[1]))
+    else:
+        cmd.append(pv_source)
+
+    if pv_dest:
+        if pv_dest_range[1] != 0:
+            cmd.append("%s-%d:%d" %
+                       (pv_dest, pv_dest_range[0], pv_dest_range[1]))
+        else:
+            cmd.append(pv_dest)
+
+    return call(cmd)
+
+
 def vg_create(create_options, pv_devices, name):
     cmd = ['vgcreate']
     cmd.extend(options_to_cli_args(create_options))

@@ -139,8 +139,27 @@ class Pv(utils.AutomatedProperties):
     @dbus.service.method(dbus_interface=PV_INTERFACE,
                          in_signature='a{sv}(tt)o(tt)')
     def Move(self, move_options, source_range, dest_pv_path, dest_range):
-        # TODO implement
-        pass
+
+        # TODO: Add job control as this takes to long to execute.
+        dest_pv_device = None
+
+        if dest_pv_path and dest_pv_path != '/na':
+            pv = self._object_manager.get_object(dest_pv_path)
+            if pv:
+                dest_pv_device = pv._lvm_path
+            else:
+                raise dbus.exceptions.DBusException(
+                    PV_INTERFACE,
+                    'PV Object path not fount = %s!' % dest_pv_path)
+
+        rc, out, err = cmdhandler.pv_move(move_options, self._lvm_path,
+                                          source_range,
+                                          dest_pv_device, dest_range)
+        if rc == 0:
+            self.refresh_object(load_pvs, self._lvm_path)
+        else:
+            raise dbus.exceptions.DBusException(
+                PV_INTERFACE, 'Exit code %s, stderr = %s' % (str(rc), err))
 
     @property
     def tags(self):
@@ -273,7 +292,7 @@ class Vg(utils.AutomatedProperties):
                     pv_devices.append(pv._lvm_path)
                 else:
                     raise dbus.exceptions.DBusException(
-                    VG_INTERFACE, 'PV Object path not fount = %s!' % pv_op)
+                        VG_INTERFACE, 'PV Object path not fount = %s!' % pv_op)
 
         rc, out, err = cmdhandler.vg_reduce(self._name, missing, pv_devices)
         if rc == 0:
@@ -305,7 +324,7 @@ class Vg(utils.AutomatedProperties):
                     'Exit code %s, stderr = %s' % (str(rc), err))
         else:
             raise dbus.exceptions.DBusException(
-                    VG_INTERFACE, 'No pv_object_paths provided!')
+                VG_INTERFACE, 'No pv_object_paths provided!')
 
     @dbus.service.method(dbus_interface=VG_INTERFACE,
                          in_signature='a{sv}st',
