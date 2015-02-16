@@ -208,6 +208,9 @@ class AutomatedProperties(dbus.service.Object):
             if changed:
                 self.PropertiesChanged(self.interface(), changed, None)
 
+    def lvm_id(self):
+        return None
+
 
 # noinspection PyUnresolvedReferences
 class ObjectManager(AutomatedProperties):

@@ -112,7 +112,7 @@ class Pv(utils.AutomatedProperties):
     @dbus.service.method(dbus_interface=PV_INTERFACE)
     def Remove(self):
         # Remove the PV, if successful then remove from the model
-        rc, out, err = cmdhandler.pv_remove(self._lvm_path)
+        rc, out, err = cmdhandler.pv_remove(self.lvm_id)
 
         if rc == 0:
             self.remove_from_connection(self._c, self._object_path)
@@ -126,11 +126,9 @@ class Pv(utils.AutomatedProperties):
     @dbus.service.method(dbus_interface=PV_INTERFACE, in_signature='t')
     def ReSize(self, new_size_bytes):
 
-        pv_device_path = self._lvm_path
-
-        rc, out, err = cmdhandler.pv_resize(pv_device_path, new_size_bytes)
+        rc, out, err = cmdhandler.pv_resize(self.lvm_id, new_size_bytes)
         if rc == 0:
-            self.refresh_object(load_pvs, pv_device_path)
+            self.refresh_object(load_pvs, self.lvm_id)
         else:
             raise dbus.exceptions.DBusException(
                 PV_INTERFACE,
@@ -146,13 +144,13 @@ class Pv(utils.AutomatedProperties):
         if dest_pv_path and dest_pv_path != '/na':
             pv = self._object_manager.get_object(dest_pv_path)
             if pv:
-                dest_pv_device = pv._lvm_path
+                dest_pv_device = pv.lvm_id
             else:
                 raise dbus.exceptions.DBusException(
                     PV_INTERFACE,
                     'PV Object path not fount = %s!' % dest_pv_path)
 
-        rc, out, err = cmdhandler.pv_move(move_options, self._lvm_path,
+        rc, out, err = cmdhandler.pv_move(move_options, self.lvm_id,
                                           source_range,
                                           dest_pv_device, dest_range)
         if rc == 0:
@@ -168,7 +166,7 @@ class Pv(utils.AutomatedProperties):
     @property
     def pe_segments(self):
         if self._pe_segments is None:
-            self._pe_segments = cmdhandler.pv_segments(self._lvm_path)
+            self._pe_segments = cmdhandler.pv_segments(self.lvm_id)
         if len(self._pe_segments):
             return self._pe_segments
         return dbus.Array([], '(tt)')
@@ -193,6 +191,10 @@ class Pv(utils.AutomatedProperties):
 
     def object_path(self):
         return self._object_path
+
+    @property
+    def lvm_id(self):
+        return self._lvm_path
 
 
 @utils.dbus_property('uuid', 's')
@@ -240,7 +242,7 @@ class Vg(utils.AutomatedProperties):
     @dbus.service.method(dbus_interface=VG_INTERFACE)
     def Remove(self):
         # Remove the VG, if successful then remove from the model
-        rc, out, err = cmdhandler.vg_remove(self._name)
+        rc, out, err = cmdhandler.vg_remove(self.lvm_id)
 
         if rc == 0:
             self.remove_from_connection(self._c, self._object_path)
@@ -258,7 +260,7 @@ class Vg(utils.AutomatedProperties):
     @dbus.service.method(dbus_interface=VG_INTERFACE,
                          in_signature='a{sv}')
     def Change(self, change_options):
-        rc, out, err = cmdhandler.vg_change(change_options, self._name)
+        rc, out, err = cmdhandler.vg_change(change_options, self.lvm_id)
 
         ## To use an example with d-feet (Method input)
         # {"activate": __import__('gi.repository.GLib', globals(), locals(),
@@ -289,14 +291,14 @@ class Vg(utils.AutomatedProperties):
                 print('pv_op=', pv_op)
                 pv = self._object_manager.get_object(pv_op)
                 if pv:
-                    pv_devices.append(pv._lvm_path)
+                    pv_devices.append(pv.lvm_id)
                 else:
                     raise dbus.exceptions.DBusException(
                         VG_INTERFACE, 'PV Object path not fount = %s!' % pv_op)
 
-        rc, out, err = cmdhandler.vg_reduce(self._name, missing, pv_devices)
+        rc, out, err = cmdhandler.vg_reduce(self.lvm_id, missing, pv_devices)
         if rc == 0:
-            self.refresh_object(load_vgs, self._name)
+            self.refresh_object(load_vgs, self.lvm_id)
         else:
             raise dbus.exceptions.DBusException(
                 VG_INTERFACE, 'Exit code %s, stderr = %s' % (str(rc), err))
@@ -309,13 +311,13 @@ class Vg(utils.AutomatedProperties):
         for i in pv_object_paths:
             pv = self._object_manager.get_object(i)
             if pv:
-                extend_devices.append(pv._lvm_path)
+                extend_devices.append(pv.lvm_id)
             else:
                 raise dbus.exceptions.DBusException(
                     VG_INTERFACE, 'PV Object path not fount = %s!' % i)
 
         if len(extend_devices):
-            rc, out, err = cmdhandler.vg_extend(self._name, extend_devices)
+            rc, out, err = cmdhandler.vg_extend(self.lvm_id, extend_devices)
             if rc == 0:
                 self.refresh_object(load_vgs, self._name)
             else:
@@ -330,11 +332,11 @@ class Vg(utils.AutomatedProperties):
                          in_signature='a{sv}st',
                          out_signature='o')
     def LvCreate(self, create_options, name, size_bytes):
-        rc, out, err = cmdhandler.vg_lv_create(self.name, create_options,
+        rc, out, err = cmdhandler.vg_lv_create(self.lvm_id, create_options,
                                                name, size_bytes)
         if rc == 0:
             full_name = "%s/%s" % (self.name, name)
-            lvs = load_lvs(self._ap_c, self._object_manager, full_name)
+            lvs = load_lvs(self._ap_c, self._object_manager, [full_name])
             for l in lvs:
                 self._object_manager.register_object(l, True)
 
@@ -356,7 +358,7 @@ class Vg(utils.AutomatedProperties):
     @property
     def pvs(self):
         rc = []
-        pv_in_vg = cmdhandler.pvs_in_vg(self._name)
+        pv_in_vg = cmdhandler.pvs_in_vg(self.lvm_id)
         for p in pv_in_vg:
             rc.append(pv_obj_path(p))
         return dbus.Array(rc, signature='o')
@@ -365,10 +367,14 @@ class Vg(utils.AutomatedProperties):
     def lvs(self):
         # List of logical volumes that are created from this vg
         rc = []
-        lv_in_vg = cmdhandler.lvs_in_vg(self._name)
+        lv_in_vg = cmdhandler.lvs_in_vg(self.lvm_id)
         for lv in lv_in_vg:
             rc.append(lv_obj_path(lv))
         return dbus.Array(rc, signature='o')
+
+    @property
+    def lvm_id(self):
+        return self._name
 
     @property
     def writeable(self):
@@ -438,7 +444,7 @@ class Lv(utils.AutomatedProperties):
     @dbus.service.method(dbus_interface=LV_INTERFACE)
     def Remove(self):
         # Remove the LV, if successful then remove from the model
-        rc, out, err = cmdhandler.lv_remove(self._name)
+        rc, out, err = cmdhandler.lv_remove(self.lvm_id)
 
         if rc == 0:
             self.remove_from_connection(self._c, self._object_path)
@@ -460,6 +466,10 @@ class Lv(utils.AutomatedProperties):
     @property
     def attr(self):
         return self._attr
+
+    @property
+    def lvm_id(self):
+        return "%s/%s" % (self._vg_name, self.name)
 
 
 def load_pvs(connection, obj_manager, device=None):
@@ -581,7 +591,7 @@ class Manager(utils.AutomatedProperties):
 
         rc, out, err = cmdhandler.vg_create(create_options, pv_devices, name)
         if rc == 0:
-            vgs = load_vgs(self._ap_c, self._object_manager, name)
+            vgs = load_vgs(self._ap_c, self._object_manager, [name])
             for v in vgs:
                 self._object_manager.register_object(v, True)
         else:
