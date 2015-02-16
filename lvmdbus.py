@@ -141,7 +141,9 @@ class Pv(utils.AutomatedProperties):
         # TODO: Add job control as this takes to long to execute.
         dest_pv_device = None
 
-        if dest_pv_path and dest_pv_path != '/na':
+        # The convention is to use '/' to refer to an empty object path
+        # which is optional for this method.
+        if dest_pv_path and dest_pv_path != '/':
             pv = self._object_manager.get_object(dest_pv_path)
             if pv:
                 dest_pv_device = pv.lvm_id
