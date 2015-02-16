@@ -107,7 +107,7 @@ class Pv(utils.AutomatedProperties):
                  pe_start, pe_count, pe_alloc_count, attr, tags):
         super(Pv, self).__init__(c, object_path, PV_INTERFACE)
         utils.init_class_from_arguments(self)
-        self._pe_segments = None
+        self._pe_segments = cmdhandler.pv_segments(lvm_path)
 
     @dbus.service.method(dbus_interface=PV_INTERFACE)
     def Remove(self):
@@ -167,8 +167,6 @@ class Pv(utils.AutomatedProperties):
 
     @property
     def pe_segments(self):
-        if self._pe_segments is None:
-            self._pe_segments = cmdhandler.pv_segments(self.lvm_id)
         if len(self._pe_segments):
             return self._pe_segments
         return dbus.Array([], '(tt)')
@@ -240,6 +238,8 @@ class Vg(utils.AutomatedProperties):
                  mda_size_bytes, mda_used_count, attr, tags):
         super(Vg, self).__init__(c, object_path, VG_INTERFACE)
         utils.init_class_from_arguments(self)
+        self._pv_in_vg = cmdhandler.pvs_in_vg(name)
+        self._lv_in_vg = cmdhandler.lvs_in_vg(name)
 
     @dbus.service.method(dbus_interface=VG_INTERFACE)
     def Remove(self):
@@ -360,8 +360,7 @@ class Vg(utils.AutomatedProperties):
     @property
     def pvs(self):
         rc = []
-        pv_in_vg = cmdhandler.pvs_in_vg(self.lvm_id)
-        for p in pv_in_vg:
+        for p in self._pv_in_vg:
             rc.append(pv_obj_path(p))
         return dbus.Array(rc, signature='o')
 
@@ -369,8 +368,7 @@ class Vg(utils.AutomatedProperties):
     def lvs(self):
         # List of logical volumes that are created from this vg
         rc = []
-        lv_in_vg = cmdhandler.lvs_in_vg(self.lvm_id)
-        for lv in lv_in_vg:
+        for lv in self._lv_in_vg:
             rc.append(lv_obj_path(lv))
         return dbus.Array(rc, signature='o')
 
