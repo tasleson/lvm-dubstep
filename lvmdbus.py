@@ -274,8 +274,7 @@ class Vg(utils.AutomatedProperties):
             if 'activate' in change_options:
                 for lv in self.lvs:
                     lv_obj = self._object_manager.get_object(lv)
-                    lv_obj.refresh_object(load_lvs,
-                                          "%s/%s" % (self._name, lv_obj.name))
+                    lv_obj.refresh_object(load_lvs, lv_obj.lvm_id)
         else:
             raise dbus.exceptions.DBusException(
                 VG_INTERFACE,
