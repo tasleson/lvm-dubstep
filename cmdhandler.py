@@ -120,7 +120,7 @@ def pv_segments(device):
     # pvs --noheading -o pvseg_all
 
     rc, out, err = call(['pvs', '--separator', '%s' % SEP, '--noheading',
-                        '-o', 'pvseg_all'])
+                        '-o', 'pvseg_all', device])
     if rc == 0:
         r = parse(out)
     return r
