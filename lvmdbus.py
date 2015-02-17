@@ -156,7 +156,7 @@ class Pv(utils.AutomatedProperties):
                                           source_range,
                                           dest_pv_device, dest_range)
         if rc == 0:
-            self.refresh_object(load_pvs, self._lvm_path)
+            self.refresh_object(load_pvs, self.lvm_id)
         else:
             raise dbus.exceptions.DBusException(
                 PV_INTERFACE, 'Exit code %s, stderr = %s' % (str(rc), err))
@@ -269,7 +269,7 @@ class Vg(utils.AutomatedProperties):
         # ['Variant']).Variant("s", "n")}
 
         if rc == 0:
-            self.refresh_object(load_vgs, self._name)
+            self.refresh_object(load_vgs, self.lvm_id)
 
             if 'activate' in change_options:
                 for lv in self.lvs:
@@ -320,7 +320,7 @@ class Vg(utils.AutomatedProperties):
         if len(extend_devices):
             rc, out, err = cmdhandler.vg_extend(self.lvm_id, extend_devices)
             if rc == 0:
-                self.refresh_object(load_vgs, self._name)
+                self.refresh_object(load_vgs, self.lvm_id)
             else:
                 raise dbus.exceptions.DBusException(
                     VG_INTERFACE,
