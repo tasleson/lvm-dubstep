@@ -161,6 +161,16 @@ class Pv(utils.AutomatedProperties):
             raise dbus.exceptions.DBusException(
                 PV_INTERFACE, 'Exit code %s, stderr = %s' % (str(rc), err))
 
+    @dbus.service.method(dbus_interface=PV_INTERFACE,
+                         in_signature='b')
+    def AllocationEnabled(self, yes):
+        rc, out, err = cmdhandler.pv_allocatable(self.lvm_id, yes)
+        if rc == 0:
+            self.refresh_object(load_pvs, self.lvm_id)
+        else:
+            raise dbus.exceptions.DBusException(
+                PV_INTERFACE, 'Exit code %s, stderr = %s' % (str(rc), err))
+
     @property
     def tags(self):
         return utils.parse_tags(self._tags)

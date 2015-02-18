@@ -185,6 +185,16 @@ def pv_move(move_options, pv_source, pv_source_range, pv_dest, pv_dest_range):
     return call(cmd)
 
 
+def pv_allocatable(device, yes):
+    yn = 'n'
+
+    if yes:
+        yn = 'y'
+
+    cmd = ['pvchange', '-x', yn, device]
+    return call(cmd)
+
+
 def vg_create(create_options, pv_devices, name):
     cmd = ['vgcreate']
     cmd.extend(options_to_cli_args(create_options))
