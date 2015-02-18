@@ -557,16 +557,24 @@ class Manager(utils.AutomatedProperties):
         self._object_manager = object_manager
 
     @dbus.service.method(dbus_interface=MANAGER_INTERFACE,
-                         in_signature='a{sv}as',
-                         out_signature='ao')
-    def PvCreate(self, create_options, devices):
+                         in_signature='a{sv}s',
+                         out_signature='o')
+    def PvCreate(self, create_options, device):
+
+        # Check to see if we are already trying to create a PV for an existing
+        # PV
+        pv = self._object_manager.get_object(pv_obj_path(device))
+        if pv:
+            raise dbus.exceptions.DBusException(
+                MANAGER_INTERFACE, "PV Already exists!")
+
         created_pv = []
-        rc, out, err = cmdhandler.pv_create(create_options, devices)
+        rc, out, err = cmdhandler.pv_create(create_options, [device])
         if rc == 0:
-            pvs = load_pvs(self._ap_c, self._object_manager, devices)
+            pvs = load_pvs(self._ap_c, self._object_manager, [device])
             for p in pvs:
                 self._object_manager.register_object(p, True)
-                created_pv.append(pv_obj_path(p.name))
+                created_pv = pv_obj_path(p.name)
         else:
             raise dbus.exceptions.DBusException(
                 MANAGER_INTERFACE,
