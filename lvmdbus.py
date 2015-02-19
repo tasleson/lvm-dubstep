@@ -430,25 +430,23 @@ class Vg(utils.AutomatedProperties):
 @utils.dbus_property('name', 's')
 @utils.dbus_property('path', 's')
 @utils.dbus_property('size_bytes', 's')
-@utils.dbus_property('seg_start_bytes', 't')
-@utils.dbus_property('devices', 's')
-@utils.dbus_property('segtype', 's')
 @utils.dbus_property('pool_lv', 'o')
 @utils.dbus_property('origin_lv', 'o')
-@utils.dbus_property('stripes', 's')
 @utils.dbus_property('data_percent', 'i')
 class Lv(utils.AutomatedProperties):
 
     _tags_type = "as"
     _vg_type = "o"
     _attr_type = "s"
+    _devices_type = "a(o(tt))"
 
     def __init__(self, c, object_path, object_manager,
                  uuid, name, path, size_bytes,
-                 seg_start_bytes, devices, vg_name, segtype, pool_lv,
-                 origin_lv, stripes, data_percent, attr, tags):
+                 vg_name, pool_lv,
+                 origin_lv, data_percent, attr, tags):
         super(Lv, self).__init__(c, object_path, LV_INTERFACE)
         utils.init_class_from_arguments(self)
+        self._devices = cmdhandler.lv_pv_devices(self.lvm_id)
 
     @dbus.service.method(dbus_interface=LV_INTERFACE)
     def Remove(self):
@@ -479,6 +477,14 @@ class Lv(utils.AutomatedProperties):
     @property
     def lvm_id(self):
         return "%s/%s" % (self._vg_name, self.name)
+
+    @property
+    def devices(self):
+        rc = []
+        for pv in self._devices:
+            segs = pv[1]
+            rc.append((pv_obj_path(pv[0]), pv[1]))
+        return dbus.Array(rc, signature="(o(tt))")
 
 
 def load_pvs(connection, obj_manager, device=None):
@@ -531,10 +537,7 @@ def load_lvs(connection, obj_manager, lv_name=None):
                 obj_manager,
                 l['lv_uuid'],
                 l['lv_name'], l['lv_path'], n(l['lv_size']),
-                n(l['seg_start_pe']),
-                l['devices'],
-                l['vg_name'], l['segtype'], l['pool_lv'], l['origin'],
-                n(l['stripes']),
+                l['vg_name'], l['pool_lv'], l['origin'],
                 n(l['data_percent']), l['lv_attr'], l['lv_tags'])
 
         rc.append(lv)

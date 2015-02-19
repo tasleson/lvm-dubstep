@@ -27,7 +27,7 @@ def call(command):
     #for line in traceback.format_stack():
     #    print line.strip()
 
-    print 'CMD:', str(command)
+    print 'CMD:', ' '.join(command)
 
     process = Popen(command, stdout=PIPE, stderr=PIPE, close_fds=True)
     out = process.communicate()
@@ -253,9 +253,9 @@ def vg_retrieve(connection, vg_specific):
 
 
 def lv_retrieve(connection, lv_name):
-    columns = ['lv_uuid', 'lv_name', 'lv_path', 'lv_size', 'seg_start_pe',
-               'seg_start', 'devices', 'vg_name', 'segtype', 'pool_lv',
-                'stripes', 'origin', 'stripes', 'data_percent',
+    columns = ['lv_uuid', 'lv_name', 'lv_path', 'lv_size',
+                'vg_name', 'pool_lv',
+                'origin', 'data_percent',
                'lv_attr', 'lv_tags']
 
     cmd = ['lvs', '--noheadings', '--separator', '%s' % SEP, '--nosuffix',
@@ -272,6 +272,22 @@ def lv_retrieve(connection, lv_name):
         d = parse_column_names(out, columns)
 
     return d
+
+
+def lv_pv_devices(lv_name):
+    data = []
+
+    cmd = ['lvs', '--noheadings', '--separator', '%s' % SEP,
+           '--nosuffix', '--units', 'b', '-o', 'seg_pe_ranges', lv_name]
+    rc, out, err = call(cmd)
+    if rc == 0:
+        d = parse(out)
+        for l in d:
+            device, seg = l.split(':')
+            r1, r2 = seg.split('-')
+            data.append((device, (r1, r2)))
+
+    return data
 
 if __name__ == '__main__':
     pv_data = pv_retrieve(None)
