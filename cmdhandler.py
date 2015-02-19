@@ -130,7 +130,7 @@ def pv_retrieve(connection, device=None):
     columns = ['pv_name', 'pv_uuid', 'pv_fmt', 'pv_size', 'pv_free',
                'pv_used', 'dev_size', 'pv_mda_size', 'pv_mda_free',
                'pv_ba_start', 'pv_ba_size', 'pe_start', 'pv_pe_count',
-               'pv_pe_alloc_count', 'pv_attr', 'pv_tags']
+               'pv_pe_alloc_count', 'pv_attr', 'pv_tags', 'vg_name']
 
     cmd = ['pvs', '--noheadings', '--separator', '%s' % SEP, '--nosuffix',
                          '--units', 'b', '-o', ','.join(columns)]

@@ -91,6 +91,7 @@ def lv_obj_path(lv_name):
 @utils.dbus_property('pe_start', 't', 0)        # 1st PE/pe_start
 @utils.dbus_property('pe_count', 't', 0)        # PE/pv_pe_count
 @utils.dbus_property('pe_alloc_count', 't', 0)  # Alloc/pv_pe_alloc_count
+@utils.dbus_property("vg", 'o', '/')            # Associated VG
 class Pv(utils.AutomatedProperties):
 
     # For properties that we need custom handlers we need these, otherwise
@@ -104,10 +105,12 @@ class Pv(utils.AutomatedProperties):
     def __init__(self, c, object_path, object_manager, lvm_path, uuid, name,
                  fmt, size_bytes, free_bytes, used_bytes, dev_size_bytes,
                  mda_size_bytes, mda_free_bytes, ba_start, ba_size_bytes,
-                 pe_start, pe_count, pe_alloc_count, attr, tags):
+                 pe_start, pe_count, pe_alloc_count, attr, tags, vg_name):
         super(Pv, self).__init__(c, object_path, PV_INTERFACE)
         utils.init_class_from_arguments(self)
         self._pe_segments = cmdhandler.pv_segments(lvm_path)
+        # Put this in object path format
+        self._vg = vg_obj_path(self._vg_name)
 
     @dbus.service.method(dbus_interface=PV_INTERFACE)
     def Remove(self):
@@ -501,7 +504,7 @@ def load_pvs(connection, obj_manager, device=None):
                long(p["pv_ba_start"]), n(p["pv_ba_size"]),
                n(p["pe_start"]), long(p["pv_pe_count"]),
                long(p["pv_pe_alloc_count"]),
-               p["pv_attr"], p["pv_tags"])
+               p["pv_attr"], p["pv_tags"], p["vg_name"])
         rc.append(p)
     return rc
 
