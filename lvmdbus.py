@@ -485,7 +485,6 @@ class Lv(utils.AutomatedProperties):
     def devices(self):
         rc = []
         for pv in self._devices:
-            segs = pv[1]
             rc.append((pv_obj_path(pv[0]), pv[1]))
         return dbus.Array(rc, signature="(o(tt))")
 
