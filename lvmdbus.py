@@ -101,6 +101,7 @@ class Pv(utils.AutomatedProperties):
     _exportable_type = "b"
     _allocatable_type = "b"
     _missing_type = "b"
+    _lv_type = "a(oa(tt))"
 
     def __init__(self, c, object_path, object_manager, lvm_path, uuid, name,
                  fmt, size_bytes, free_bytes, used_bytes, dev_size_bytes,
@@ -111,6 +112,7 @@ class Pv(utils.AutomatedProperties):
         self._pe_segments = cmdhandler.pv_segments(lvm_path)
         # Put this in object path format
         self._vg = vg_obj_path(self._vg_name)
+        self._lv = cmdhandler.pv_contained_lv(self.lvm_id)
 
     @dbus.service.method(dbus_interface=PV_INTERFACE)
     def Remove(self):
@@ -208,6 +210,13 @@ class Pv(utils.AutomatedProperties):
     @property
     def lvm_id(self):
         return self._lvm_path
+
+    @property
+    def lv(self):
+        rc = []
+        for lv in self._lv:
+            rc.append((lv_obj_path(lv[0]), lv[1]))
+        return dbus.Array(rc, signature="(oa(tt))")
 
 
 @utils.dbus_property('uuid', 's')

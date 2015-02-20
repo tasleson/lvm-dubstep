@@ -14,7 +14,7 @@
 # Copyright 2014, Tony Asleson <tasleson@redhat.com>
 
 from subprocess import Popen, PIPE
-import traceback
+#import traceback
 
 SEP = '{|}'
 
@@ -193,6 +193,33 @@ def pv_allocatable(device, yes):
 
     cmd = ['pvchange', '-x', yn, device]
     return call(cmd)
+
+
+def pv_contained_lv(device):
+    data = []
+    tmp = {}
+    cmd = ['lvs', '--noheadings', '--separator', '%s' % SEP,
+           '--nosuffix', '--units', 'b', '-o', 'lv_name,seg_pe_ranges',
+           '-S', 'seg_pe_ranges=~"%s.*"' % (device)]
+
+    rc, out, err = call(cmd)
+    if rc == 0:
+        d = parse(out)
+        for l in d:
+            lv = l[0]
+            pe = l[1]
+            seg = pe.split(':')[1]
+            r1, r2 = seg.split('-')
+
+            if lv in tmp:
+                tmp[lv].append((r1, r2))
+            else:
+                tmp[lv] = [((r1, r2))]
+
+        for k, v in tmp.items():
+            data.append((k, v))
+
+    return data
 
 
 def vg_create(create_options, pv_devices, name):
