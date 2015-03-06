@@ -303,6 +303,7 @@ def lv_retrieve(connection, lv_name):
 
 def lv_pv_devices(lv_name):
     data = []
+    tmp = {}
 
     cmd = ['lvs', '--noheadings', '--separator', '%s' % SEP,
            '--nosuffix', '--units', 'b', '-o', 'seg_pe_ranges', lv_name]
@@ -312,7 +313,14 @@ def lv_pv_devices(lv_name):
         for l in d:
             device, seg = l.split(':')
             r1, r2 = seg.split('-')
-            data.append((device, (r1, r2)))
+
+            if device in tmp:
+                tmp[device].append((r1, r2))
+            else:
+                tmp[device] = [((r1, r2))]
+
+        for k, v in tmp.items():
+            data.append((k, v))
 
     return data
 

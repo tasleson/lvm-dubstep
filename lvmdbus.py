@@ -450,7 +450,7 @@ class Lv(utils.AutomatedProperties):
     _tags_type = "as"
     _vg_type = "o"
     _attr_type = "s"
-    _devices_type = "a(o(tt))"
+    _devices_type = "a(oa(tt))"
 
     def __init__(self, c, object_path, object_manager,
                  uuid, name, path, size_bytes,
@@ -495,7 +495,7 @@ class Lv(utils.AutomatedProperties):
         rc = []
         for pv in self._devices:
             rc.append((pv_obj_path(pv[0]), pv[1]))
-        return dbus.Array(rc, signature="(o(tt))")
+        return dbus.Array(rc, signature="(oa(tt))")
 
 
 def load_pvs(connection, obj_manager, device=None):
