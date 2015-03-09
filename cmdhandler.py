@@ -19,7 +19,7 @@ from subprocess import Popen, PIPE
 SEP = '{|}'
 
 
-def call(command):
+def call(command, debug=True):
     """
     Call an executable and return a tuple of exitcode, stdout, stderr
     """
@@ -27,14 +27,16 @@ def call(command):
     #for line in traceback.format_stack():
     #    print line.strip()
 
-    print 'CMD:', ' '.join(command)
+    if debug:
+        print 'CMD:', ' '.join(command)
 
     process = Popen(command, stdout=PIPE, stderr=PIPE, close_fds=True)
     out = process.communicate()
 
-    print("EC = %d" % process.returncode)
-    print("STDOUT=\n %s\n" % out[0])
-    print("STDERR=\n %s\n" % out[1])
+    if debug:
+        print("EC = %d" % process.returncode)
+        print("STDOUT=\n %s\n" % out[0])
+        print("STDERR=\n %s\n" % out[1])
 
     return process.returncode, out[0], out[1]
 
