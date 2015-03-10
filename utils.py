@@ -16,6 +16,13 @@
 import dbus
 import xml.etree.ElementTree as Et
 import sys
+import hashlib
+
+
+def md5(t):
+    h = hashlib.md5()
+    h.update(t)
+    return h.hexdigest()
 
 
 def is_numeric(s):
@@ -130,6 +137,9 @@ class AutomatedProperties(dbus.service.Object):
         self._ap_c = conn
         self._ap_interface = interface
         self._ap_o_path = object_path
+
+    def dbus_object_path(self):
+        return self._ap_o_path
 
     def emit_data(self):
         return self._ap_o_path, self.GetAll(self._ap_interface)

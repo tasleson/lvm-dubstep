@@ -187,6 +187,86 @@ def pv_move(move_options, pv_source, pv_source_range, pv_dest, pv_dest_range):
     return call(cmd)
 
 
+def pv_move_lv(move_options, lv_full_name,
+                pv_source, pv_source_range, pv_dest, pv_dest_range):
+    cmd = ['pvmove', '-b']
+    cmd.extend(options_to_cli_args(move_options))
+
+    cmd.extend(['-n', lv_full_name])
+
+    if pv_source_range[1] != 0:
+        cmd.append("%s-%d:%d" %
+                   (pv_source, pv_source_range[0], pv_source_range[1]))
+    else:
+        cmd.append(pv_source)
+
+    if pv_dest:
+        if pv_dest_range[1] != 0:
+            cmd.append("%s-%d:%d" %
+                       (pv_dest, pv_dest_range[0], pv_dest_range[1]))
+        else:
+            cmd.append(pv_dest)
+
+    return call(cmd)
+
+
+def _pv_move_find_lv(lookup, device_name, vg_name):
+    for l in lookup:
+        if device_name in l['devices'] and l['vg_name'] == vg_name:
+            return l['lv_name']
+    return None
+
+
+def pv_move_status():
+    lv_in_motion = {}
+
+    columns = ['pv_name', 'lv_uuid', 'vg_name', 'lv_name', 'devices',
+               'copy_percent']
+
+    cmd = ['pvs', '--noheadings', '--separator', '%s' % SEP,
+           '-o' + ','.join(columns), '-S',
+           'copy_percent>=0']
+
+    lookup_columns = ['lv_name', 'vg_name', 'devices']
+
+    lookup = ['lvs', '--noheadings', '--separator', '%s' % SEP,
+              '-o' + ','.join(lookup_columns),
+              '-S', 'devices=~"pvmove[0-9]+"']
+
+    rc, out, err = call(cmd, True)
+    if rc == 0:
+        lines = parse_column_names(out, columns)
+        if len(lines) > 0:
+            rc, lookup_out, lookup_err = call(lookup, False)
+
+            if rc == 0:
+                lookup = parse_column_names(lookup_out, lookup_columns)
+
+                for l in lines:
+                    if l['lv_name'][0] == '[':
+                        l['lv_name'] = l['lv_name'][1:-1]
+
+                    # Parse the devices
+                    src, dest = l['devices'].split(',')
+                    src = src.split('(')[0]
+                    dest = dest.split('(')[0]
+
+                    if l['pv_name'] != src:
+                        continue
+
+                    lv_being_moved = _pv_move_find_lv(lookup, l['lv_name'],
+                                                      l['vg_name'])
+
+                    lv_full_name = "%s/%s" % (l['vg_name'], lv_being_moved)
+
+                    if lv_full_name not in lv_in_motion:
+                        lv_in_motion[lv_full_name] = \
+                            dict(src_dev=src,
+                                 percent=int(float(l['copy_percent'])))
+
+    return lv_in_motion
+
+
 def pv_allocatable(device, yes):
     yn = 'n'
 

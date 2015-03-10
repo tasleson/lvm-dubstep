@@ -26,6 +26,7 @@ import sys
 import cmdhandler
 import utils
 from utils import n
+import time
 
 
 #Debug
@@ -42,12 +43,14 @@ PV_INTERFACE = BASE_INTERFACE + '.pv'
 VG_INTERFACE = BASE_INTERFACE + '.vg'
 LV_INTERFACE = BASE_INTERFACE + '.lv'
 MANAGER_INTERFACE = BASE_INTERFACE + '.Manager'
+JOB_INTERFACE = BASE_INTERFACE + '.Job'
 
 BASE_OBJ_PATH = '/com/redhat/lvm'
 PV_OBJ_PATH = BASE_OBJ_PATH + '/pv'
 VG_OBJ_PATH = BASE_OBJ_PATH + '/vg'
 LV_OBJ_PATH = BASE_OBJ_PATH + '/lv'
 MANAGER_OBJ_PATH = BASE_OBJ_PATH + '/Manager'
+JOB_OBJ_PATH = BASE_OBJ_PATH + '/Job'
 
 
 # Serializes access to stdout to prevent interleaved output
@@ -75,6 +78,10 @@ def vg_obj_path(vg_name):
 
 def lv_obj_path(lv_name):
     return LV_OBJ_PATH + "/%s" % lv_name
+
+
+def job_obj_path(job_id):
+    return JOB_OBJ_PATH + "/%s" % job_id
 
 
 @utils.dbus_property('uuid', 's')               # PV UUID/pv_uuid
@@ -497,6 +504,48 @@ class Lv(utils.AutomatedProperties):
             rc.append((pv_obj_path(pv[0]), pv[1]))
         return dbus.Array(rc, signature="(oa(tt))")
 
+    @dbus.service.method(dbus_interface=LV_INTERFACE,
+                         in_signature='a{sv}o(tt)o(tt)',
+                         out_signature='o')
+    def Move(self, move_options, pv_src_obj, pv_source_range, pv_dest_obj,
+             pv_dest_range):
+        pv_dest = None
+        pv_src = self._object_manager.get_object(pv_src_obj)
+        if pv_src:
+            if pv_dest_obj != '/':
+                pv_dest_t = self._object_manager.get_object(pv_dest_obj)
+                if not pv_dest_t:
+                    raise dbus.exceptions.DBusException(
+                        LV_INTERFACE, 'pv_dest_obj (%s) not found' %
+                        pv_src_obj)
+                pv_dest = pv_dest_t.lvm_id
+
+            rc, out, err = cmdhandler.pv_move_lv(
+                move_options,
+                self.lvm_id,
+                pv_src.lvm_id,
+                pv_source_range,
+                pv_dest,
+                pv_dest_range)
+
+            if rc == 0:
+                # Create job object for monitoring
+                jobs = cmdhandler.pv_move_status()
+                if self.lvm_id in jobs:
+                    job_name = utils.md5(self.lvm_id + pv_src.lvm_id +
+                                         str(time.time()))
+
+                    job_obj = Job(self._c, job_obj_path(job_name),
+                                  self._object_manager, self.lvm_id)
+                    self._object_manager.register_object(job_obj)
+                    return job_obj.dbus_object_path()
+            else:
+                raise dbus.exceptions.DBusException(
+                    LV_INTERFACE, 'Exit code %s, stderr = %s' % (str(rc), err))
+        else:
+            raise dbus.exceptions.DBusException(
+                LV_INTERFACE, 'pv_src_obj (%s) not found' % pv_src_obj)
+
 
 def load_pvs(connection, obj_manager, device=None):
     pvs = cmdhandler.pv_retrieve(None, device)
@@ -629,6 +678,40 @@ class Manager(utils.AutomatedProperties):
             raise dbus.exceptions.DBusException(
                 MANAGER_INTERFACE,
                 'Exit code %s, stderr = %s' % (str(rc), err))
+
+
+class Job(utils.AutomatedProperties):
+
+    _percent_type = 'y'
+    _is_complete_type = 'b'
+
+    def __init__(self, c, object_path, object_manager, lv_name):
+        super(Job, self).__init__(c, object_path, JOB_INTERFACE)
+        utils.init_class_from_arguments(self)
+
+    @property
+    def percent(self):
+        current = cmdhandler.pv_move_status()
+        if self._lv_name in current:
+            return current[self._lv_name]['percent']
+        return 100
+
+    @property
+    def is_complete(self):
+        current = cmdhandler.pv_move_status()
+        if self._lv_name not in current:
+            return True
+        return False
+
+    @dbus.service.method(dbus_interface=JOB_INTERFACE)
+    def Remove(self):
+        if self.is_complete:
+            self.remove_from_connection(self._c, self.dbus_object_path())
+            self._object_manager.remove_object(self, True)
+        else:
+            raise dbus.exceptions.DBusException(
+                JOB_INTERFACE, 'Job is not complete!')
+
 
 if __name__ == '__main__':
 
