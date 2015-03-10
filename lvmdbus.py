@@ -15,7 +15,9 @@
 #
 # Copyright 2014, Tony Asleson <tasleson@redhat.com>
 
-from multiprocessing import Lock
+
+from multiprocessing import Process, Queue, Lock, Value
+from Queue import Empty
 import dbus
 import dbus.service
 import dbus.mainloop.glib
@@ -28,12 +30,16 @@ import utils
 from utils import n
 import time
 
+# Shared state variable across all processes
+run = Value('i', 1)
 
 #Debug
 DEBUG = True
 
 # Lock used by pprint
 stdout_lock = Lock()
+
+kick_q = Queue()
 
 # Main event loop
 loop = None
@@ -64,6 +70,7 @@ def pprint(msg):
 
 
 def handler(signum, frame):
+    run.value = 0
     pprint('Signal handler called with signal %d' % signum)
     loop.quit()
 
@@ -511,6 +518,7 @@ class Lv(utils.AutomatedProperties):
                     job_obj = Job(self._c, job_obj_path(job_name),
                                   self._object_manager, self.lvm_id)
                     self._object_manager.register_object(job_obj)
+                    kick_q.put("wake up!")
                     return job_obj.dbus_object_path()
             else:
                 raise dbus.exceptions.DBusException(
@@ -686,7 +694,80 @@ class Job(utils.AutomatedProperties):
                 JOB_INTERFACE, 'Job is not complete!')
 
 
+def signal_move_changes(object_manager):
+    prev_jobs = {}
+    cur_jobs = {}
+    have_one = None
+
+    def gen_signals(p, c):
+        if p:
+            #print 'PREV=', str(p)
+            #print 'CURR=', str(c)
+
+            for prev_k, prev_v in p.items():
+                if prev_k in c:
+                    if prev_v['src_dev'] == c[prev_k]['src_dev']:
+                        prev_v['percent'] = c[prev_k]['percent']
+                    else:
+                        p[prev_k] = c[prev_k]
+
+                    del c[prev_k]
+                else:
+                    state = p[prev_k]
+
+                    del p[prev_k]
+
+                    # Best guess is that the lv and the source & dest. PV state
+                    # needs to be updated, need to verify.
+                    lv_dbus = object_manager.get_object_by_lvm_id(prev_k)
+                    src_pv = object_manager.\
+                        get_object_by_lvm_id(state['src_dev'])
+                    dest_pv = object_manager.\
+                        get_object_by_lvm_id(state['dest_dev'])
+
+                    lv_dbus.refresh_object(load_lvs, lv_dbus.lvm_id)
+                    src_pv.refresh_object(load_pvs, src_pv.lvm_id)
+                    dest_pv.refresh_object(load_pvs, dest_pv.lvm_id)
+
+
+            # Update previous to current
+            p.update(c)
+
+    while run.value != 0:
+        try:
+            kick_q.get(True, 30)
+        except IOError:
+            pass
+        except Empty:
+            pass
+
+        while True:
+            if run.value == 0:
+                break
+
+            cur_jobs = cmdhandler.pv_move_status()
+
+            if cur_jobs:
+                if not prev_jobs:
+                    prev_jobs = cur_jobs
+                else:
+                    gen_signals(prev_jobs, cur_jobs)
+            else:
+                #Signal any that remain in running!
+                gen_signals(prev_jobs, cur_jobs)
+                prev_jobs = None
+                cur_jobs = None
+                break
+
+            time.sleep(1)
+
+    sys.exit(0)
+
 if __name__ == '__main__':
+    # Queue to wake up move monitor
+    process_list = []
+
+
 
     # Install signal handlers
     for s in [signal.SIGHUP, signal.SIGINT]:
@@ -696,12 +777,26 @@ if __name__ == '__main__':
             pass
 
     dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
+    gobject.threads_init()
+    dbus.mainloop.glib.threads_init()
     sys_bus = dbus.SessionBus()
     base_name = dbus.service.BusName(BASE_INTERFACE, sys_bus)
     lvm = Lvm(sys_bus, BASE_OBJ_PATH)
     lvm.register_object(Manager(sys_bus, MANAGER_OBJ_PATH, lvm))
 
+    # Start up process to monitor moves
+    process_list.append(Process(target=signal_move_changes, args=(lvm,)))
+
     load(sys_bus, lvm)
     loop = gobject.MainLoop()
+
+    for p in process_list:
+        p.damon = True
+        p.start()
+
     loop.run()
+
+    for p in process_list:
+        p.join()
+        pprint("PID(%d), exit value= %d" % (p.pid, p.exitcode))
     sys.exit(0)

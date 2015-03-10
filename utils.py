@@ -274,6 +274,13 @@ class ObjectManager(AutomatedProperties):
             return self._objects[path]
         return None
 
+    def get_object_by_lvm_id(self, lvm_id):
+        # TODO: Does this need to be change so not O(N)?
+        for k, v in self._objects.items():
+            if v.lvm_id == lvm_id:
+                return v
+        return None
+
 
 def attribute_type_name(name):
     """

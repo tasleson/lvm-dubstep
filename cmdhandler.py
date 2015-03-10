@@ -242,6 +242,7 @@ def pv_move_status():
                     if lv_full_name not in lv_in_motion:
                         lv_in_motion[lv_full_name] = \
                             dict(src_dev=src,
+                                 dest_dev=dest,
                                  percent=int(float(l['copy_percent'])))
 
     return lv_in_motion
