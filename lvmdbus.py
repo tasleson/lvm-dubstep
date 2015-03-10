@@ -147,33 +147,6 @@ class Pv(utils.AutomatedProperties):
                 'Exit code %s, stderr = %s' % (str(rc), err))
 
     @dbus.service.method(dbus_interface=PV_INTERFACE,
-                         in_signature='a{sv}(tt)o(tt)')
-    def Move(self, move_options, source_range, dest_pv_path, dest_range):
-
-        # TODO: Add job control as this takes to long to execute.
-        dest_pv_device = None
-
-        # The convention is to use '/' to refer to an empty object path
-        # which is optional for this method.
-        if dest_pv_path and dest_pv_path != '/':
-            pv = self._object_manager.get_object(dest_pv_path)
-            if pv:
-                dest_pv_device = pv.lvm_id
-            else:
-                raise dbus.exceptions.DBusException(
-                    PV_INTERFACE,
-                    'PV Object path not fount = %s!' % dest_pv_path)
-
-        rc, out, err = cmdhandler.pv_move(move_options, self.lvm_id,
-                                          source_range,
-                                          dest_pv_device, dest_range)
-        if rc == 0:
-            self.refresh_object(load_pvs, self.lvm_id)
-        else:
-            raise dbus.exceptions.DBusException(
-                PV_INTERFACE, 'Exit code %s, stderr = %s' % (str(rc), err))
-
-    @dbus.service.method(dbus_interface=PV_INTERFACE,
                          in_signature='b')
     def AllocationEnabled(self, yes):
         rc, out, err = cmdhandler.pv_allocatable(self.lvm_id, yes)
