@@ -131,12 +131,13 @@ def add_properties(xml, interface, props):
 
 # noinspection PyUnresolvedReferences
 class AutomatedProperties(dbus.service.Object):
-    def __init__(self, conn, object_path, interface):
+    def __init__(self, conn, object_path, interface, search_method=None):
         #dbus.service.Object.__init__(self, conn, object_path)
         super(AutomatedProperties, self).__init__(conn, object_path)
         self._ap_c = conn
         self._ap_interface = interface
         self._ap_o_path = object_path
+        self._ap_search_method = search_method
 
     def dbus_object_path(self):
         return self._ap_o_path
@@ -199,7 +200,7 @@ class AutomatedProperties(dbus.service.Object):
               (str(interface_name), str(changed_properties),
                str(invalidated_properties)))
 
-    def refresh_object(self, search_method, search_value):
+    def refresh(self):
         """
         Not sure if there is a better way to do this, instead of
         resorting to removing the existing object and inserting a new
@@ -209,8 +210,8 @@ class AutomatedProperties(dbus.service.Object):
         self.remove_from_connection(self._c, self._object_path)
         self._object_manager.remove_object(self)
 
-        found = search_method(self._ap_c, self._object_manager,
-                                [search_value])
+        found = self._ap_search_method(
+            self._ap_c, self._object_manager, [self.lvm_id])
         for i in found:
             self._object_manager.register_object(i)
             changed = get_object_property_diff(self, i)
@@ -218,8 +219,9 @@ class AutomatedProperties(dbus.service.Object):
             if changed:
                 self.PropertiesChanged(self.interface(), changed, None)
 
+    @property
     def lvm_id(self):
-        return None
+        return ""
 
 
 # noinspection PyUnresolvedReferences
@@ -277,6 +279,7 @@ class ObjectManager(AutomatedProperties):
     def get_object_by_lvm_id(self, lvm_id):
         # TODO: Does this need to be change so not O(N)?
         for k, v in self._objects.items():
+            #print("Comparing %s to %s" % (v.lvm_id, lvm_id))
             if v.lvm_id == lvm_id:
                 return v
         return None

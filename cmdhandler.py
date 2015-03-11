@@ -19,7 +19,7 @@ from subprocess import Popen, PIPE
 SEP = '{|}'
 
 
-def call(command, debug=True):
+def call(command, debug=False):
     """
     Call an executable and return a tuple of exitcode, stdout, stderr
     """
@@ -213,7 +213,7 @@ def pv_move_status():
               '-o' + ','.join(lookup_columns),
               '-S', 'devices=~"pvmove[0-9]+"']
 
-    rc, out, err = call(cmd, True)
+    rc, out, err = call(cmd, False)
     if rc == 0:
         lines = parse_column_names(out, columns)
         if len(lines) > 0:

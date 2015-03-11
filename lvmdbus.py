@@ -121,7 +121,7 @@ class Pv(utils.AutomatedProperties):
                  fmt, size_bytes, free_bytes, used_bytes, dev_size_bytes,
                  mda_size_bytes, mda_free_bytes, ba_start, ba_size_bytes,
                  pe_start, pe_count, pe_alloc_count, attr, tags, vg_name):
-        super(Pv, self).__init__(c, object_path, PV_INTERFACE)
+        super(Pv, self).__init__(c, object_path, PV_INTERFACE, load_pvs)
         utils.init_class_from_arguments(self)
         self._pe_segments = cmdhandler.pv_segments(lvm_path)
         # Put this in object path format
@@ -147,7 +147,7 @@ class Pv(utils.AutomatedProperties):
 
         rc, out, err = cmdhandler.pv_resize(self.lvm_id, new_size_bytes)
         if rc == 0:
-            self.refresh_object(load_pvs, self.lvm_id)
+            self.refresh()
         else:
             raise dbus.exceptions.DBusException(
                 PV_INTERFACE,
@@ -158,7 +158,7 @@ class Pv(utils.AutomatedProperties):
     def AllocationEnabled(self, yes):
         rc, out, err = cmdhandler.pv_allocatable(self.lvm_id, yes)
         if rc == 0:
-            self.refresh_object(load_pvs, self.lvm_id)
+            self.refresh()
         else:
             raise dbus.exceptions.DBusException(
                 PV_INTERFACE, 'Exit code %s, stderr = %s' % (str(rc), err))
@@ -245,7 +245,7 @@ class Vg(utils.AutomatedProperties):
                  extent_count, free_count, profile, max_lv, max_pv, pv_count,
                  lv_count, snap_count, seqno, mda_count, mda_free,
                  mda_size_bytes, mda_used_count, attr, tags):
-        super(Vg, self).__init__(c, object_path, VG_INTERFACE)
+        super(Vg, self).__init__(c, object_path, VG_INTERFACE, load_vgs)
         utils.init_class_from_arguments(self)
         self._pv_in_vg = cmdhandler.pvs_in_vg(name)
         self._lv_in_vg = cmdhandler.lvs_in_vg(name)
@@ -278,12 +278,12 @@ class Vg(utils.AutomatedProperties):
         # ['Variant']).Variant("s", "n")}
 
         if rc == 0:
-            self.refresh_object(load_vgs, self.lvm_id)
+            self.refresh()
 
             if 'activate' in change_options:
                 for lv in self.lvs:
                     lv_obj = self._object_manager.get_object(lv)
-                    lv_obj.refresh_object(load_lvs, lv_obj.lvm_id)
+                    lv_obj.refresh()
         else:
             raise dbus.exceptions.DBusException(
                 VG_INTERFACE,
@@ -308,7 +308,7 @@ class Vg(utils.AutomatedProperties):
 
         rc, out, err = cmdhandler.vg_reduce(self.lvm_id, missing, pv_devices)
         if rc == 0:
-            self.refresh_object(load_vgs, self.lvm_id)
+            self.refresh()
         else:
             raise dbus.exceptions.DBusException(
                 VG_INTERFACE, 'Exit code %s, stderr = %s' % (str(rc), err))
@@ -329,7 +329,7 @@ class Vg(utils.AutomatedProperties):
         if len(extend_devices):
             rc, out, err = cmdhandler.vg_extend(self.lvm_id, extend_devices)
             if rc == 0:
-                self.refresh_object(load_vgs, self.lvm_id)
+                self.refresh()
             else:
                 raise dbus.exceptions.DBusException(
                     VG_INTERFACE,
@@ -443,7 +443,7 @@ class Lv(utils.AutomatedProperties):
                  uuid, name, path, size_bytes,
                  vg_name, pool_lv,
                  origin_lv, data_percent, attr, tags):
-        super(Lv, self).__init__(c, object_path, LV_INTERFACE)
+        super(Lv, self).__init__(c, object_path, LV_INTERFACE, load_lvs)
         utils.init_class_from_arguments(self)
         self._devices = cmdhandler.lv_pv_devices(self.lvm_id)
 
@@ -694,7 +694,7 @@ class Job(utils.AutomatedProperties):
                 JOB_INTERFACE, 'Job is not complete!')
 
 
-def signal_move_changes(object_manager):
+def signal_move_changes(obj_mgr):
     prev_jobs = {}
     cur_jobs = {}
     have_one = None
@@ -717,25 +717,18 @@ def signal_move_changes(object_manager):
 
                     del p[prev_k]
 
-                    # Best guess is that the lv and the source & dest. PV state
-                    # needs to be updated, need to verify.
-                    lv_dbus = object_manager.get_object_by_lvm_id(prev_k)
-                    src_pv = object_manager.\
-                        get_object_by_lvm_id(state['src_dev'])
-                    dest_pv = object_manager.\
-                        get_object_by_lvm_id(state['dest_dev'])
-
-                    lv_dbus.refresh_object(load_lvs, lv_dbus.lvm_id)
-                    src_pv.refresh_object(load_pvs, src_pv.lvm_id)
-                    dest_pv.refresh_object(load_pvs, dest_pv.lvm_id)
-
+                    # Best guess is that the lv and the source & dest.
+                    # PV state needs to be updated, need to verify.
+                    obj_mgr.get_object_by_lvm_id(prev_k).refresh()
+                    obj_mgr.get_object_by_lvm_id(state['src_dev']).refresh()
+                    obj_mgr.get_object_by_lvm_id(state['dest_dev']).refresh()
 
             # Update previous to current
             p.update(c)
 
     while run.value != 0:
         try:
-            kick_q.get(True, 30)
+            kick_q.get(True, 5)
         except IOError:
             pass
         except Empty:
