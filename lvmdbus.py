@@ -282,7 +282,7 @@ class Vg(utils.AutomatedProperties):
 
             if 'activate' in change_options:
                 for lv in self.lvs:
-                    lv_obj = self._object_manager.get_object(lv)
+                    lv_obj = self._object_manager.get_by_path(lv)
                     lv_obj.refresh()
         else:
             raise dbus.exceptions.DBusException(
@@ -299,7 +299,7 @@ class Vg(utils.AutomatedProperties):
         if pv_object_paths and len(pv_object_paths) > 0:
             for pv_op in pv_object_paths:
                 print('pv_op=', pv_op)
-                pv = self._object_manager.get_object(pv_op)
+                pv = self._object_manager.get_by_path(pv_op)
                 if pv:
                     pv_devices.append(pv.lvm_id)
                 else:
@@ -319,7 +319,7 @@ class Vg(utils.AutomatedProperties):
         extend_devices = []
 
         for i in pv_object_paths:
-            pv = self._object_manager.get_object(i)
+            pv = self._object_manager.get_by_path(i)
             if pv:
                 extend_devices.append(pv.lvm_id)
             else:
@@ -490,10 +490,10 @@ class Lv(utils.AutomatedProperties):
     def Move(self, move_options, pv_src_obj, pv_source_range, pv_dest_obj,
              pv_dest_range):
         pv_dest = None
-        pv_src = self._object_manager.get_object(pv_src_obj)
+        pv_src = self._object_manager.get_by_path(pv_src_obj)
         if pv_src:
             if pv_dest_obj != '/':
-                pv_dest_t = self._object_manager.get_object(pv_dest_obj)
+                pv_dest_t = self._object_manager.get_by_path(pv_dest_obj)
                 if not pv_dest_t:
                     raise dbus.exceptions.DBusException(
                         LV_INTERFACE, 'pv_dest_obj (%s) not found' %
@@ -617,7 +617,7 @@ class Manager(utils.AutomatedProperties):
 
         # Check to see if we are already trying to create a PV for an existing
         # PV
-        pv = self._object_manager.get_object(pv_obj_path(device))
+        pv = self._object_manager.get_by_path(pv_obj_path(device))
         if pv:
             raise dbus.exceptions.DBusException(
                 MANAGER_INTERFACE, "PV Already exists!")
@@ -643,7 +643,7 @@ class Manager(utils.AutomatedProperties):
         pv_devices = []
 
         for p in pv_object_paths:
-            pv = self._object_manager.get_object(p)
+            pv = self._object_manager.get_by_path(p)
             if pv:
                 pv_devices.append(pv.name)
             else:
@@ -719,9 +719,9 @@ def signal_move_changes(obj_mgr):
 
                     # Best guess is that the lv and the source & dest.
                     # PV state needs to be updated, need to verify.
-                    obj_mgr.get_object_by_lvm_id(prev_k).refresh()
-                    obj_mgr.get_object_by_lvm_id(state['src_dev']).refresh()
-                    obj_mgr.get_object_by_lvm_id(state['dest_dev']).refresh()
+                    obj_mgr.get_by_lvm_id(prev_k).refresh()
+                    obj_mgr.get_by_lvm_id(state['src_dev']).refresh()
+                    obj_mgr.get_by_lvm_id(state['dest_dev']).refresh()
 
             # Update previous to current
             p.update(c)
@@ -760,8 +760,6 @@ if __name__ == '__main__':
     # Queue to wake up move monitor
     process_list = []
 
-
-
     # Install signal handlers
     for s in [signal.SIGHUP, signal.SIGINT]:
         try:
@@ -783,13 +781,13 @@ if __name__ == '__main__':
     load(sys_bus, lvm)
     loop = gobject.MainLoop()
 
-    for p in process_list:
-        p.damon = True
-        p.start()
+    for process in process_list:
+        process.damon = True
+        process.start()
 
     loop.run()
 
-    for p in process_list:
-        p.join()
-        pprint("PID(%d), exit value= %d" % (p.pid, p.exitcode))
+    for process in process_list:
+        process.join()
+        pprint("PID(%d), exit value= %d" % (process.pid, process.exitcode))
     sys.exit(0)

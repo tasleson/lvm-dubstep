@@ -20,6 +20,7 @@ import hashlib
 
 
 def md5(t):
+    # noinspection PyUnresolvedReferences
     h = hashlib.md5()
     h.update(t)
     return h.hexdigest()
@@ -129,7 +130,6 @@ def add_properties(xml, interface, props):
     return xml
 
 
-# noinspection PyUnresolvedReferences
 class AutomatedProperties(dbus.service.Object):
     def __init__(self, conn, object_path, interface, search_method=None):
         #dbus.service.Object.__init__(self, conn, object_path)
@@ -221,10 +221,9 @@ class AutomatedProperties(dbus.service.Object):
 
     @property
     def lvm_id(self):
-        return ""
+        return str(id(self))
 
 
-# noinspection PyUnresolvedReferences
 class ObjectManager(AutomatedProperties):
 
     def __init__(self, conn, object_path, interface):
@@ -233,6 +232,7 @@ class ObjectManager(AutomatedProperties):
         self._ap_interface = interface
         self._ap_o_path = object_path
         self._objects = {}
+        self._id_to_object_path = {}
 
     @dbus.service.method(dbus_interface="org.freedesktop.DBus.ObjectManager",
                          out_signature='a{oa{sa{sv}}}')
@@ -259,6 +259,7 @@ class ObjectManager(AutomatedProperties):
     def register_object(self, dbus_object, emit_signal=False):
         path, props = dbus_object.emit_data()
         self._objects[path] = dbus_object
+        self._id_to_object_path[dbus_object.lvm_id] = path
 
         if emit_signal:
             i = {dbus_object.interface(): props}
@@ -267,22 +268,18 @@ class ObjectManager(AutomatedProperties):
     def remove_object(self, dbus_object, emit_signal=False):
         path, props = dbus_object.emit_data()
 
+        del self._id_to_object_path[dbus_object.lvm_id]
         del self._objects[path]
         if emit_signal:
             self.InterfacesRemoved(path, dbus_object.interface())
 
-    def get_object(self, path):
+    def get_by_path(self, path):
         if path in self._objects:
             return self._objects[path]
         return None
 
-    def get_object_by_lvm_id(self, lvm_id):
-        # TODO: Does this need to be change so not O(N)?
-        for k, v in self._objects.items():
-            #print("Comparing %s to %s" % (v.lvm_id, lvm_id))
-            if v.lvm_id == lvm_id:
-                return v
-        return None
+    def get_by_lvm_id(self, lvm_id):
+        return self.get_by_path(self._id_to_object_path[lvm_id])
 
 
 def attribute_type_name(name):
