@@ -39,7 +39,7 @@ def n(v):
         return 0L
     if v.endswith('B'):
         return long(v[:-1])
-    return long(v)
+    return long(float(v))
 
 
 # noinspection PyProtectedMember
