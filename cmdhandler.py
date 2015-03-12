@@ -14,7 +14,8 @@
 # Copyright 2014, Tony Asleson <tasleson@redhat.com>
 
 from subprocess import Popen, PIPE
-#import traceback
+import traceback
+import sys
 
 SEP = '{|}'
 
@@ -364,26 +365,47 @@ def lv_retrieve(connection, lv_name):
     return d
 
 
+def _pv_device(data, device):
+    device, seg = device.split(':')
+    r1, r2 = seg.split('-')
+
+    if device in data:
+        data[device].append((r1, r2))
+    else:
+        data[device] = [((r1, r2))]
+
+
 def lv_pv_devices(lv_name):
     data = []
     tmp = {}
 
-    cmd = ['lvs', '--noheadings', '--separator', '%s' % SEP,
-           '--nosuffix', '--units', 'b', '-o', 'seg_pe_ranges', lv_name]
-    rc, out, err = call(cmd)
-    if rc == 0:
-        d = parse(out)
-        for l in d:
-            device, seg = l.split(':')
-            r1, r2 = seg.split('-')
+    cmd = ['pvs', '--noheading', '--separator', '%s' % SEP, '--nosuffix',
+           '--units', 'b', '-o', 'seg_pe_ranges', '-S',
+           'lv_full_name=~"%s.+"' % lv_name]
 
-            if device in tmp:
-                tmp[device].append((r1, r2))
-            else:
-                tmp[device] = [((r1, r2))]
+    rc, out, err = call(cmd, True)
 
-        for k, v in tmp.items():
-            data.append((k, v))
+    try:
+        if rc == 0:
+            d = parse(out)
+            for l in d:
+                # We have a striped result set where all lines are repeats
+                # so handle this line and break out.
+                # No idea why this is the odd one!
+                if ' ' in l:
+                    devices = l.split(' ')
+                    for d in devices:
+                        _pv_device(tmp, d)
+                    break
+                else:
+                    _pv_device(tmp, l)
+
+            for k, v in tmp.items():
+                data.append((k, v))
+
+    except Exception as e:
+        traceback.print_exc(file=sys.stdout)
+        pass
 
     return data
 
