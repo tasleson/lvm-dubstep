@@ -20,6 +20,15 @@ import sys
 SEP = '{|}'
 
 
+# Default cmd
+# Place default arguments for every command here.
+def _dc(cmd, args):
+    c = [cmd, '--noheading', '--separator', '%s' % SEP, '--nosuffix',
+           '--units']
+    c.extend(args)
+    return c
+
+
 def call(command, debug=False):
     """
     Call an executable and return a tuple of exitcode, stdout, stderr
@@ -82,16 +91,14 @@ def options_to_cli_args(options):
 
 
 def pvs_in_vg(vg_name):
-    rc, out, error = call(['vgs', '--noheading',
-                            '-o', 'pv_name', vg_name])
+    rc, out, error = call(_dc('vgs', ['-o', 'pv_name', vg_name]))
     if rc == 0:
         return parse(out)
     return []
 
 
 def lvs_in_vg(vg_name):
-    rc, out, error = call(['vgs', '--noheading',
-                            '-o', 'lv_name', vg_name])
+    rc, out, error = call(_dc('vgs', ['lv_name', vg_name]))
     if rc == 0:
         return parse(out)
     return []
@@ -119,11 +126,7 @@ def lv_remove(lv_path):
 
 def pv_segments(device):
     r = []
-
-    # pvs --noheading -o pvseg_all
-
-    rc, out, err = call(['pvs', '--separator', '%s' % SEP, '--noheading',
-                        '-o', 'pvseg_all', device])
+    rc, out, err = call(_dc('pvs', ['-o', 'pvseg_all', device]))
     if rc == 0:
         r = parse(out)
     return r
@@ -135,8 +138,7 @@ def pv_retrieve(connection, device=None):
                'pv_ba_start', 'pv_ba_size', 'pe_start', 'pv_pe_count',
                'pv_pe_alloc_count', 'pv_attr', 'pv_tags', 'vg_name']
 
-    cmd = ['pvs', '--noheadings', '--separator', '%s' % SEP, '--nosuffix',
-                         '--units', 'b', '-o', ','.join(columns)]
+    cmd = _dc('pvs', ['-o', ','.join(columns)])
 
     if device:
         cmd.extend(device)
@@ -204,15 +206,12 @@ def pv_move_status():
     columns = ['pv_name', 'lv_uuid', 'vg_name', 'lv_name', 'devices',
                'copy_percent']
 
-    cmd = ['pvs', '--noheadings', '--separator', '%s' % SEP,
-           '-o' + ','.join(columns), '-S',
-           'copy_percent>=0']
+    cmd = _dc('pvs', ['-o' + ','.join(columns), '-S', 'copy_percent>=0'])
 
     lookup_columns = ['lv_name', 'vg_name', 'devices']
 
-    lookup = ['lvs', '--noheadings', '--separator', '%s' % SEP,
-              '-o' + ','.join(lookup_columns),
-              '-S', 'devices=~"pvmove[0-9]+"']
+    lookup = _dc('lvs', ['-o' + ','.join(lookup_columns),
+                         '-S', 'devices=~"pvmove[0-9]+"'])
 
     rc, out, err = call(cmd, False)
     if rc == 0:
@@ -262,9 +261,8 @@ def pv_allocatable(device, yes):
 def pv_contained_lv(device):
     data = []
     tmp = {}
-    cmd = ['lvs', '--noheadings', '--separator', '%s' % SEP,
-           '--nosuffix', '--units', 'b', '-o', 'lv_name,seg_pe_ranges',
-           '-S', 'seg_pe_ranges=~"%s.*"' % (device)]
+    cmd = _dc('lvs', ['-o', 'lv_name,seg_pe_ranges',
+                      '-S', 'seg_pe_ranges=~"%s.*"' % (device)])
 
     rc, out, err = call(cmd)
     if rc == 0:
@@ -328,9 +326,7 @@ def vg_retrieve(connection, vg_specific):
                'vg_mda_count', 'vg_mda_free', 'vg_mda_size',
                'vg_mda_used_count', 'vg_attr', 'vg_tags']
 
-    cmd = ['vgs', '--noheadings', '--separator', '%s' % SEP,
-                         '--nosuffix', '--units', 'b', '-o',
-                         ','.join(columns)]
+    cmd = _dc('vgs', ['-o', ','.join(columns)])
 
     if vg_specific:
         cmd.extend(vg_specific)
@@ -349,8 +345,7 @@ def lv_retrieve(connection, lv_name):
                 'origin', 'data_percent',
                'lv_attr', 'lv_tags']
 
-    cmd = ['lvs', '--noheadings', '--separator', '%s' % SEP, '--nosuffix',
-            '--units', 'b', '-o', ','.join(columns)]
+    cmd = _dc('lvs', ['-o', ','.join(columns)])
 
     if lv_name:
         cmd.extend(lv_name)
@@ -379,9 +374,8 @@ def lv_pv_devices(lv_name):
     data = []
     tmp = {}
 
-    cmd = ['pvs', '--noheading', '--separator', '%s' % SEP, '--nosuffix',
-           '--units', 'b', '-o', 'seg_pe_ranges', '-S',
-           'lv_full_name=~"%s.+"' % lv_name]
+    cmd = _dc('pvs', ['-o', 'seg_pe_ranges', '-S',
+                      'lv_full_name=~"%s.+"' % lv_name])
 
     rc, out, err = call(cmd, True)
 
