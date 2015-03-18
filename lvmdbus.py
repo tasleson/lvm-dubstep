@@ -48,6 +48,7 @@ BASE_INTERFACE = 'com.redhat.lvm'
 PV_INTERFACE = BASE_INTERFACE + '.pv'
 VG_INTERFACE = BASE_INTERFACE + '.vg'
 LV_INTERFACE = BASE_INTERFACE + '.lv'
+LV_POOL_INTERFACE = BASE_INTERFACE + '.thinpool'
 MANAGER_INTERFACE = BASE_INTERFACE + '.Manager'
 JOB_INTERFACE = BASE_INTERFACE + '.Job'
 
@@ -528,6 +529,38 @@ class Lv(utils.AutomatedProperties):
                 LV_INTERFACE, 'pv_src_obj (%s) not found' % pv_src_obj)
 
 
+class LvPool(Lv):
+    """
+    Thin pool LV will have a method to create a LV.
+    """
+
+    def __init__(self, c, object_path, object_manager,
+                 uuid, name, path, size_bytes,
+                 vg_name, pool_lv,
+                 origin_lv, data_percent, attr, tags):
+        super(LvPool, self).__init__(c, object_path, object_manager, uuid,
+                                     name, path, size_bytes, vg_name, pool_lv,
+                                     origin_lv, data_percent, attr, tags)
+
+    @dbus.service.method(dbus_interface=LV_POOL_INTERFACE,
+                         in_signature='a{sv}st',
+                         out_signature='o')
+    def LvCreate(self, create_options, name, size_bytes):
+        rc, out, err = cmdhandler.lv_lv_create(self.lvm_id, create_options,
+                                               name, size_bytes)
+        if rc == 0:
+            full_name = "%s/%s" % (self._vg_name, name)
+            lvs = load_lvs(self._ap_c, self._object_manager, [full_name])
+            for l in lvs:
+                self._object_manager.register_object(l, True)
+
+            return lv_obj_path(name)
+        else:
+            raise dbus.exceptions.DBusException(
+                MANAGER_INTERFACE,
+                'Exit code %s, stderr = %s' % (str(rc), err))
+
+
 def load_pvs(connection, obj_manager, device=None):
     pvs = cmdhandler.pv_retrieve(None, device)
 
@@ -574,12 +607,21 @@ def load_lvs(connection, obj_manager, lv_name=None):
     rc = []
 
     for l in lvs:
-        lv = Lv(connection, lv_obj_path(l['lv_name']),
-                obj_manager,
-                l['lv_uuid'],
-                l['lv_name'], l['lv_path'], n(l['lv_size']),
-                l['vg_name'], l['pool_lv'], l['origin'],
-                n(l['data_percent']), l['lv_attr'], l['lv_tags'])
+        # Check to see if this LV is a thinpool!
+        if l['lv_attr'][0] != 't':
+            lv = Lv(connection, lv_obj_path(l['lv_name']),
+                    obj_manager,
+                    l['lv_uuid'],
+                    l['lv_name'], l['lv_path'], n(l['lv_size']),
+                    l['vg_name'], l['pool_lv'], l['origin'],
+                    n(l['data_percent']), l['lv_attr'], l['lv_tags'])
+        else:
+            lv = LvPool(connection, lv_obj_path(l['lv_name']),
+                        obj_manager,
+                        l['lv_uuid'],
+                        l['lv_name'], l['lv_path'], n(l['lv_size']),
+                        l['vg_name'], l['pool_lv'], l['origin'],
+                        n(l['data_percent']), l['lv_attr'], l['lv_tags'])
 
         rc.append(lv)
     return rc
