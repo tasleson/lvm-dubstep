@@ -24,7 +24,7 @@ SEP = '{|}'
 # Place default arguments for every command here.
 def _dc(cmd, args):
     c = [cmd, '--noheading', '--separator', '%s' % SEP, '--nosuffix',
-         '--unbuffered', '--units']
+         '--unbuffered', '--units', 'b']
     c.extend(args)
     return c
 
