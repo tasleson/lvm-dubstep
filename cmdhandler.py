@@ -266,6 +266,20 @@ def pv_allocatable(device, yes):
     return call(cmd)
 
 
+def _lv_device(data, key, search, pe_device_parse):
+    device, seg = pe_device_parse.split(':')
+
+    if search != device:
+        return
+
+    r1, r2 = seg.split('-')
+
+    if key in data:
+        data[key].append((r1, r2))
+    else:
+        data[key] = [((r1, r2))]
+
+
 def pv_contained_lv(device):
     data = []
     tmp = {}
@@ -276,15 +290,12 @@ def pv_contained_lv(device):
     if rc == 0:
         d = parse(out)
         for l in d:
-            lv = l[0]
-            pe = l[1]
-            seg = pe.split(':')[1]
-            r1, r2 = seg.split('-')
-
-            if lv in tmp:
-                tmp[lv].append((r1, r2))
+            if ' ' not in l[1]:
+                _lv_device(tmp, l[0], device, l[1])
             else:
-                tmp[lv] = [((r1, r2))]
+                pe_ranges = l[1].split(' ')
+                for pe in pe_ranges:
+                    _lv_device(tmp, l[0], device, pe)
 
         for k, v in tmp.items():
             data.append((k, v))
