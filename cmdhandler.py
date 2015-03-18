@@ -29,7 +29,7 @@ def _dc(cmd, args):
     return c
 
 
-def call(command, debug=False):
+def call(command, debug=True):
     """
     Call an executable and return a tuple of exitcode, stdout, stderr
     """
