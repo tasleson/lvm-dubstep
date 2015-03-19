@@ -831,6 +831,8 @@ if __name__ == '__main__':
         process.damon = True
         process.start()
 
+    print 'Service ready!'
+
     loop.run()
 
     for process in process_list:
