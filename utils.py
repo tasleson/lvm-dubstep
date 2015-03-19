@@ -226,8 +226,6 @@ class AutomatedProperties(dbus.service.Object):
         resorting to removing the existing object and inserting a new
         one.
         """
-
-        self.remove_from_connection(self._c, self._object_path)
         self._object_manager.remove_object(self)
 
         found = self._ap_search_method(
@@ -291,12 +289,21 @@ class ObjectManager(AutomatedProperties):
             self.InterfacesAdded(path, props)
 
     def remove_object(self, dbus_object, emit_signal=False):
-        path, props = dbus_object.emit_data()
 
+        # Store off the object path and the interface first
+        path = dbus_object.dbus_object_path()
+        interfaces = dbus_object.interface(True)
+
+        # Remove from our data structures
         del self._id_to_object_path[dbus_object.lvm_id]
         del self._objects[path]
+
+        # Remove from dbus library
+        dbus_object.remove_from_connection(self._ap_c, path)
+
+        # Optionally emit a signal
         if emit_signal:
-            self.InterfacesRemoved(path, dbus_object.interface())
+            self.InterfacesRemoved(path, interfaces)
 
     def get_by_path(self, path):
         if path in self._objects:

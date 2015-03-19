@@ -136,7 +136,6 @@ class Pv(utils.AutomatedProperties):
         rc, out, err = cmdhandler.pv_remove(self.lvm_id)
 
         if rc == 0:
-            self.remove_from_connection(self._c, self._object_path)
             self._object_manager.remove_object(self, True)
         else:
             # Need to work on error handling, need consistent
@@ -259,7 +258,6 @@ class Vg(utils.AutomatedProperties):
         rc, out, err = cmdhandler.vg_remove(self.lvm_id)
 
         if rc == 0:
-            self.remove_from_connection(self._c, self._object_path)
             self._object_manager.remove_object(self, True)
         else:
             # Need to work on error handling, need consistent
@@ -456,7 +454,6 @@ class Lv(utils.AutomatedProperties):
         rc, out, err = cmdhandler.lv_remove(self.lvm_id)
 
         if rc == 0:
-            self.remove_from_connection(self._c, self._object_path)
             self._object_manager.remove_object(self, True)
         else:
             # Need to work on error handling, need consistent
@@ -733,7 +730,6 @@ class Job(utils.AutomatedProperties):
     @dbus.service.method(dbus_interface=JOB_INTERFACE)
     def Remove(self):
         if self.is_complete:
-            self.remove_from_connection(self._c, self.dbus_object_path())
             self._object_manager.remove_object(self, True)
         else:
             raise dbus.exceptions.DBusException(
