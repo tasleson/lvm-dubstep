@@ -29,7 +29,7 @@ def _dc(cmd, args):
     return c
 
 
-def call(command, debug=True):
+def call(command, debug=False):
     """
     Call an executable and return a tuple of exitcode, stdout, stderr
     """
@@ -37,13 +37,11 @@ def call(command, debug=True):
     #for line in traceback.format_stack():
     #    print line.strip()
 
-    if debug:
-        print 'CMD:', ' '.join(command)
-
     process = Popen(command, stdout=PIPE, stderr=PIPE, close_fds=True)
     out = process.communicate()
 
-    if debug:
+    if debug or process.returncode != 0:
+        print 'CMD:', ' '.join(command)
         print("EC = %d" % process.returncode)
         print("STDOUT=\n %s\n" % out[0])
         print("STDERR=\n %s\n" % out[1])
@@ -396,7 +394,7 @@ def lv_pv_devices(lv_name):
     cmd = _dc('pvs', ['-o', 'seg_pe_ranges', '-S',
                       'lv_full_name=~"%s.+"' % lv_name])
 
-    rc, out, err = call(cmd, True)
+    rc, out, err = call(cmd)
 
     try:
         if rc == 0:
