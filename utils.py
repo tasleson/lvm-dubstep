@@ -15,8 +15,11 @@
 
 import dbus
 import xml.etree.ElementTree as Et
-import sys
 import hashlib
+import traceback
+import sys
+import inspect
+#from lvmdbus import BASE_INTERFACE
 
 
 def md5(t):
@@ -51,11 +54,13 @@ def init_class_from_arguments(obj_instance):
             setattr(obj_instance, nt, v)
 
 
-def get_properties(f):
+def get_properties(f, interface=None):
     """
-    Walks through an object instance and determines which attributes are
-    properties and if they were created to be used for dbus.
-    :param f:
+    Walks through an object instance or it's parent class(es) and determines
+    which attributes arr properties and if they were created to be used for
+    dbus.
+    :param f:   Object to inspect
+    :param interface: The interface we are seeking properties for
     :return:    A tuple:
                 0 = An array of dicts with the keys being: p_t, p_name,
                 p_access(type, name, access)
@@ -64,21 +69,28 @@ def get_properties(f):
     result = []
     h_rc = {}
 
-    h = vars(f.__class__)
-    for p, value in h.iteritems():
-        if isinstance(value, property):
-            # We found a property, see if it has a metadata type
-            key = attribute_type_name(p)
-            if key in h:
-                access = ''
-                if getattr(f.__class__, p).fget:
-                    access += 'read'
-                if getattr(f.__class__, p).fset:
-                    access += 'write'
+    for c in inspect.getmro(f.__class__):
+        try:
+            if interface is not None and c.DBUS_INTERFACE != interface:
+                continue
+        except AttributeError:
+            continue
 
-                result.append(dict(p_t=getattr(f, key), p_name=p,
-                                   p_access=access))
-                h_rc[p] = getattr(f, p)
+        h = vars(c)
+        for p, value in h.iteritems():
+            if isinstance(value, property):
+                # We found a property, see if it has a metadata type
+                key = attribute_type_name(p)
+                if key in h:
+                    access = ''
+                    if getattr(f.__class__, p).fget:
+                        access += 'read'
+                    if getattr(f.__class__, p).fset:
+                        access += 'write'
+
+                    result.append(dict(p_t=getattr(f, key), p_name=p,
+                                       p_access=access))
+                    h_rc[p] = getattr(f, p)
     return result, h_rc
 
 
@@ -131,6 +143,8 @@ def add_properties(xml, interface, props):
 
 
 class AutomatedProperties(dbus.service.Object):
+    DBUS_INTERFACE = ''
+
     def __init__(self, conn, object_path, interface, search_method=None):
         #dbus.service.Object.__init__(self, conn, object_path)
         super(AutomatedProperties, self).__init__(conn, object_path)
@@ -143,10 +157,22 @@ class AutomatedProperties(dbus.service.Object):
         return self._ap_o_path
 
     def emit_data(self):
-        return self._ap_o_path, self.GetAll(self._ap_interface)
+        props = {}
 
-    def interface(self):
-        return self._ap_interface
+        for i in self.interface():
+            props[i] = self.GetAll(i)
+
+        return self._ap_o_path, props
+
+    def interface(self, all_interfaces=False):
+        rc = []
+        if all_interfaces:
+            rc = self._dbus_interface_table.keys()
+        else:
+            for k in self._dbus_interface_table.keys():
+                if not k.startswith('org.freedesktop.DBus'):
+                    rc.append(k)
+        return rc
 
     # Properties
     @dbus.service.method(dbus_interface=dbus.PROPERTIES_IFACE,
@@ -162,15 +188,9 @@ class AutomatedProperties(dbus.service.Object):
     @dbus.service.method(dbus_interface=dbus.PROPERTIES_IFACE,
                          in_signature='s', out_signature='a{sv}')
     def GetAll(self, interface_name):
-        if interface_name == self._ap_interface:
+        if interface_name in self.interface():
             # Using introspection, lets build this dynamically
-            props = get_properties(self)[0]
-
-            rc = {}
-            for p in props:
-                rc[p['p_name']] = getattr(self, p['p_name'])
-            return rc
-
+            return get_properties(self, interface_name)[1]
         raise dbus.exceptions.DBusException(
             self._ap_interface,
             'The object %s does not implement the %s interface'
@@ -238,10 +258,16 @@ class ObjectManager(AutomatedProperties):
                          out_signature='a{oa{sa{sv}}}')
     def GetManagedObjects(self):
         rc = {}
-        for k, v in self._objects.items():
-            path, props = v.emit_data()
-            i = {v.interface(): props}
-            rc[path] = i
+
+        try:
+            for k, v in self._objects.items():
+                path, props = v.emit_data()
+                rc[path] = props
+        except Exception as e:
+            traceback.print_exc(file=sys.stdout)
+            sys.exit(1)
+            pass
+
         return rc
 
     @dbus.service.signal(dbus_interface="org.freedesktop.DBus.ObjectManager",
@@ -262,8 +288,7 @@ class ObjectManager(AutomatedProperties):
         self._id_to_object_path[dbus_object.lvm_id] = path
 
         if emit_signal:
-            i = {dbus_object.interface(): props}
-            self.InterfacesAdded(path, i)
+            self.InterfacesAdded(path, props)
 
     def remove_object(self, dbus_object, emit_signal=False):
         path, props = dbus_object.emit_data()

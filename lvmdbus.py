@@ -108,6 +108,7 @@ def job_obj_path(job_id):
 @utils.dbus_property('pe_alloc_count', 't', 0)  # Alloc/pv_pe_alloc_count
 @utils.dbus_property("vg", 'o', '/')            # Associated VG
 class Pv(utils.AutomatedProperties):
+    DBUS_INTERFACE = PV_INTERFACE
 
     # For properties that we need custom handlers we need these, otherwise
     # we won't get our introspection data
@@ -228,6 +229,7 @@ class Pv(utils.AutomatedProperties):
 @utils.dbus_property('mda_size_bytes', 't')
 @utils.dbus_property('mda_used_count', 't')
 class Vg(utils.AutomatedProperties):
+    DBUS_INTERFACE = VG_INTERFACE
     _tags_type = "as"
     _pvs_type = "ao"
     _lvs_type = "ao"
@@ -434,7 +436,7 @@ class Vg(utils.AutomatedProperties):
 @utils.dbus_property('origin_lv', 'o')
 @utils.dbus_property('data_percent', 'i')
 class Lv(utils.AutomatedProperties):
-
+    DBUS_INTERFACE = LV_INTERFACE
     _tags_type = "as"
     _vg_type = "o"
     _attr_type = "s"
@@ -530,6 +532,7 @@ class Lv(utils.AutomatedProperties):
 
 
 class LvPool(Lv):
+    DBUS_INTERFACE = LV_POOL_INTERFACE
     """
     Thin pool LV will have a method to create a LV.
     """
@@ -646,6 +649,7 @@ class Lvm(utils.ObjectManager):
 
 
 class Manager(utils.AutomatedProperties):
+    DBUS_INTERFACE = MANAGER_INTERFACE
 
     def __init__(self, connection, object_path, object_manager):
         super(Manager, self).__init__(connection, object_path,
@@ -704,7 +708,7 @@ class Manager(utils.AutomatedProperties):
 
 
 class Job(utils.AutomatedProperties):
-
+    DBUS_INTERFACE = JOB_INTERFACE
     _percent_type = 'y'
     _is_complete_type = 'b'
 
