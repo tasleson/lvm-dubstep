@@ -118,6 +118,14 @@ def vg_lv_create(vg_name, create_options, name, size_bytes):
     return call(cmd)
 
 
+def vg_lv_create_thin_pool(vg_name, create_options, name, size_bytes):
+    cmd = ['lvcreate']
+    cmd.extend(options_to_cli_args(create_options))
+    cmd.extend(['-T', '--size', str(size_bytes) + 'B'])
+    cmd.extend(['--name', name, vg_name])
+    return call(cmd)
+
+
 def lv_remove(lv_path):
     return call(['lvremove', '-f', lv_path])
 
