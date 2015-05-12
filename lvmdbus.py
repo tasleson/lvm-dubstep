@@ -340,11 +340,12 @@ class Vg(utils.AutomatedProperties):
                 VG_INTERFACE, 'No pv_object_paths provided!')
 
     @dbus.service.method(dbus_interface=VG_INTERFACE,
-                         in_signature='a{sv}st',
+                         in_signature='a{sv}stb',
                          out_signature='o')
-    def LvCreateLinear(self, create_options, name, size_bytes):
+    def LvCreateLinear(self, create_options, name, size_bytes,
+                       thin_pool):
         rc, out, err = cmdhandler.vg_lv_create_linear(
-            self.lvm_id, create_options, name, size_bytes)
+            self.lvm_id, create_options, name, size_bytes, thin_pool)
         if rc == 0:
             full_name = "%s/%s" % (self.name, name)
             lvs = load_lvs(self._ap_c, self._object_manager, [full_name])
@@ -358,31 +359,13 @@ class Vg(utils.AutomatedProperties):
                 'Exit code %s, stderr = %s' % (str(rc), err))
 
     @dbus.service.method(dbus_interface=VG_INTERFACE,
-                         in_signature='a{sv}stuu',
+                         in_signature='a{sv}stuub',
                          out_signature='o')
     def LvCreateStriped(self, create_options, name, size_bytes, num_stripes,
-                        stripe_size_kb):
+                        stripe_size_kb, thin_pool):
         rc, out, err = cmdhandler.vg_lv_create_striped(
             self.lvm_id, create_options, name, size_bytes, num_stripes,
-            stripe_size_kb)
-        if rc == 0:
-            full_name = "%s/%s" % (self.name, name)
-            lvs = load_lvs(self._ap_c, self._object_manager, [full_name])
-            for l in lvs:
-                self._object_manager.register_object(l, True)
-
-            return lv_obj_path(name)
-        else:
-            raise dbus.exceptions.DBusException(
-                MANAGER_INTERFACE,
-                'Exit code %s, stderr = %s' % (str(rc), err))
-
-    @dbus.service.method(dbus_interface=VG_INTERFACE,
-                         in_signature='a{sv}st',
-                         out_signature='o')
-    def LvCreateThinPool(self, create_options, name, size_bytes):
-        rc, out, err = cmdhandler.vg_lv_create_thin_pool(
-            self.lvm_id, create_options, name, size_bytes)
+            stripe_size_kb, thin_pool)
         if rc == 0:
             full_name = "%s/%s" % (self.name, name)
             lvs = load_lvs(self._ap_c, self._object_manager, [full_name])
