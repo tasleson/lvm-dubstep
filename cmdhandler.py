@@ -16,6 +16,7 @@
 from subprocess import Popen, PIPE
 import traceback
 import sys
+import math
 
 SEP = '{|}'
 
@@ -114,6 +115,8 @@ def vg_lv_create_linear(vg_name, create_options, name, size_bytes, thin_pool):
     cmd = ['lvcreate']
     cmd.extend(options_to_cli_args(create_options))
 
+    cmd.extend(['--type', 'linear'])
+
     if not thin_pool:
         cmd.extend(['--size', str(size_bytes) + 'B'])
     else:
@@ -137,6 +140,86 @@ def vg_lv_create_striped(vg_name, create_options, name, size_bytes,
     if stripe_size_kb != 0:
         cmd.extend(['--stripesize', str(stripe_size_kb) ])
 
+    cmd.extend(['--name', name, vg_name])
+    return call(cmd)
+
+
+def _vg_lv_create_raid(vg_name, create_options, name, raid_type, size_bytes,
+                         num_stripes, stripe_size_kb):
+    cmd = ['lvcreate']
+    cmd.extend(['--type', raid_type])
+    cmd.extend(['--size', str(size_bytes) + 'B'])
+
+    if num_stripes != 0:
+        cmd.extend(['--stripes', str(num_stripes)])
+
+    if stripe_size_kb != 0:
+        cmd.extend(['--stripesize', str(stripe_size_kb) ])
+
+    cmd.extend(['--name', name, vg_name])
+    return call(cmd, True)
+
+
+def vg_lv_create_raid(vg_name, create_options, name, raid_type, size_bytes,
+                         num_stripes, stripe_size_kb, thin_pool):
+    cmd = ['lvcreate']
+    cmd.extend(options_to_cli_args(create_options))
+
+    # You can't do thin raid in one command so we will provide a default one
+    # here, this approach has a number of pitfalls, esp. with cleaning up in
+    # error paths and you remove the flexibility in defining location of meta
+    # and pool data.  Will provide that in a different call.
+    if thin_pool:
+        # Lets round up to MB
+        meta_name = name + '_tmp_m'
+        full_meta = "%s/%s" % (vg_name, meta_name)
+        full_data = "%s/%s" % (vg_name, name)
+
+        # TODO Check to see if this calculation is reasonable
+        mb = float(long(size_bytes)) / (1024 * 1024)
+        meta_size = math.ceil(mb / 100)
+
+        # Create metadata
+        rc, out, err = _vg_lv_create_raid(
+            vg_name, create_options, meta_name, raid_type,
+            str(meta_size) + 'M', num_stripes, stripe_size_kb)
+
+        if rc == 0:
+            # Create data as meta was created
+            rc, out, err = _vg_lv_create_raid(
+                vg_name, create_options, name, raid_type, size_bytes,
+                num_stripes, stripe_size_kb)
+
+            if rc == 0:
+                # Do convert
+                cmd = ['lvconvert']
+                cmd.extend(options_to_cli_args(create_options))
+                cmd.extend(['--type', 'thin-pool', '--force', '-y'])
+                cmd.extend(['--poolmetadata', full_meta, full_data])
+                rc, out, err = call(cmd, True)
+
+                if rc != 0:
+                    # Clean up meta and data
+                    lv_remove(full_meta)
+                    lv_remove(full_data)
+
+            else:
+                # Clean up meta
+                lv_remove(full_meta)
+
+        return rc, out, err
+    else:
+        return _vg_lv_create_raid(vg_name, create_options, name, raid_type,
+                                  size_bytes, num_stripes, stripe_size_kb)
+
+
+def vg_lv_create_mirror(vg_name, create_options, name, size_bytes, num_copies):
+    cmd = ['lvcreate']
+    cmd.extend(options_to_cli_args(create_options))
+
+    cmd.extend(['--type', 'mirror'])
+
+    cmd.extend(['--mirrors', str(num_copies)])
     cmd.extend(['--name', name, vg_name])
     return call(cmd)
 

@@ -378,6 +378,44 @@ class Vg(utils.AutomatedProperties):
                 MANAGER_INTERFACE,
                 'Exit code %s, stderr = %s' % (str(rc), err))
 
+    @dbus.service.method(dbus_interface=VG_INTERFACE,
+                         in_signature='a{sv}stu',
+                         out_signature='o')
+    def LvCreateMirror(self, create_options, name, size_bytes, num_copies):
+        rc, out, err = cmdhandler.vg_lv_create_mirror(
+            self.lvm_id, create_options, name, size_bytes, num_copies)
+        if rc == 0:
+            full_name = "%s/%s" % (self.name, name)
+            lvs = load_lvs(self._ap_c, self._object_manager, [full_name])
+            for l in lvs:
+                self._object_manager.register_object(l, True)
+
+            return lv_obj_path(name)
+        else:
+            raise dbus.exceptions.DBusException(
+                MANAGER_INTERFACE,
+                'Exit code %s, stderr = %s' % (str(rc), err))
+
+    @dbus.service.method(dbus_interface=VG_INTERFACE,
+                         in_signature='a{sv}sstuub',
+                         out_signature='o')
+    def LvCreateRaid(self, create_options, name, raid_type, size_bytes,
+                        num_stripes, stripe_size_kb, thin_pool):
+        rc, out, err = cmdhandler.vg_lv_create_raid(
+            self.lvm_id, create_options, name, raid_type, size_bytes,
+            num_stripes, stripe_size_kb, thin_pool)
+        if rc == 0:
+            full_name = "%s/%s" % (self.name, name)
+            lvs = load_lvs(self._ap_c, self._object_manager, [full_name])
+            for l in lvs:
+                self._object_manager.register_object(l, True)
+
+            return lv_obj_path(name)
+        else:
+            raise dbus.exceptions.DBusException(
+                MANAGER_INTERFACE,
+                'Exit code %s, stderr = %s' % (str(rc), err))
+
     def _attribute(self, pos, ch):
         if self._attr[pos] == ch:
             return True
