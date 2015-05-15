@@ -111,6 +111,14 @@ def vg_remove(vg_name):
     return call(['vgremove', '-f', vg_name])
 
 
+def vg_lv_create(vg_name, create_options, name, size_bytes):
+    cmd = ['lvcreate']
+    cmd.extend(options_to_cli_args(create_options))
+    cmd.extend(['--size', str(size_bytes) + 'B'])
+    cmd.extend(['--name', name, vg_name])
+    return call(cmd)
+
+
 def vg_lv_create_linear(vg_name, create_options, name, size_bytes, thin_pool):
     cmd = ['lvcreate']
     cmd.extend(options_to_cli_args(create_options))

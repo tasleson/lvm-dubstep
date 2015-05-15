@@ -339,6 +339,26 @@ class Vg(utils.AutomatedProperties):
             raise dbus.exceptions.DBusException(
                 VG_INTERFACE, 'No pv_object_paths provided!')
 
+
+    @dbus.service.method(dbus_interface=VG_INTERFACE,
+                         in_signature='a{sv}st',
+                         out_signature='o')
+    def LvCreate(self, create_options, name, size_bytes):
+        rc, out, err = cmdhandler.vg_lv_create(self.lvm_id, create_options,
+                                               name, size_bytes)
+        if rc == 0:
+            full_name = "%s/%s" % (self.name, name)
+            lvs = load_lvs(self._ap_c, self._object_manager, [full_name])
+            for l in lvs:
+                self._object_manager.register_object(l, True)
+
+            return lv_obj_path(name)
+        else:
+            raise dbus.exceptions.DBusException(
+                MANAGER_INTERFACE,
+                'Exit code %s, stderr = %s' % (str(rc), err))
+
+
     @dbus.service.method(dbus_interface=VG_INTERFACE,
                          in_signature='a{sv}stb',
                          out_signature='o')
