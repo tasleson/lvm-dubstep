@@ -123,8 +123,6 @@ def vg_lv_create_linear(vg_name, create_options, name, size_bytes, thin_pool):
     cmd = ['lvcreate']
     cmd.extend(options_to_cli_args(create_options))
 
-    cmd.extend(['--type', 'linear'])
-
     if not thin_pool:
         cmd.extend(['--size', str(size_bytes) + 'B'])
     else:
