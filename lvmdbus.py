@@ -48,7 +48,7 @@ BASE_INTERFACE = 'com.redhat.lvm'
 PV_INTERFACE = BASE_INTERFACE + '.pv'
 VG_INTERFACE = BASE_INTERFACE + '.vg'
 LV_INTERFACE = BASE_INTERFACE + '.lv'
-LV_POOL_INTERFACE = BASE_INTERFACE + '.thinpool'
+THIN_POOL_INTERFACE = BASE_INTERFACE + '.thinpool'
 MANAGER_INTERFACE = BASE_INTERFACE + '.Manager'
 JOB_INTERFACE = BASE_INTERFACE + '.Job'
 
@@ -56,6 +56,7 @@ BASE_OBJ_PATH = '/com/redhat/lvm'
 PV_OBJ_PATH = BASE_OBJ_PATH + '/pv'
 VG_OBJ_PATH = BASE_OBJ_PATH + '/vg'
 LV_OBJ_PATH = BASE_OBJ_PATH + '/lv'
+THIN_POOL_PATH = BASE_OBJ_PATH + "/thinpool"
 MANAGER_OBJ_PATH = BASE_OBJ_PATH + '/Manager'
 JOB_OBJ_PATH = BASE_OBJ_PATH + '/Job'
 
@@ -86,6 +87,10 @@ def vg_obj_path(vg_name):
 
 def lv_obj_path(lv_name):
     return LV_OBJ_PATH + "/%s" % lv_name
+
+
+def thin_pool_path(pool_name):
+    return THIN_POOL_PATH + "/%s" % pool_name
 
 
 def job_obj_path(job_id):
@@ -607,8 +612,20 @@ class Lv(utils.AutomatedProperties):
                 LV_INTERFACE, 'pv_src_obj (%s) not found' % pv_src_obj)
 
 
-class LvPool(Lv):
-    DBUS_INTERFACE = LV_POOL_INTERFACE
+@utils.dbus_property('uuid', 's')
+@utils.dbus_property('name', 's')
+@utils.dbus_property('path', 's')
+@utils.dbus_property('size_bytes', 's')
+@utils.dbus_property('pool_lv', 'o')
+@utils.dbus_property('origin_lv', 'o')
+@utils.dbus_property('data_percent', 'i')
+class LvPool(utils.AutomatedProperties):
+    _tags_type = "as"
+    _vg_type = "o"
+    _attr_type = "s"
+    _devices_type = "a(oa(tt))"
+
+    DBUS_INTERFACE = THIN_POOL_INTERFACE
     """
     Thin pool LV will have a method to create a LV.
     """
@@ -617,11 +634,48 @@ class LvPool(Lv):
                  uuid, name, path, size_bytes,
                  vg_name, pool_lv,
                  origin_lv, data_percent, attr, tags):
-        super(LvPool, self).__init__(c, object_path, object_manager, uuid,
-                                     name, path, size_bytes, vg_name, pool_lv,
-                                     origin_lv, data_percent, attr, tags)
+        super(LvPool, self).__init__(c, object_path, THIN_POOL_INTERFACE,
+                                     load_lvs)
+        utils.init_class_from_arguments(self)
+        self._devices = cmdhandler.lv_pv_devices(self.lvm_id)
 
-    @dbus.service.method(dbus_interface=LV_POOL_INTERFACE,
+    @dbus.service.method(dbus_interface=THIN_POOL_INTERFACE)
+    def Remove(self):
+        # Remove the LV, if successful then remove from the model
+        rc, out, err = cmdhandler.lv_remove(self.lvm_id)
+
+        if rc == 0:
+            self._object_manager.remove_object(self, True)
+        else:
+            # Need to work on error handling, need consistent
+            raise dbus.exceptions.DBusException(
+                LV_INTERFACE,
+                'Exit code %s, stderr = %s' % (str(rc), err))
+
+    @property
+    def tags(self):
+        return utils.parse_tags(self._tags)
+
+    @property
+    def vg(self):
+        return "/com/redhat/lvm/vg/%s" % self._vg_name
+
+    @property
+    def attr(self):
+        return self._attr
+
+    @property
+    def lvm_id(self):
+        return "%s/%s" % (self._vg_name, self.name)
+
+    @property
+    def devices(self):
+        rc = []
+        for pv in self._devices:
+            rc.append((pv_obj_path(pv[0]), pv[1]))
+        return dbus.Array(rc, signature="(oa(tt))")
+
+    @dbus.service.method(dbus_interface=THIN_POOL_INTERFACE,
                          in_signature='a{sv}st',
                          out_signature='o')
     def LvCreate(self, create_options, name, size_bytes):
@@ -695,7 +749,7 @@ def load_lvs(connection, obj_manager, lv_name=None):
                     l['vg_name'], l['pool_lv'], l['origin'],
                     n(l['data_percent']), l['lv_attr'], l['lv_tags'])
         else:
-            lv = LvPool(connection, lv_obj_path(l['lv_name']),
+            lv = LvPool(connection, thin_pool_path(l['lv_name']),
                         obj_manager,
                         l['lv_uuid'],
                         l['lv_name'], l['lv_path'], n(l['lv_size']),
