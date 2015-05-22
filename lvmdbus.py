@@ -344,7 +344,6 @@ class Vg(utils.AutomatedProperties):
             raise dbus.exceptions.DBusException(
                 VG_INTERFACE, 'No pv_object_paths provided!')
 
-
     @dbus.service.method(dbus_interface=VG_INTERFACE,
                          in_signature='a{sv}st',
                          out_signature='o')
@@ -362,7 +361,6 @@ class Vg(utils.AutomatedProperties):
             raise dbus.exceptions.DBusException(
                 MANAGER_INTERFACE,
                 'Exit code %s, stderr = %s' % (str(rc), err))
-
 
     @dbus.service.method(dbus_interface=VG_INTERFACE,
                          in_signature='a{sv}stb',
@@ -523,6 +521,7 @@ class Lv(utils.AutomatedProperties):
     _vg_type = "o"
     _attr_type = "s"
     _devices_type = "a(oa(tt))"
+    _is_thin_volume_type = "b"
 
     def __init__(self, c, object_path, object_manager,
                  uuid, name, path, size_bytes,
@@ -560,6 +559,10 @@ class Lv(utils.AutomatedProperties):
     @property
     def lvm_id(self):
         return "%s/%s" % (self._vg_name, self.name)
+
+    @property
+    def is_thin_volume(self):
+        return self._attr[0] == 'V'
 
     @property
     def devices(self):
@@ -610,6 +613,36 @@ class Lv(utils.AutomatedProperties):
         else:
             raise dbus.exceptions.DBusException(
                 LV_INTERFACE, 'pv_src_obj (%s) not found' % pv_src_obj)
+
+    @dbus.service.method(dbus_interface=LV_INTERFACE,
+                         in_signature='a{sv}st',
+                         out_signature='o')
+    def Snapshot(self, snapshot_options, name, optional_size):
+
+        # If you specify a size you get a 'thick' snapshot even if it is a
+        # thin lv
+        if not self.is_thin_volume:
+            if optional_size == 0:
+                # TODO: Should we pick a sane default or force user to
+                # make a decision?
+                space = self.size_bytes / 80
+                remainder = space % 512
+                optional_size = space + 512 - remainder
+
+        rc, out, err = cmdhandler.vg_lv_snapshot(self.lvm_id, snapshot_options,
+                                                 name, optional_size)
+        if rc == 0:
+
+            full_name = "%s/%s" % (self._vg_name, name)
+            lvs = load_lvs(self._ap_c, self._object_manager, [full_name])
+            for l in lvs:
+                self._object_manager.register_object(l, True)
+
+            return lv_obj_path(name)
+        else:
+            raise dbus.exceptions.DBusException(
+                MANAGER_INTERFACE,
+                'Exit code %s, stderr = %s' % (str(rc), err))
 
 
 @utils.dbus_property('uuid', 's')

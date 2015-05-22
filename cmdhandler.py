@@ -119,6 +119,18 @@ def vg_lv_create(vg_name, create_options, name, size_bytes):
     return call(cmd)
 
 
+def vg_lv_snapshot(vg_name, snapshot_options, name, size_bytes):
+    cmd = ['lvcreate']
+    cmd.extend(options_to_cli_args(snapshot_options))
+    cmd.extend(["-s"])
+
+    if size_bytes != 0:
+        cmd.extend(['--size', str(size_bytes) + 'B'])
+
+    cmd.extend(['--name', name, vg_name])
+    return call(cmd)
+
+
 def vg_lv_create_linear(vg_name, create_options, name, size_bytes, thin_pool):
     cmd = ['lvcreate']
     cmd.extend(options_to_cli_args(create_options))
