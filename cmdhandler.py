@@ -18,19 +18,13 @@ import traceback
 import sys
 import math
 
+from lvm_shell_proxy import LVMShellProxy
+
+USE_SHELL = True
+
 SEP = '{|}'
 
-
-# Default cmd
-# Place default arguments for every command here.
-def _dc(cmd, args):
-    c = [cmd, '--noheading', '--separator', '%s' % SEP, '--nosuffix',
-         '--unbuffered', '--units', 'b']
-    c.extend(args)
-    return c
-
-
-def call(command, debug=False):
+def call_lvm(command, debug=False):
     """
     Call an executable and return a tuple of exitcode, stdout, stderr
     """
@@ -49,6 +43,19 @@ def call(command, debug=False):
 
     return process.returncode, out[0], out[1]
 
+if USE_SHELL:
+    lvm_shell = LVMShellProxy()
+    call = lvm_shell.call_lvm
+else:
+    call = call_lvm
+
+# Default cmd
+# Place default arguments for every command here.
+def _dc(cmd, args):
+    c = [cmd, '--noheading', '--separator', '%s' % SEP, '--nosuffix',
+         '--unbuffered', '--units', 'b']
+    c.extend(args)
+    return c
 
 def parse(out):
     rc = []
