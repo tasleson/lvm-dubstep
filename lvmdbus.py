@@ -968,6 +968,8 @@ if __name__ == '__main__':
     # Queue to wake up move monitor
     process_list = []
 
+    start = time.time()
+
     # Install signal handlers
     for s in [signal.SIGHUP, signal.SIGINT]:
         try:
@@ -993,7 +995,8 @@ if __name__ == '__main__':
         process.damon = True
         process.start()
 
-    print 'Service ready!'
+    end = time.time()
+    print 'Service ready! %.2f' % (end - start)
 
     loop.run()
 
