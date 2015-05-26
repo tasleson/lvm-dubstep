@@ -538,7 +538,7 @@ def lv_pv_devices(lv_name):
             for k, v in tmp.items():
                 data.append((k, v))
 
-    except Exception as e:
+    except Exception:
         traceback.print_exc(file=sys.stdout)
         pass
 
