@@ -980,7 +980,7 @@ if __name__ == '__main__':
     dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
     gobject.threads_init()
     dbus.mainloop.glib.threads_init()
-    sys_bus = dbus.SessionBus()
+    sys_bus = dbus.SystemBus()
     base_name = dbus.service.BusName(BASE_INTERFACE, sys_bus)
     lvm = Lvm(sys_bus, BASE_OBJ_PATH)
     lvm.register_object(Manager(sys_bus, MANAGER_OBJ_PATH, lvm))
