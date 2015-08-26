@@ -273,7 +273,6 @@ class ObjectManager(AutomatedProperties):
         except Exception as e:
             traceback.print_exc(file=sys.stdout)
             sys.exit(1)
-            pass
 
         return rc
 
