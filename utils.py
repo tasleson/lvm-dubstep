@@ -225,6 +225,10 @@ class AutomatedProperties(dbus.service.Object):
         Not sure if there is a better way to do this, instead of
         resorting to removing the existing object and inserting a new
         one.
+
+        WARNING: Once you call into this method, "self" is removed
+        from the dbus API and thus you cannot call any dbus methods upon it.
+
         """
         self._object_manager.remove_object(self)
 
@@ -235,7 +239,10 @@ class AutomatedProperties(dbus.service.Object):
             changed = get_object_property_diff(self, i)
 
             if changed:
-                self.PropertiesChanged(self.interface(), changed, None)
+                # Use the instance that is registered with dbus API as self
+                # has been removed, calls to it will make no difference with
+                # regards to the dbus API.
+                i.PropertiesChanged(self._ap_interface, changed, [])
 
     @property
     def lvm_id(self):
