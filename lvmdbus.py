@@ -531,12 +531,24 @@ class Lv(utils.AutomatedProperties):
         utils.init_class_from_arguments(self)
         self._devices = cmdhandler.lv_pv_devices(self.lvm_id)
 
+    def _signal_vg_pv_changes(self):
+        # Signal property changes...
+        vg_obj = self._object_manager.get_by_path(self.vg)
+        if vg_obj:
+            vg_obj.refresh()
+
+        for d in self.devices:
+            pv = self._object_manager.get_by_path(d[0])
+            if pv:
+                pv.refresh()
+
     @dbus.service.method(dbus_interface=LV_INTERFACE)
     def Remove(self):
         # Remove the LV, if successful then remove from the model
         rc, out, err = cmdhandler.lv_remove(self.lvm_id)
 
         if rc == 0:
+            self._signal_vg_pv_changes()
             self._object_manager.remove_object(self, True)
         else:
             # Need to work on error handling, need consistent
