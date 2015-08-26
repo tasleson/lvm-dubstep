@@ -29,6 +29,7 @@ SEP = '{|}'
 total_time = 0.0
 total_count = 0
 
+
 def call_lvm(command, debug=False):
     """
     Call an executable and return a tuple of exitcode, stdout, stderr
@@ -79,6 +80,7 @@ def _dc(cmd, args):
          '--unbuffered', '--units', 'b']
     c.extend(args)
     return c
+
 
 def parse(out):
     rc = []
@@ -186,7 +188,7 @@ def vg_lv_create_striped(vg_name, create_options, name, size_bytes,
     cmd.extend(['--stripes', str(num_stripes)])
 
     if stripe_size_kb != 0:
-        cmd.extend(['--stripesize', str(stripe_size_kb) ])
+        cmd.extend(['--stripesize', str(stripe_size_kb)])
 
     cmd.extend(['--name', name, vg_name])
     return call(cmd)
@@ -202,7 +204,7 @@ def _vg_lv_create_raid(vg_name, create_options, name, raid_type, size_bytes,
         cmd.extend(['--stripes', str(num_stripes)])
 
     if stripe_size_kb != 0:
-        cmd.extend(['--stripesize', str(stripe_size_kb) ])
+        cmd.extend(['--stripesize', str(stripe_size_kb)])
 
     cmd.extend(['--name', name, vg_name])
     return call(cmd, True)
