@@ -846,7 +846,8 @@ class Manager(utils.AutomatedProperties):
         return created_pv
 
     @dbus.service.method(dbus_interface=MANAGER_INTERFACE,
-                         in_signature='a{sv}aos')
+                         in_signature='a{sv}aos',
+                         out_signature='o')
     def VgCreate(self, create_options, pv_object_paths, name):
 
         pv_devices = []
@@ -860,14 +861,18 @@ class Manager(utils.AutomatedProperties):
                     MANAGER_INTERFACE, 'object path = %s not found' % p)
 
         rc, out, err = cmdhandler.vg_create(create_options, pv_devices, name)
+        created_vg = "/"
+
         if rc == 0:
             vgs = load_vgs(self._ap_c, self._object_manager, [name])
             for v in vgs:
                 self._object_manager.register_object(v, True)
+                created_vg = vg_obj_path(v.name)
         else:
             raise dbus.exceptions.DBusException(
                 MANAGER_INTERFACE,
                 'Exit code %s, stderr = %s' % (str(rc), err))
+        return created_vg
 
 
 class Job(utils.AutomatedProperties):
