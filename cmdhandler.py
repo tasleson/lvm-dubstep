@@ -17,12 +17,17 @@ from subprocess import Popen, PIPE
 import traceback
 import sys
 import math
+import time
 
 from lvm_shell_proxy import LVMShellProxy
 
-USE_SHELL = True
+USE_SHELL = False
 
 SEP = '{|}'
+
+
+total_time = 0.0
+total_count = 0
 
 def call_lvm(command, debug=False):
     """
@@ -45,9 +50,27 @@ def call_lvm(command, debug=False):
 
 if USE_SHELL:
     lvm_shell = LVMShellProxy()
-    call = lvm_shell.call_lvm
+    t_call = lvm_shell.call_lvm
 else:
-    call = call_lvm
+    t_call = call_lvm
+
+
+def time_wrapper(command, debug=False):
+    start = time.time()
+    results = t_call(command, debug)
+
+    if results[0] != 0:
+        results = t_call(command, debug)
+
+    global total_time
+    global total_count
+    total_time += (time.time() - start)
+    total_count += 1
+    return results
+
+
+call = time_wrapper
+
 
 # Default cmd
 # Place default arguments for every command here.

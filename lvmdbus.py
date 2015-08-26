@@ -996,7 +996,8 @@ if __name__ == '__main__':
         process.start()
 
     end = time.time()
-    print 'Service ready! %.2f' % (end - start)
+    print 'Service ready! total time= %.2f, lvm time= %.2f count= %d' % \
+          (end - start, cmdhandler.total_time, cmdhandler.total_count)
 
     loop.run()
 
