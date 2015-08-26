@@ -19,7 +19,6 @@ import hashlib
 import traceback
 import sys
 import inspect
-#from lvmdbus import BASE_INTERFACE
 
 
 def md5(t):
@@ -37,6 +36,7 @@ def is_numeric(s):
         return False
 
 
+# Field is expected to be a number, handle the corner cases when parsing
 def n(v):
     if not v:
         return 0L
@@ -57,7 +57,7 @@ def init_class_from_arguments(obj_instance):
 def get_properties(f, interface=None):
     """
     Walks through an object instance or it's parent class(es) and determines
-    which attributes arr properties and if they were created to be used for
+    which attributes are properties and if they were created to be used for
     dbus.
     :param f:   Object to inspect
     :param interface: The interface we are seeking properties for
@@ -143,6 +143,13 @@ def add_properties(xml, interface, props):
 
 
 class AutomatedProperties(dbus.service.Object):
+    """
+    This class implements the needed interfaces for:
+    org.freedesktop.DBus.Properties
+
+    Other classes inherit from it to get the same behavior
+    """
+
     DBUS_INTERFACE = ''
 
     def __init__(self, conn, object_path, interface, search_method=None):
@@ -224,9 +231,10 @@ class AutomatedProperties(dbus.service.Object):
 
     def refresh(self):
         """
-        Not sure if there is a better way to do this, instead of
-        resorting to removing the existing object and inserting a new
-        one.
+        Take this object, go out and fetch the latest LVM copy and replace the
+        one registered with dbus.  Not sure if there is a better way to do
+        this, instead of resorting to removing the existing object and
+        inserting a new one.
 
         WARNING: Once you call into this method, "self" is removed
         from the dbus API and thus you cannot call any dbus methods upon it.
@@ -234,6 +242,7 @@ class AutomatedProperties(dbus.service.Object):
         """
         self._object_manager.remove_object(self)
 
+        # Go out and fetch the latest version of this object, eg. pvs, vgs, lvs
         found = self._ap_search_method(
             self._ap_c, self._object_manager, [self.lvm_id])
         for i in found:
@@ -248,10 +257,16 @@ class AutomatedProperties(dbus.service.Object):
 
     @property
     def lvm_id(self):
+        """
+        Intended to be overridden by classes that inherit
+        """
         return str(id(self))
 
 
 class ObjectManager(AutomatedProperties):
+    """
+    Implements the org.freedesktop.DBus.ObjectManager interface
+    """
 
     def __init__(self, conn, object_path, interface):
         super(ObjectManager, self).__init__(conn, object_path, interface)
@@ -289,7 +304,13 @@ class ObjectManager(AutomatedProperties):
               (str(object_path), str(interface_list)))
 
     def register_object(self, dbus_object, emit_signal=False):
+        """
+        Given a dbus object add it to the collection
+        """
         path, props = dbus_object.emit_data()
+
+        # We want fast access to the object by a couple of different ways
+        # so we use two different hashes for fast lookups
         self._objects[path] = dbus_object
         self._id_to_object_path[dbus_object.lvm_id] = path
 
@@ -297,6 +318,10 @@ class ObjectManager(AutomatedProperties):
             self.InterfacesAdded(path, props)
 
     def remove_object(self, dbus_object, emit_signal=False):
+        """
+        Given a dbus object, remove it from the collection and remove it
+        from the dbus framework as well
+        """
 
         # Store off the object path and the interface first
         path = dbus_object.dbus_object_path()
@@ -314,11 +339,17 @@ class ObjectManager(AutomatedProperties):
             self.InterfacesRemoved(path, interfaces)
 
     def get_by_path(self, path):
+        """
+        Given a dbus path return the object registered for it
+        """
         if path in self._objects:
             return self._objects[path]
         return None
 
     def get_by_lvm_id(self, lvm_id):
+        """
+        Given an lvm identifier, return the object registered for it
+        """
         return self.get_by_path(self._id_to_object_path[lvm_id])
 
 
