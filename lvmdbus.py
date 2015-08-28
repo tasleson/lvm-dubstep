@@ -264,6 +264,13 @@ class Vg(utils.AutomatedProperties):
 
         if rc == 0:
             self._object_manager.remove_object(self, True)
+
+            # The vg is gone from LVM and from the dbus API, signal changes
+            # in all the previously involved PVs
+            for p in self.pvs:
+                pv = self._object_manager.get_by_path(p)
+                pv.refresh()
+
         else:
             # Need to work on error handling, need consistent
             raise dbus.exceptions.DBusException(
