@@ -696,6 +696,10 @@ class Lv(utils.AutomatedProperties):
             for l in lvs:
                 self._object_manager.register_object(l, True)
 
+            # Refresh self and all included PVs
+            self.refresh()
+            self._refresh_pvs()
+
             return lv_obj_path(name)
         else:
             raise dbus.exceptions.DBusException(
