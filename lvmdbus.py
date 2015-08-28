@@ -257,11 +257,14 @@ class Vg(utils.AutomatedProperties):
         self._pv_in_vg = cmdhandler.pvs_in_vg(name)
         self._lv_in_vg = cmdhandler.lvs_in_vg(name)
 
-    def _refresh_pvs(self):
+    def _refresh_pvs(self, pv_list=None):
         """
         Refresh the state of the PVs for this vg given a PV object path
         """
-        for p in self.pvs:
+        if not pv_list:
+            pv_list = self.pvs
+
+        for p in pv_list:
             pv = self._object_manager.get_by_path(p)
             pv.refresh()
 
@@ -350,7 +353,15 @@ class Vg(utils.AutomatedProperties):
         if len(extend_devices):
             rc, out, err = cmdhandler.vg_extend(self.lvm_id, extend_devices)
             if rc == 0:
+                # This is a little confusing, because when we call self.refresh
+                # the current 'self' doesn't get updated, the object that gets
+                # called with the next dbus call will be the updated object
+                # so we need to manually append the object path of PVS and go
+                # see refresh method for more details.
+                current_pvs = list(self.pvs)
                 self.refresh()
+                current_pvs.extend(pv_object_paths)
+                self._refresh_pvs(current_pvs)
             else:
                 raise dbus.exceptions.DBusException(
                     VG_INTERFACE,
