@@ -382,6 +382,10 @@ class Vg(utils.AutomatedProperties):
             for l in lvs:
                 self._object_manager.register_object(l, True)
 
+            # Refresh self and all included PVs
+            self.refresh()
+            self._refresh_pvs()
+
             return lv_obj_path(name)
         else:
             raise dbus.exceptions.DBusException(
@@ -400,6 +404,10 @@ class Vg(utils.AutomatedProperties):
             lvs = load_lvs(self._ap_c, self._object_manager, [full_name])
             for l in lvs:
                 self._object_manager.register_object(l, True)
+
+            # Refresh self and all included PVs
+            self.refresh()
+            self._refresh_pvs()
 
             return lv_obj_path(name)
         else:
@@ -421,6 +429,10 @@ class Vg(utils.AutomatedProperties):
             for l in lvs:
                 self._object_manager.register_object(l, True)
 
+            # Refresh self and all included PVs
+            self.refresh()
+            self._refresh_pvs()
+
             return lv_obj_path(name)
         else:
             raise dbus.exceptions.DBusException(
@@ -438,6 +450,10 @@ class Vg(utils.AutomatedProperties):
             lvs = load_lvs(self._ap_c, self._object_manager, [full_name])
             for l in lvs:
                 self._object_manager.register_object(l, True)
+
+            # Refresh self and all included PVs
+            self.refresh()
+            self._refresh_pvs()
 
             return lv_obj_path(name)
         else:
@@ -458,6 +474,10 @@ class Vg(utils.AutomatedProperties):
             lvs = load_lvs(self._ap_c, self._object_manager, [full_name])
             for l in lvs:
                 self._object_manager.register_object(l, True)
+
+            # Refresh self and all included PVs
+            self.refresh()
+            self._refresh_pvs()
 
             return lv_obj_path(name)
         else:
