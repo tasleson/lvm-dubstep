@@ -880,6 +880,13 @@ class Manager(utils.AutomatedProperties):
             for v in vgs:
                 self._object_manager.register_object(v, True)
                 created_vg = vg_obj_path(v.name)
+
+            # For each PV that was involved in this VG create we need to
+            # signal the property changes, make sure to do this *after* the
+            # vg is available on the bus
+            for p in pv_object_paths:
+                pv = self._object_manager.get_by_path(p)
+                pv.refresh()
         else:
             raise dbus.exceptions.DBusException(
                 MANAGER_INTERFACE,
