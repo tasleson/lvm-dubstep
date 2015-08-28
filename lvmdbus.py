@@ -257,6 +257,14 @@ class Vg(utils.AutomatedProperties):
         self._pv_in_vg = cmdhandler.pvs_in_vg(name)
         self._lv_in_vg = cmdhandler.lvs_in_vg(name)
 
+    def _refresh_pvs(self):
+        """
+        Refresh the state of the PVs for this vg given a PV object path
+        """
+        for p in self.pvs:
+            pv = self._object_manager.get_by_path(p)
+            pv.refresh()
+
     @dbus.service.method(dbus_interface=VG_INTERFACE)
     def Remove(self):
         # Remove the VG, if successful then remove from the model
@@ -267,9 +275,7 @@ class Vg(utils.AutomatedProperties):
 
             # The vg is gone from LVM and from the dbus API, signal changes
             # in all the previously involved PVs
-            for p in self.pvs:
-                pv = self._object_manager.get_by_path(p)
-                pv.refresh()
+            self._refresh_pvs()
 
         else:
             # Need to work on error handling, need consistent
@@ -322,6 +328,8 @@ class Vg(utils.AutomatedProperties):
         rc, out, err = cmdhandler.vg_reduce(self.lvm_id, missing, pv_devices)
         if rc == 0:
             self.refresh()
+            self._refresh_pvs()
+
         else:
             raise dbus.exceptions.DBusException(
                 VG_INTERFACE, 'Exit code %s, stderr = %s' % (str(rc), err))
