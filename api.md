@@ -81,6 +81,11 @@
       * thin_pool (Boolean (0 is false, 1 is true))
   * Returns
       * Oject path
+* Rename
+  * Arguments
+      * name (String)
+  * Returns
+      * Oject path
 * Extend 
   * Arguments
       * pv_object_paths (Array of Oject path )
@@ -146,6 +151,7 @@
 * clustered (Boolean (0 is false, 1 is true))
 * size_bytes (uint64_t)
 * name (String)
+* exportable (Boolean (0 is false, 1 is true))
 * mda_count (uint64_t)
 * mda_used_count (uint64_t)
 * free_count (uint64_t)
@@ -167,7 +173,6 @@
 * extent_count (uint64_t)
 * max_lv (uint64_t)
 * profile (String)
-* exportable (Boolean (0 is false, 1 is true))
 * alloc_cling (Boolean (0 is false, 1 is true))
 
 ## Interface com.redhat.lvm1.Manager ##
@@ -192,6 +197,11 @@
 ## Interface com.redhat.lvm1.lv ##
 
 #### Methods ####
+* Rename
+  * Arguments
+      * name (String)
+  * Returns
+      * Oject path
 * Move 
   * Arguments
       * move_options (Dictionary:{String, Variant})
