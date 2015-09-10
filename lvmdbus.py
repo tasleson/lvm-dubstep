@@ -602,6 +602,23 @@ class Lv(utils.AutomatedProperties):
                 LV_INTERFACE,
                 'Exit code %s, stderr = %s' % (str(rc), err))
 
+    @dbus.service.method(dbus_interface=LV_INTERFACE,
+                         in_signature='s',
+                         out_signature='o')
+    def Rename(self, name):
+        # Rename the logical volume
+        rc, out, err = cmdhandler.lv_rename(self.lvm_id, name)
+        if rc == 0:
+            # Refresh is a little more involved as we are changing it's path
+            self.refresh("%s/%s" % (self._vg_name, name))
+            self._signal_vg_pv_changes()
+            return lv_obj_path(name)
+        else:
+            # Need to work on error handling, need consistent
+            raise dbus.exceptions.DBusException(
+                LV_INTERFACE,
+                'Exit code %s, stderr = %s' % (str(rc), err))
+
     @property
     def tags(self):
         return utils.parse_tags(self._tags)

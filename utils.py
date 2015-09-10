@@ -229,7 +229,7 @@ class AutomatedProperties(dbus.service.Object):
               (str(interface_name), str(changed_properties),
                str(invalidated_properties)))
 
-    def refresh(self):
+    def refresh(self, new_identifier=None):
         """
         Take this object, go out and fetch the latest LVM copy and replace the
         one registered with dbus.  Not sure if there is a better way to do
@@ -240,20 +240,31 @@ class AutomatedProperties(dbus.service.Object):
         from the dbus API and thus you cannot call any dbus methods upon it.
 
         """
-        self._object_manager.remove_object(self)
+        emit = False
+        search = self.lvm_id
+        if new_identifier:
+            emit = True
+            search = new_identifier
+
+        self._object_manager.remove_object(self, emit)
 
         # Go out and fetch the latest version of this object, eg. pvs, vgs, lvs
         found = self._ap_search_method(
-            self._ap_c, self._object_manager, [self.lvm_id])
+            self._ap_c, self._object_manager, [search])
         for i in found:
-            self._object_manager.register_object(i)
-            changed = get_object_property_diff(self, i)
 
-            if changed:
-                # Use the instance that is registered with dbus API as self
-                # has been removed, calls to it will make no difference with
-                # regards to the dbus API.
-                i.PropertiesChanged(self._ap_interface, changed, [])
+            self._object_manager.register_object(i, emit)
+
+            # If we changed the identifier we really don't want to sent
+            # a properties changed signal, the user will get an object del/add
+            if not new_identifier:
+                changed = get_object_property_diff(self, i)
+
+                if changed:
+                    # Use the instance that is registered with dbus API as self
+                    # has been removed, calls to it will make no difference with
+                    # regards to the dbus API.
+                    i.PropertiesChanged(self._ap_interface, changed, [])
 
     @property
     def lvm_id(self):

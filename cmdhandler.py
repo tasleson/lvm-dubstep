@@ -278,6 +278,10 @@ def lv_remove(lv_path):
     return call(['lvremove', '-f', lv_path])
 
 
+def lv_rename(lv_path, new_name):
+    return call(['lvrename', lv_path, new_name])
+
+
 def lv_lv_create(lv_full_name, create_options, name, size_bytes):
     cmd = ['lvcreate']
     cmd.extend(options_to_cli_args(create_options))
