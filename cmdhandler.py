@@ -129,7 +129,7 @@ def pvs_in_vg(vg_name):
 
 
 def lvs_in_vg(vg_name):
-    rc, out, error = call(_dc('vgs', ['-o', 'lv_name', vg_name]))
+    rc, out, error = call(_dc('vgs', ['-o', 'lv_name,lv_attr', vg_name]))
     if rc == 0:
         return parse(out)
     return []

@@ -506,7 +506,12 @@ class Vg(utils.AutomatedProperties):
         # List of logical volumes that are created from this vg
         rc = []
         for lv in self._lv_in_vg:
-            rc.append(lv_obj_path(lv))
+            (lv_name, lv_attr) = lv[0], lv[1]
+
+            if lv_attr[0] != 't':
+                rc.append(lv_obj_path(lv_name))
+            else:
+                rc.append(thin_pool_path(lv_name))
         return dbus.Array(rc, signature='o')
 
     @property
