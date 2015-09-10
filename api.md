@@ -1,3 +1,4 @@
+
 ## Interface com.redhat.lvm1.thinpool ##
 
 #### Methods ####
@@ -25,6 +26,7 @@
 * attr (String)
 * devices (Array of Structure (Oject path, Array of Structure (uint64_t, uint64_t)))
 * data_percent (int32_t)
+
 ## Interface com.redhat.lvm1.pv ##
 
 #### Methods ####
@@ -65,6 +67,7 @@
 * dev_size_bytes (uint64_t)
 * uuid (String)
 * ba_start (uint64_t)
+
 ## Interface com.redhat.lvm1.vg ##
 
 #### Methods ####
@@ -166,6 +169,7 @@
 * profile (String)
 * exportable (Boolean (0 is false, 1 is true))
 * alloc_cling (Boolean (0 is false, 1 is true))
+
 ## Interface com.redhat.lvm1.Manager ##
 
 #### Methods ####
@@ -184,6 +188,7 @@
       * Oject path
 
 #### Properties ####
+
 ## Interface com.redhat.lvm1.lv ##
 
 #### Methods ####

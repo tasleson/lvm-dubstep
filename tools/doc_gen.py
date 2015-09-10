@@ -107,7 +107,7 @@ def type_to_human(t):
 def ouput_interfaces(interfaces):
 
     for interface_name, md in interfaces.items():
-        print '## Interface %s ##' % (interface_name)
+        print '\n## Interface %s ##' % (interface_name)
         print '\n#### Methods ####'
         for k, v in md['methods'].items():
             print '* %s ' % k
