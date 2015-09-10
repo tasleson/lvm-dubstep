@@ -229,7 +229,7 @@ class AutomatedProperties(dbus.service.Object):
               (str(interface_name), str(changed_properties),
                str(invalidated_properties)))
 
-    def refresh(self, new_identifier=None):
+    def refresh(self, new_identifier=None, search_key=None):
         """
         Take this object, go out and fetch the latest LVM copy and replace the
         one registered with dbus.  Not sure if there is a better way to do
@@ -245,6 +245,12 @@ class AutomatedProperties(dbus.service.Object):
         if new_identifier:
             emit = True
             search = new_identifier
+
+        # When searching for a lv, if the vg name has changed we need to
+        # search for a new search string, but retain the same behavior for
+        # a regular refresh
+        if search_key:
+            search = search_key
 
         self._object_manager.remove_object(self, emit)
 

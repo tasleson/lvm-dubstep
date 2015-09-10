@@ -139,6 +139,10 @@ def pv_remove(device):
     return call(['pvremove', device])
 
 
+def vg_rename(vg, new_name):
+    return call(['vgrename', vg, new_name])
+
+
 def vg_remove(vg_name):
     return call(['vgremove', '-f', vg_name])
 

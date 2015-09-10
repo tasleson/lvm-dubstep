@@ -268,6 +268,42 @@ class Vg(utils.AutomatedProperties):
             pv = self._object_manager.get_by_path(p)
             pv.refresh()
 
+    def _refresh_lvs(self, lv_list=None, vg_name=None):
+        """
+        Refresh the state of the PVs for this vg given a PV object path
+        """
+        if not lv_list:
+            lv_list = self.lvs
+
+        for i in lv_list:
+            obj = self._object_manager.get_by_path(i)
+
+            if vg_name:
+                obj.refresh(search_key="%s/%s" % (vg_name, obj.name))
+            else:
+                obj.refresh()
+
+    @dbus.service.method(dbus_interface=VG_INTERFACE,
+                         in_signature='s', out_signature='o')
+    def Rename(self, name):
+        # This is going to be a fairly expensive operation
+        rc, out, err = cmdhandler.vg_rename(self.lvm_id, name)
+        if rc == 0:
+            # Refresh is a little more involved as we are changing it's path
+            self.refresh(name)
+
+            # Refresh all the PVs and LVs
+            self._refresh_pvs()
+            self._refresh_lvs(vg_name=name)
+
+            return vg_obj_path(name)
+        else:
+            # Need to work on error handling, need consistent
+            raise dbus.exceptions.DBusException(
+                LV_INTERFACE,
+                'Exit code %s, stderr = %s' % (str(rc), err))
+
+
     @dbus.service.method(dbus_interface=VG_INTERFACE)
     def Remove(self):
         # Remove the VG, if successful then remove from the model
