@@ -11,5 +11,6 @@ LVM D-Bus proof of concept
   * `# ./lvmdbus.py`
 3. Fire up a client, such as d-feet of other and look around
 
-More human digestable API documentation
-https://github.com/tasleson/lvm-dubstep/blob/master/api.md
+#### Documentation
+* The service support introspection, this will be the most up to date
+* More human digestable API format, generated from the introspection data: https://github.com/tasleson/lvm-dubstep/blob/master/api.md
