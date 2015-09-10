@@ -108,7 +108,7 @@ def ouput_interfaces(interfaces):
 
     for interface_name, md in interfaces.items():
         print '## Interface %s ##' % (interface_name)
-        print '#### Methods ####'
+        print '\n#### Methods ####'
         for k, v in md['methods'].items():
             print '* %s ' % k
 
@@ -121,7 +121,7 @@ def ouput_interfaces(interfaces):
                           (arg_name, type_to_human(arg_type))
             print '  * Returns'
             print '      *', type_to_human(v['return_val'])
-        print '#### Properties ####'
+        print '\n#### Properties ####'
         for p, t in md['properties'].items():
             print '* %s (%s)' % (p, type_to_human(t['prop_type']))
 

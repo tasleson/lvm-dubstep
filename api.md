@@ -1,4 +1,5 @@
 ## Interface com.redhat.lvm1.thinpool ##
+
 #### Methods ####
 * LvCreate 
   * Arguments
@@ -11,6 +12,7 @@
   * Arguments (None)
   * Returns
       * None
+
 #### Properties ####
 * vg (Oject path)
 * path (String)
@@ -24,6 +26,7 @@
 * devices (Array of Structure (Oject path, Array of Structure (uint64_t, uint64_t)))
 * data_percent (int32_t)
 ## Interface com.redhat.lvm1.pv ##
+
 #### Methods ####
 * AllocationEnabled 
   * Arguments
@@ -39,6 +42,7 @@
   * Arguments (None)
   * Returns
       * None
+
 #### Properties ####
 * allocatable (Boolean (0 is false, 1 is true))
 * pe_segments (Array of Structure (uint64_t, uint64_t))
@@ -62,6 +66,7 @@
 * uuid (String)
 * ba_start (uint64_t)
 ## Interface com.redhat.lvm1.vg ##
+
 #### Methods ####
 * LvCreateStriped 
   * Arguments
@@ -127,6 +132,7 @@
       * thin_pool (Boolean (0 is false, 1 is true))
   * Returns
       * Oject path
+
 #### Properties ####
 * alloc_contiguous (Boolean (0 is false, 1 is true))
 * partial (Boolean (0 is false, 1 is true))
@@ -161,6 +167,7 @@
 * exportable (Boolean (0 is false, 1 is true))
 * alloc_cling (Boolean (0 is false, 1 is true))
 ## Interface com.redhat.lvm1.Manager ##
+
 #### Methods ####
 * PvCreate 
   * Arguments
@@ -175,8 +182,10 @@
       * name (String)
   * Returns
       * Oject path
+
 #### Properties ####
 ## Interface com.redhat.lvm1.lv ##
+
 #### Methods ####
 * Move 
   * Arguments
@@ -198,6 +207,7 @@
   * Arguments (None)
   * Returns
       * None
+
 #### Properties ####
 * vg (Oject path)
 * path (String)
@@ -211,4 +221,3 @@
 * data_percent (int32_t)
 * is_thin_volume (Boolean (0 is false, 1 is true))
 * origin_lv (Oject path)
-
