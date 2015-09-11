@@ -177,8 +177,7 @@ class AutomatedProperties(dbus.service.Object):
     DBUS_INTERFACE = ''
 
     def __init__(self, conn, object_path, interface, search_method=None):
-        #dbus.service.Object.__init__(self, conn, object_path)
-        super(AutomatedProperties, self).__init__(conn, object_path)
+        dbus.service.Object.__init__(self, conn, object_path)
         self._ap_c = conn
         self._ap_interface = interface
         self._ap_o_path = object_path
@@ -239,9 +238,7 @@ class AutomatedProperties(dbus.service.Object):
     @dbus.service.method(dbus_interface=dbus.INTROSPECTABLE_IFACE,
                          out_signature='s')
     def Introspect(self):
-        r = super(AutomatedProperties, self).Introspect(
-            self._ap_o_path, self._ap_c)
-
+        r = dbus.service.Object.Introspect(self, self._ap_o_path, self._ap_c)
         # Look at the properties in the class
         return add_properties(r, self._ap_interface, get_properties(self)[0])
 
