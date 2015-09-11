@@ -165,6 +165,7 @@ def add_properties(xml, interface, props):
     return xml
 
 
+# noinspection PyTypeChecker
 class AutomatedProperties(dbus.service.Object):
     """
     This class implements the needed interfaces for:
@@ -291,8 +292,8 @@ class AutomatedProperties(dbus.service.Object):
 
                 if changed:
                     # Use the instance that is registered with dbus API as self
-                    # has been removed, calls to it will make no difference with
-                    # regards to the dbus API.
+                    # has been removed, calls to it will make no difference
+                    # with regards to the dbus API.
                     i.PropertiesChanged(self._ap_interface, changed, [])
 
     @property

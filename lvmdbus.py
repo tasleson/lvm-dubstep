@@ -303,7 +303,6 @@ class Vg(utils.AutomatedProperties):
                 LV_INTERFACE,
                 'Exit code %s, stderr = %s' % (str(rc), err))
 
-
     @dbus.service.method(dbus_interface=VG_INTERFACE)
     def Remove(self):
         # Remove the VG, if successful then remove from the model
@@ -322,7 +321,7 @@ class Vg(utils.AutomatedProperties):
                 VG_INTERFACE,
                 'Exit code %s, stderr = %s' % (str(rc), err))
 
-    ## This should be broken into a number of different methods
+    # This should be broken into a number of different methods
     # instead of having one method that takes a hash for parameters.  Some of
     # the changes that vgchange does works on entire system, not just a
     # specfic vg, thus that should be in the Manager interface.
@@ -331,7 +330,7 @@ class Vg(utils.AutomatedProperties):
     def Change(self, change_options):
         rc, out, err = cmdhandler.vg_change(change_options, self.lvm_id)
 
-        ## To use an example with d-feet (Method input)
+        # To use an example with d-feet (Method input)
         # {"activate": __import__('gi.repository.GLib', globals(), locals(),
         # ['Variant']).Variant("s", "n")}
 
