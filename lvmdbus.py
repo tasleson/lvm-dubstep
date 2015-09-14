@@ -27,7 +27,7 @@ import signal
 import sys
 import cmdhandler
 import utils
-from utils import n
+from utils import n, n32
 import time
 
 # Shared state variable across all processes
@@ -601,7 +601,7 @@ class Vg(utils.AutomatedProperties):
 @utils.dbus_property('size_bytes', 's')
 @utils.dbus_property('pool_lv', 'o')
 @utils.dbus_property('origin_lv', 'o')
-@utils.dbus_property('data_percent', 'i')
+@utils.dbus_property('data_percent', 'u')
 class Lv(utils.AutomatedProperties):
     DBUS_INTERFACE = LV_INTERFACE
     _tags_type = "as"
@@ -771,7 +771,7 @@ class Lv(utils.AutomatedProperties):
 @utils.dbus_property('size_bytes', 's')
 @utils.dbus_property('pool_lv', 'o')
 @utils.dbus_property('origin_lv', 'o')
-@utils.dbus_property('data_percent', 'i')
+@utils.dbus_property('data_percent', 'u')
 class LvPool(utils.AutomatedProperties):
     _tags_type = "as"
     _vg_type = "o"
@@ -900,14 +900,14 @@ def load_lvs(connection, obj_manager, lv_name=None):
                     l['lv_uuid'],
                     l['lv_name'], l['lv_path'], n(l['lv_size']),
                     l['vg_name'], l['pool_lv'], l['origin'],
-                    n(l['data_percent']), l['lv_attr'], l['lv_tags'])
+                    n32(l['data_percent']), l['lv_attr'], l['lv_tags'])
         else:
             lv = LvPool(connection, thin_pool_path(l['lv_name']),
                         obj_manager,
                         l['lv_uuid'],
                         l['lv_name'], l['lv_path'], n(l['lv_size']),
                         l['vg_name'], l['pool_lv'], l['origin'],
-                        n(l['data_percent']), l['lv_attr'], l['lv_tags'])
+                        n32(l['data_percent']), l['lv_attr'], l['lv_tags'])
 
         rc.append(lv)
     return rc
