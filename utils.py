@@ -261,6 +261,11 @@ class AutomatedProperties(dbus.service.Object):
         from the dbus API and thus you cannot call any dbus methods upon it.
 
         """
+
+        # If we can't do a lookup, bail now!
+        if not self._ap_search_method:
+            return
+
         emit = False
         search = self.lvm_id
         if new_identifier:
@@ -277,7 +282,8 @@ class AutomatedProperties(dbus.service.Object):
 
         # Go out and fetch the latest version of this object, eg. pvs, vgs, lvs
         found = self._ap_search_method(
-            self._ap_c, self._object_manager, [search])
+            self._ap_c, self._object_manager, [search],
+            self.dbus_object_path())
         for i in found:
 
             self._object_manager.register_object(i, emit)
@@ -389,6 +395,22 @@ class ObjectManager(AutomatedProperties):
         Given an lvm identifier, return the object registered for it
         """
         return self.get_by_path(self._id_to_object_path[lvm_id])
+
+    def get_object_path_by_lvm_id(self, lvm_id):
+        """
+        For a given lvm asset return the dbus object registered to it
+        """
+        if lvm_id in self._id_to_object_path:
+            return self._id_to_object_path[lvm_id]
+        return None
+
+    def refresh_all(self):
+        for k, v in self._objects.items():
+            try:
+                v.refresh()
+            except Exception:
+                print 'Object path= ', k
+                traceback.print_exc(file=sys.stdout)
 
 
 def attribute_type_name(name):

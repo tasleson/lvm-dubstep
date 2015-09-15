@@ -28,6 +28,7 @@ import sys
 import cmdhandler
 import utils
 from utils import n, n32
+import itertools
 import time
 
 # Shared state variable across all processes
@@ -77,8 +78,17 @@ def handler(signum, frame):
     loop.quit()
 
 
-def pv_obj_path(pv_device):
-    return PV_OBJ_PATH + "/%s" % os.path.basename(pv_device)
+counter = itertools.count()
+
+
+def _next_id():
+    return str(counter.next())
+
+
+def pv_obj_path_generate(object_path=None):
+    if object_path:
+        return object_path
+    return PV_OBJ_PATH + "/%s" % _next_id()
 
 
 def vg_obj_path(vg_name):
@@ -533,7 +543,7 @@ class Vg(utils.AutomatedProperties):
     def pvs(self):
         rc = []
         for p in self._pv_in_vg:
-            rc.append(pv_obj_path(p))
+            rc.append(self._object_manager.get_object_path_by_lvm_id(p))
         return dbus.Array(rc, signature='o')
 
     @property
@@ -684,7 +694,10 @@ class Lv(utils.AutomatedProperties):
     def devices(self):
         rc = []
         for pv in self._devices:
-            rc.append((pv_obj_path(pv[0]), pv[1]))
+            # We have an lvm device path, convert to dbus object and add.
+            pv_obj = self._object_manager.get_object_path_by_lvm_id(pv[0])
+
+            rc.append((pv_obj, pv[1]))
         return dbus.Array(rc, signature="(oa(tt))")
 
     @dbus.service.method(dbus_interface=LV_INTERFACE,
@@ -826,7 +839,8 @@ class LvPool(utils.AutomatedProperties):
     def devices(self):
         rc = []
         for pv in self._devices:
-            rc.append((pv_obj_path(pv[0]), pv[1]))
+            pv_obj = self._object_manager.get_object_path_by_lvm_id(pv[0])
+            rc.append((pv_obj, pv[1]))
         return dbus.Array(rc, signature="(oa(tt))")
 
     @dbus.service.method(dbus_interface=THIN_POOL_INTERFACE,
@@ -848,13 +862,13 @@ class LvPool(utils.AutomatedProperties):
                 'Exit code %s, stderr = %s' % (str(rc), err))
 
 
-def load_pvs(connection, obj_manager, device=None):
+def load_pvs(connection, obj_manager, device=None, object_path=None):
     pvs = cmdhandler.pv_retrieve(None, device)
 
     rc = []
 
     for p in pvs:
-        p = Pv(connection, pv_obj_path(p["pv_name"]), obj_manager,
+        p = Pv(connection, pv_obj_path_generate(object_path), obj_manager,
                p["pv_name"], p["pv_uuid"], p["pv_name"], p["pv_fmt"],
                n(p["pv_size"]),
                n(p["pv_free"]), n(p["pv_used"]), n(p["dev_size"]),
@@ -867,7 +881,7 @@ def load_pvs(connection, obj_manager, device=None):
     return rc
 
 
-def load_vgs(connection, obj_manager, vg_specific=None):
+def load_vgs(connection, obj_manager, vg_specific=None, object_path=None):
     vgs = cmdhandler.vg_retrieve(None, vg_specific)
 
     rc = []
@@ -888,7 +902,7 @@ def load_vgs(connection, obj_manager, vg_specific=None):
     return rc
 
 
-def load_lvs(connection, obj_manager, lv_name=None):
+def load_lvs(connection, obj_manager, lv_name=None, object_path=None):
     lvs = cmdhandler.lv_retrieve(None, lv_name)
 
     rc = []
@@ -947,7 +961,7 @@ class Manager(utils.AutomatedProperties):
 
         # Check to see if we are already trying to create a PV for an existing
         # PV
-        pv = self._object_manager.get_by_path(pv_obj_path(device))
+        pv = self._object_manager.get_object_path_by_lvm_id(device)
         if pv:
             raise dbus.exceptions.DBusException(
                 MANAGER_INTERFACE, "PV Already exists!")
@@ -958,7 +972,7 @@ class Manager(utils.AutomatedProperties):
             pvs = load_pvs(self._ap_c, self._object_manager, [device])
             for p in pvs:
                 self._object_manager.register_object(p, True)
-                created_pv = pv_obj_path(p.name)
+                created_pv = p.dbus_object_path()
         else:
             raise dbus.exceptions.DBusException(
                 MANAGER_INTERFACE,
@@ -1001,6 +1015,15 @@ class Manager(utils.AutomatedProperties):
                 MANAGER_INTERFACE,
                 'Exit code %s, stderr = %s' % (str(rc), err))
         return created_vg
+
+    @dbus.service.method(dbus_interface=MANAGER_INTERFACE)
+    def Refresh(self):
+        """
+        Take all the objects we know about and go out and grab the latest
+        more of a test method at the moment to make sure we are handling object
+        paths correctly.
+        """
+        self._object_manager.refresh_all()
 
 
 class Job(utils.AutomatedProperties):
