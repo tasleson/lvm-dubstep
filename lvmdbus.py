@@ -598,10 +598,11 @@ class Vg(utils.AutomatedProperties):
 @utils.dbus_property('uuid', 's')
 @utils.dbus_property('name', 's')
 @utils.dbus_property('path', 's')
-@utils.dbus_property('size_bytes', 's')
+@utils.dbus_property('size_bytes', 't')
 @utils.dbus_property('pool_lv', 'o')
 @utils.dbus_property('origin_lv', 'o')
 @utils.dbus_property('data_percent', 'u')
+@utils.dbus_property('segtype', 's')
 class Lv(utils.AutomatedProperties):
     DBUS_INTERFACE = LV_INTERFACE
     _tags_type = "as"
@@ -613,7 +614,7 @@ class Lv(utils.AutomatedProperties):
     def __init__(self, c, object_path, object_manager,
                  uuid, name, path, size_bytes,
                  vg_name, pool_lv,
-                 origin_lv, data_percent, attr, tags):
+                 origin_lv, data_percent, attr, tags, segtype):
         super(Lv, self).__init__(c, object_path, LV_INTERFACE, load_lvs)
         utils.init_class_from_arguments(self)
         self._devices = cmdhandler.lv_pv_devices(self.lvm_id)
@@ -768,10 +769,11 @@ class Lv(utils.AutomatedProperties):
 @utils.dbus_property('uuid', 's')
 @utils.dbus_property('name', 's')
 @utils.dbus_property('path', 's')
-@utils.dbus_property('size_bytes', 's')
+@utils.dbus_property('size_bytes', 't')
 @utils.dbus_property('pool_lv', 'o')
 @utils.dbus_property('origin_lv', 'o')
 @utils.dbus_property('data_percent', 'u')
+@utils.dbus_property('segtype', 's')
 class LvPool(utils.AutomatedProperties):
     _tags_type = "as"
     _vg_type = "o"
@@ -786,7 +788,7 @@ class LvPool(utils.AutomatedProperties):
     def __init__(self, c, object_path, object_manager,
                  uuid, name, path, size_bytes,
                  vg_name, pool_lv,
-                 origin_lv, data_percent, attr, tags):
+                 origin_lv, data_percent, attr, tags, segtype):
         super(LvPool, self).__init__(c, object_path, THIN_POOL_INTERFACE,
                                      load_lvs)
         utils.init_class_from_arguments(self)
@@ -876,7 +878,7 @@ def load_vgs(connection, obj_manager, vg_specific=None):
                 v['vg_uuid'], v['vg_name'], v['vg_fmt'], n(v['vg_size']),
                 n(v['vg_free']),
                 v['vg_sysid'], n(v['vg_extent_size']), n(v['vg_extent_count']),
-                n(v['vg_free']), v['vg_profile'], n(v['max_lv']),
+                n(v['vg_free_count']), v['vg_profile'], n(v['max_lv']),
                 n(v['max_pv']), n(v['pv_count']),
                 n(v['lv_count']), n(v['snap_count']),
                 n(v['vg_seqno']), n(v['vg_mda_count']), n(v['vg_mda_free']),
@@ -900,14 +902,14 @@ def load_lvs(connection, obj_manager, lv_name=None):
                     l['lv_uuid'],
                     l['lv_name'], l['lv_path'], n(l['lv_size']),
                     l['vg_name'], l['pool_lv'], l['origin'],
-                    n32(l['data_percent']), l['lv_attr'], l['lv_tags'])
+                    n32(l['data_percent']), l['lv_attr'], l['lv_tags'], l['segtype'])
         else:
             lv = LvPool(connection, thin_pool_path(l['lv_name']),
                         obj_manager,
                         l['lv_uuid'],
                         l['lv_name'], l['lv_path'], n(l['lv_size']),
                         l['vg_name'], l['pool_lv'], l['origin'],
-                        n32(l['data_percent']), l['lv_attr'], l['lv_tags'])
+                        n32(l['data_percent']), l['lv_attr'], l['lv_tags'], l['segtype'])
 
         rc.append(lv)
     return rc
