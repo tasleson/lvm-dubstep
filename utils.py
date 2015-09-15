@@ -35,14 +35,37 @@ def is_numeric(s):
     except ValueError:
         return False
 
+def rtype(rtype):
+    """Decorator making sure that the decorated function returns a value of
+    specified type.
+
+    """
+
+    def decorator(fn):
+        def decorated(*args, **kwargs):
+            return rtype(fn(*args, **kwargs))
+
+        return decorated
+
+    return decorator
+
 
 # Field is expected to be a number, handle the corner cases when parsing
+@rtype(dbus.UInt64)
 def n(v):
     if not v:
         return 0L
     if v.endswith('B'):
         return long(v[:-1])
     return long(float(v))
+
+@rtype(dbus.UInt32)
+def n32(v):
+    if not v:
+        return 0
+    if v.endswith('B'):
+        return int(v[:-1])
+    return int(float(v))
 
 
 # noinspection PyProtectedMember
