@@ -121,7 +121,6 @@ def job_obj_path(job_id):
 @utils.dbus_property('pe_start', 't', 0)        # 1st PE/pe_start
 @utils.dbus_property('pe_count', 't', 0)        # PE/pv_pe_count
 @utils.dbus_property('pe_alloc_count', 't', 0)  # Alloc/pv_pe_alloc_count
-@utils.dbus_property("vg", 'o', '/')            # Associated VG
 class Pv(utils.AutomatedProperties):
     DBUS_INTERFACE = PV_INTERFACE
 
@@ -133,6 +132,7 @@ class Pv(utils.AutomatedProperties):
     _allocatable_type = "b"
     _missing_type = "b"
     _lv_type = "a(oa(tt))"
+    _vg_type = "o"
 
     def __init__(self, c, object_path, object_manager, lvm_path, uuid, name,
                  fmt, size_bytes, free_bytes, used_bytes, dev_size_bytes,
@@ -142,7 +142,6 @@ class Pv(utils.AutomatedProperties):
         utils.init_class_from_arguments(self)
         self._pe_segments = cmdhandler.pv_segments(lvm_path)
         # Put this in object path format
-        self._vg = vg_obj_path(self._vg_name)
         self._lv = cmdhandler.pv_contained_lv(self.lvm_id)
 
     @dbus.service.method(dbus_interface=PV_INTERFACE)
@@ -220,6 +219,13 @@ class Pv(utils.AutomatedProperties):
         for lv in self._lv:
             rc.append((lv_obj_path(lv[0]), lv[1]))
         return dbus.Array(rc, signature="(oa(tt))")
+
+    @property
+    def vg(self):
+        if self._vg_name:
+            return self._object_manager.get_object_path_by_lvm_id(
+                self._vg_name)
+        return '/'
 
 
 @utils.dbus_property('uuid', 's')
@@ -608,8 +614,6 @@ class Vg(utils.AutomatedProperties):
 @utils.dbus_property('name', 's')
 @utils.dbus_property('path', 's')
 @utils.dbus_property('size_bytes', 't')
-@utils.dbus_property('pool_lv', 'o')
-@utils.dbus_property('origin_lv', 'o')
 @utils.dbus_property('data_percent', 'u')
 @utils.dbus_property('segtype', 's')
 class Lv(utils.AutomatedProperties):
@@ -619,6 +623,8 @@ class Lv(utils.AutomatedProperties):
     _attr_type = "s"
     _devices_type = "a(oa(tt))"
     _is_thin_volume_type = "b"
+    _pool_lv_type = "o"
+    _origin_lv_type = "o"
 
     def __init__(self, c, object_path, object_manager,
                  uuid, name, path, size_bytes,
@@ -689,6 +695,22 @@ class Lv(utils.AutomatedProperties):
     @property
     def is_thin_volume(self):
         return self._attr[0] == 'V'
+
+    @property
+    def pool_lv(self):
+        if self._pool_lv:
+            full_name = "%s/%s" % (self._vg_name, self._pool_lv)
+            return self._object_manager.get_object_path_by_lvm_id(full_name)
+        else:
+            return '/'
+
+    @property
+    def origin_lv(self):
+        if self._origin_lv:
+            full_name = "%s/%s" % (self._vg_name, self._origin_lv)
+            return self._object_manager.get_object_path_by_lvm_id(full_name)
+        else:
+            return '/'
 
     @property
     def devices(self):
@@ -782,15 +804,15 @@ class Lv(utils.AutomatedProperties):
 @utils.dbus_property('name', 's')
 @utils.dbus_property('path', 's')
 @utils.dbus_property('size_bytes', 't')
-@utils.dbus_property('pool_lv', 'o')
-@utils.dbus_property('origin_lv', 'o')
 @utils.dbus_property('data_percent', 'u')
 @utils.dbus_property('segtype', 's')
 class LvPool(utils.AutomatedProperties):
     _tags_type = "as"
     _vg_type = "o"
+    _pool_lv_type = "o"
     _attr_type = "s"
     _devices_type = "a(oa(tt))"
+    _origin_lv = "o"
 
     DBUS_INTERFACE = THIN_POOL_INTERFACE
     """
@@ -826,6 +848,24 @@ class LvPool(utils.AutomatedProperties):
     @property
     def vg(self):
         return "%s/vg/%s" % (BASE_OBJ_PATH, self._vg_name)
+
+    @property
+    def pool_lv(self):
+        if self._pool_lv:
+            # Look up the LV
+            full_name = "%s/%s" % (self._vg_name, self._pool_lv)
+            return self._object_manager.get_object_path_by_lvm_id(full_name)
+        else:
+            return '/'
+
+    @property
+    def pool_lv(self):
+        if self._origin_lv:
+            # Look up the LV
+            full_name = "%s/%s" % (self._vg_name, self._origin_lv)
+            return self._object_manager.get_object_path_by_lvm_id(full_name)
+        else:
+            return '/'
 
     @property
     def attr(self):

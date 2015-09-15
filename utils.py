@@ -422,6 +422,34 @@ def attribute_type_name(name):
     return "_%s_type" % name
 
 
+_type_map = dict(s=dbus.String,
+                 o=dbus.ObjectPath,
+                 t=dbus.UInt64,
+                 x=dbus.Int64,
+                 u=dbus.UInt32,
+                 i=dbus.Int32,
+                 n=dbus.Int16,
+                 q=dbus.UInt16,
+                 d=dbus.Double,
+                 y=dbus.Byte,
+                 b=dbus.Boolean,
+                 )
+
+
+def _pass_through(v):
+    """
+    If we have something which is not a simple type we return the original
+    value un-wrapped.
+    :param v:
+    :return:
+    """
+    return v
+
+
+def _dbus_type(t, value):
+    return _type_map.get(t, _pass_through)(value)
+
+
 ##
 # This decorator creates a property to be used for dbus introspection
 #
@@ -443,8 +471,8 @@ def dbus_property(name, dbus_type, default_value=None, writeable=False,
     attribute_name = '_' + name
 
     def getter(self):
-        # We could wrap the value up in specific type...
-        return getattr(self, attribute_name)
+        t = getattr(self, attribute_name + '_type')
+        return _dbus_type(t, getattr(self, attribute_name))
 
     def setter(self, value):
         setattr(self, attribute_name, value)
