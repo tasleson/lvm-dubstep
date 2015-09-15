@@ -26,6 +26,7 @@
 * attr (String)
 * devices (Array of Structure (Oject path, Array of Structure (uint64_t, uint64_t)))
 * data_percent (int32_t)
+* segtype (String)
 
 ## Interface com.redhat.lvm1.pv ##
 
@@ -236,3 +237,4 @@
 * data_percent (int32_t)
 * is_thin_volume (Boolean (0 is false, 1 is true))
 * origin_lv (Oject path)
+* segtype (String)

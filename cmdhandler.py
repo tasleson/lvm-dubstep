@@ -524,7 +524,7 @@ def lv_retrieve(connection, lv_name):
     columns = ['lv_uuid', 'lv_name', 'lv_path', 'lv_size',
                 'vg_name', 'pool_lv',
                 'origin', 'data_percent',
-               'lv_attr', 'lv_tags']
+               'lv_attr', 'lv_tags', 'segtype']
 
     cmd = _dc('lvs', ['-o', ','.join(columns)])
 
