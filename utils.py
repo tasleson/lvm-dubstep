@@ -337,7 +337,7 @@ class ObjectManager(AutomatedProperties):
 
         try:
             for k, v in self._objects.items():
-                path, props = v.emit_data()
+                path, props = v[0].emit_data()
                 rc[path] = props
         except Exception as e:
             traceback.print_exc(file=sys.stdout)
