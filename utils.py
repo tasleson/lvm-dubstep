@@ -35,7 +35,8 @@ def is_numeric(s):
     except ValueError:
         return False
 
-def rtype(rtype):
+
+def rtype(dbus_type):
     """Decorator making sure that the decorated function returns a value of
     specified type.
 
@@ -43,7 +44,7 @@ def rtype(rtype):
 
     def decorator(fn):
         def decorated(*args, **kwargs):
-            return rtype(fn(*args, **kwargs))
+            return dbus_type(fn(*args, **kwargs))
 
         return decorated
 
@@ -58,6 +59,7 @@ def n(v):
     if v.endswith('B'):
         return long(v[:-1])
     return long(float(v))
+
 
 @rtype(dbus.UInt32)
 def n32(v):
