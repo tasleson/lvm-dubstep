@@ -980,7 +980,9 @@ class LvPool(utils.AutomatedProperties):
 
 
 def load_pvs(connection, obj_manager, device=None, object_path=None):
-    pvs = cmdhandler.pv_retrieve(None, device)
+    _pvs = cmdhandler.pv_retrieve(None, device)
+
+    pvs = sorted(_pvs, key=lambda k: k['pv_name'])
 
     rc = []
 
@@ -1006,7 +1008,9 @@ def load_pvs(connection, obj_manager, device=None, object_path=None):
 
 
 def load_vgs(connection, obj_manager, vg_specific=None, object_path=None):
-    vgs = cmdhandler.vg_retrieve(None, vg_specific)
+    _vgs = cmdhandler.vg_retrieve(None, vg_specific)
+
+    vgs = sorted(_vgs, key=lambda k: k['vg_name'])
 
     rc = []
 
@@ -1032,7 +1036,9 @@ def load_vgs(connection, obj_manager, vg_specific=None, object_path=None):
 
 
 def load_lvs(connection, obj_manager, lv_name=None, object_path=None):
-    lvs = cmdhandler.lv_retrieve(None, lv_name)
+    _lvs = cmdhandler.lv_retrieve(None, lv_name)
+
+    lvs = sorted(_lvs, key=lambda k: k['lv_name'])
 
     rc = []
 
