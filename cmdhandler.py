@@ -122,14 +122,15 @@ def options_to_cli_args(options):
 
 
 def pvs_in_vg(vg_name):
-    rc, out, error = call(_dc('vgs', ['-o', 'pv_name', vg_name]))
+    rc, out, error = call(_dc('vgs', ['-o', 'pv_name,pv_uuid', vg_name]))
     if rc == 0:
         return parse(out)
     return []
 
 
 def lvs_in_vg(vg_name):
-    rc, out, error = call(_dc('vgs', ['-o', 'lv_name,lv_attr', vg_name]))
+    rc, out, error = call(_dc('vgs', ['-o', 'lv_name,lv_attr,lv_uuid',
+                                      vg_name]))
     if rc == 0:
         return parse(out)
     return []
@@ -306,7 +307,8 @@ def pv_retrieve(connection, device=None):
     columns = ['pv_name', 'pv_uuid', 'pv_fmt', 'pv_size', 'pv_free',
                'pv_used', 'dev_size', 'pv_mda_size', 'pv_mda_free',
                'pv_ba_start', 'pv_ba_size', 'pe_start', 'pv_pe_count',
-               'pv_pe_alloc_count', 'pv_attr', 'pv_tags', 'vg_name']
+               'pv_pe_alloc_count', 'pv_attr', 'pv_tags', 'vg_name',
+               'vg_uuid']
 
     cmd = _dc('pvs', ['-o', ','.join(columns)])
 
@@ -428,7 +430,7 @@ def pv_allocatable(device, yes):
     return call(cmd)
 
 
-def _lv_device(data, key, search, pe_device_parse):
+def _lv_device(data, key, search, pe_device_parse, attrib, uuid):
     device, seg = pe_device_parse.split(':')
 
     if search != device:
@@ -437,30 +439,35 @@ def _lv_device(data, key, search, pe_device_parse):
     r1, r2 = seg.split('-')
 
     if key in data:
-        data[key].append((r1, r2))
+        data[key]['segs'].append((r1, r2))
+        data[key]['attrib'] = attrib
+        data[key]['uuid'] = uuid
     else:
-        data[key] = [((r1, r2))]
+        data[key] = {}
+        data[key]['segs'] = [((r1, r2))]
+        data[key]['attrib'] = attrib
+        data[key]['uuid'] = uuid
 
 
 def pv_contained_lv(device):
     data = []
     tmp = {}
-    cmd = _dc('lvs', ['-o', 'lv_name,seg_pe_ranges',
+    cmd = _dc('lvs', ['-o', 'uuid,lv_name,lv_attr,seg_pe_ranges',
                       '-S', 'seg_pe_ranges=~"%s.*"' % (device)])
 
     rc, out, err = call(cmd)
     if rc == 0:
         d = parse(out)
         for l in d:
-            if ' ' not in l[1]:
-                _lv_device(tmp, l[0], device, l[1])
+            if ' ' not in l[3]:
+                _lv_device(tmp, l[1], device, l[3], l[2], l[0])
             else:
-                pe_ranges = l[1].split(' ')
+                pe_ranges = l[3].split(' ')
                 for pe in pe_ranges:
-                    _lv_device(tmp, l[0], device, pe)
+                    _lv_device(tmp, l[1], device, pe, l[2], l[0])
 
         for k, v in tmp.items():
-            data.append((k, v))
+            data.append((k, v['segs'], v['attrib'], v['uuid']))
 
     return data
 
@@ -524,7 +531,7 @@ def lv_retrieve(connection, lv_name):
     columns = ['lv_uuid', 'lv_name', 'lv_path', 'lv_size',
                 'vg_name', 'pool_lv',
                 'origin', 'data_percent',
-               'lv_attr', 'lv_tags', 'segtype']
+               'lv_attr', 'lv_tags', 'segtype', 'vg_uuid']
 
     cmd = _dc('lvs', ['-o', ','.join(columns)])
 
@@ -541,21 +548,24 @@ def lv_retrieve(connection, lv_name):
     return d
 
 
-def _pv_device(data, device):
+def _pv_device(data, device, uuid):
     device, seg = device.split(':')
     r1, r2 = seg.split('-')
 
     if device in data:
-        data[device].append((r1, r2))
+        data[device]['ranges'].append((r1, r2))
+        data[device]['uuid'] = uuid
     else:
-        data[device] = [((r1, r2))]
+        data[device] = dict()
+        data[device]['ranges'] = [((r1, r2))]
+        data[device]['uuid'] = uuid
 
 
 def lv_pv_devices(lv_name):
     data = []
     tmp = {}
 
-    cmd = _dc('pvs', ['-o', 'seg_pe_ranges', '-S',
+    cmd = _dc('pvs', ['-o', 'uuid,seg_pe_ranges', '-S',
                       'lv_full_name=~"%s.+"' % lv_name])
 
     rc, out, err = call(cmd)
@@ -567,16 +577,16 @@ def lv_pv_devices(lv_name):
                 # We have a striped result set where all lines are repeats
                 # so handle this line and break out.
                 # No idea why this is the odd one!
-                if ' ' in l:
-                    devices = l.split(' ')
+                if ' ' in l[1]:
+                    devices = l[1].split(' ')
                     for d in devices:
-                        _pv_device(tmp, d)
+                        _pv_device(tmp, d, l[0])
                     break
                 else:
-                    _pv_device(tmp, l)
+                    _pv_device(tmp, l[1], l[0])
 
             for k, v in tmp.items():
-                data.append((k, v))
+                data.append((k, v['ranges'], v['uuid']))
 
     except Exception:
         traceback.print_exc(file=sys.stdout)

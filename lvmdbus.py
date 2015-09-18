@@ -78,29 +78,34 @@ def handler(signum, frame):
     loop.quit()
 
 
-counter = itertools.count()
-
-
-def _next_id():
-    return str(counter.next())
+pv_id = itertools.count()
+vg_id = itertools.count()
+lv_id = itertools.count()
+thin_id = itertools.count()
 
 
 def pv_obj_path_generate(object_path=None):
     if object_path:
         return object_path
-    return PV_OBJ_PATH + "/%s" % _next_id()
+    return PV_OBJ_PATH + "/%d" % pv_id.next()
 
 
-def vg_obj_path(vg_name):
-    return VG_OBJ_PATH + "/%s" % vg_name
+def vg_obj_path_generate(object_path=None):
+    if object_path:
+        return object_path
+    return VG_OBJ_PATH + "/%d" % vg_id.next()
 
 
-def lv_obj_path(lv_name):
-    return LV_OBJ_PATH + "/%s" % lv_name
+def lv_obj_path_generate(object_path=None):
+    if object_path:
+        return object_path
+    return LV_OBJ_PATH + "/%d" % lv_id.next()
 
 
-def thin_pool_path(pool_name):
-    return THIN_POOL_PATH + "/%s" % pool_name
+def thin_pool_obj_path_generate(object_path=None):
+    if object_path:
+        return object_path
+    return THIN_POOL_PATH + "/%d" % thin_id.next()
 
 
 def job_obj_path(job_id):
@@ -134,15 +139,39 @@ class Pv(utils.AutomatedProperties):
     _lv_type = "a(oa(tt))"
     _vg_type = "o"
 
+    def _lv_object_list(self, vg_name):
+        rc = []
+        if vg_name:
+            for lv in sorted(cmdhandler.pv_contained_lv(self.lvm_id)):
+                full_name = "%s/%s" % (vg_name, lv[0])
+                segs = lv[1]
+                attrib = lv[2]
+                lv_uuid = lv[3]
+
+                if attrib[0] == 't':
+                    lv_path = self._object_manager.get_object_path_by_lvm_id(
+                        lv_uuid, full_name, thin_pool_obj_path_generate)
+                else:
+                    lv_path = self._object_manager.get_object_path_by_lvm_id(
+                        lv_uuid, full_name, lv_obj_path_generate)
+                rc.append((lv_path, segs))
+        return dbus.Array(rc, signature="(oa(tt))")
+
     def __init__(self, c, object_path, object_manager, lvm_path, uuid, name,
                  fmt, size_bytes, free_bytes, used_bytes, dev_size_bytes,
                  mda_size_bytes, mda_free_bytes, ba_start, ba_size_bytes,
-                 pe_start, pe_count, pe_alloc_count, attr, tags, vg_name):
+                 pe_start, pe_count, pe_alloc_count, attr, tags, vg_name,
+                 vg_uuid):
         super(Pv, self).__init__(c, object_path, PV_INTERFACE, load_pvs)
         utils.init_class_from_arguments(self)
         self._pe_segments = cmdhandler.pv_segments(lvm_path)
-        # Put this in object path format
-        self._lv = cmdhandler.pv_contained_lv(self.lvm_id)
+        self._lv = self._lv_object_list(vg_name)
+
+        if vg_name:
+            self._vg_path = self._object_manager.get_object_path_by_lvm_id(
+                vg_uuid, vg_name, vg_obj_path_generate)
+        else:
+            self._vg_path = '/'
 
     @dbus.service.method(dbus_interface=PV_INTERFACE)
     def Remove(self):
@@ -215,17 +244,11 @@ class Pv(utils.AutomatedProperties):
 
     @property
     def lv(self):
-        rc = []
-        for lv in self._lv:
-            rc.append((lv_obj_path(lv[0]), lv[1]))
-        return dbus.Array(rc, signature="(oa(tt))")
+        return self._lv
 
     @property
     def vg(self):
-        if self._vg_name:
-            return self._object_manager.get_object_path_by_lvm_id(
-                self._vg_name)
-        return '/'
+        return self._vg_path
 
 
 @utils.dbus_property('uuid', 's')
@@ -263,6 +286,24 @@ class Vg(utils.AutomatedProperties):
     _alloc_anywhere_type = 'b'
     _clustered_type = 'b'
 
+    def _lv_paths_build(self, name):
+        rc = []
+        for lv in cmdhandler.lvs_in_vg(name):
+            (lv_name, lv_attr, lv_uuid) = lv
+            full_name = "%s/%s" % (self._name, lv_name)
+            lv_path = self._object_manager.get_object_path_by_lvm_id(
+                lv_uuid, full_name, lv_obj_path_generate)
+            rc.append(lv_path)
+        return dbus.Array(rc, signature='o')
+
+    def _pv_paths_build(self, name):
+        rc = []
+        for p in cmdhandler.pvs_in_vg(name):
+            (pv_name, pv_uuid) = p
+            rc.append(self._object_manager.get_object_path_by_lvm_id(
+                pv_uuid, pv_name, pv_obj_path_generate))
+        return dbus.Array(rc, signature='o')
+
     def __init__(self, c, object_path, object_manager, uuid, name, fmt,
                  size_bytes, free_bytes, sys_id, extent_size_bytes,
                  extent_count, free_count, profile, max_lv, max_pv, pv_count,
@@ -270,8 +311,8 @@ class Vg(utils.AutomatedProperties):
                  mda_size_bytes, mda_used_count, attr, tags):
         super(Vg, self).__init__(c, object_path, VG_INTERFACE, load_vgs)
         utils.init_class_from_arguments(self)
-        self._pv_in_vg = cmdhandler.pvs_in_vg(name)
-        self._lv_in_vg = cmdhandler.lvs_in_vg(name)
+        self._pv_in_vg = self._pv_paths_build(name)
+        self._lv_in_vg = self._lv_paths_build(name)
 
     def _refresh_pvs(self, pv_list=None):
         """
@@ -302,17 +343,24 @@ class Vg(utils.AutomatedProperties):
     @dbus.service.method(dbus_interface=VG_INTERFACE,
                          in_signature='s', out_signature='o')
     def Rename(self, name):
-        # This is going to be a fairly expensive operation
+        old_name = self.name
         rc, out, err = cmdhandler.vg_rename(self.lvm_id, name)
         if rc == 0:
-            # Refresh is a little more involved as we are changing it's path
+
+            # The refresh will fix up all the lookups for this object, however
+            # the LVs will still have the wrong lookup entries.
             self.refresh(name)
 
-            # Refresh all the PVs and LVs
-            self._refresh_pvs()
-            self._refresh_lvs(vg_name=name)
+            for lv in self.lvs:
+                # This will fix the lookups, and the object state actually
+                # has an update as the path property is changing, but it's
+                # unfortunate that we need to go out and fetch all of these
+                # TODO: Change to some kind of batch operation where we do
+                # all with one lvs command instead of fetching one at a time
+                lv_obj = self._object_manager.get_by_path(lv)
+                lv_obj.refresh()
 
-            return vg_obj_path(name)
+            return self.dbus_object_path()
         else:
             # Need to work on error handling, need consistent
             raise dbus.exceptions.DBusException(
@@ -399,7 +447,7 @@ class Vg(utils.AutomatedProperties):
                 extend_devices.append(pv.lvm_id)
             else:
                 raise dbus.exceptions.DBusException(
-                    VG_INTERFACE, 'PV Object path not fount = %s!' % i)
+                    VG_INTERFACE, 'PV Object path not found = %s!' % i)
 
         if len(extend_devices):
             rc, out, err = cmdhandler.vg_extend(self.lvm_id, extend_devices)
@@ -428,16 +476,18 @@ class Vg(utils.AutomatedProperties):
         rc, out, err = cmdhandler.vg_lv_create(self.lvm_id, create_options,
                                                name, size_bytes)
         if rc == 0:
+            created_lv = "/"
             full_name = "%s/%s" % (self.name, name)
             lvs = load_lvs(self._ap_c, self._object_manager, [full_name])
             for l in lvs:
                 self._object_manager.register_object(l, True)
+                created_lv = l.dbus_object_path()
 
             # Refresh self and all included PVs
             self.refresh()
             self._refresh_pvs()
 
-            return lv_obj_path(name)
+            return created_lv
         else:
             raise dbus.exceptions.DBusException(
                 MANAGER_INTERFACE,
@@ -451,16 +501,18 @@ class Vg(utils.AutomatedProperties):
         rc, out, err = cmdhandler.vg_lv_create_linear(
             self.lvm_id, create_options, name, size_bytes, thin_pool)
         if rc == 0:
+            created_lv = "/"
             full_name = "%s/%s" % (self.name, name)
             lvs = load_lvs(self._ap_c, self._object_manager, [full_name])
             for l in lvs:
                 self._object_manager.register_object(l, True)
+                created_lv = l.dbus_object_path()
 
             # Refresh self and all included PVs
             self.refresh()
             self._refresh_pvs()
 
-            return lv_obj_path(name)
+            return created_lv
         else:
             raise dbus.exceptions.DBusException(
                 MANAGER_INTERFACE,
@@ -475,16 +527,18 @@ class Vg(utils.AutomatedProperties):
             self.lvm_id, create_options, name, size_bytes, num_stripes,
             stripe_size_kb, thin_pool)
         if rc == 0:
+            created_lv = "/"
             full_name = "%s/%s" % (self.name, name)
             lvs = load_lvs(self._ap_c, self._object_manager, [full_name])
             for l in lvs:
                 self._object_manager.register_object(l, True)
+                created_lv = l.dbus_object_path()
 
             # Refresh self and all included PVs
             self.refresh()
             self._refresh_pvs()
 
-            return lv_obj_path(name)
+            return created_lv
         else:
             raise dbus.exceptions.DBusException(
                 MANAGER_INTERFACE,
@@ -497,16 +551,18 @@ class Vg(utils.AutomatedProperties):
         rc, out, err = cmdhandler.vg_lv_create_mirror(
             self.lvm_id, create_options, name, size_bytes, num_copies)
         if rc == 0:
+            created_lv = "/"
             full_name = "%s/%s" % (self.name, name)
             lvs = load_lvs(self._ap_c, self._object_manager, [full_name])
             for l in lvs:
                 self._object_manager.register_object(l, True)
+                created_lv = l.dbus_object_path()
 
             # Refresh self and all included PVs
             self.refresh()
             self._refresh_pvs()
 
-            return lv_obj_path(name)
+            return created_lv
         else:
             raise dbus.exceptions.DBusException(
                 MANAGER_INTERFACE,
@@ -521,16 +577,18 @@ class Vg(utils.AutomatedProperties):
             self.lvm_id, create_options, name, raid_type, size_bytes,
             num_stripes, stripe_size_kb, thin_pool)
         if rc == 0:
+            created_lv = "/"
             full_name = "%s/%s" % (self.name, name)
             lvs = load_lvs(self._ap_c, self._object_manager, [full_name])
             for l in lvs:
                 self._object_manager.register_object(l, True)
+                created_lv = l.dbus_object_path()
 
             # Refresh self and all included PVs
             self.refresh()
             self._refresh_pvs()
 
-            return lv_obj_path(name)
+            return created_lv
         else:
             raise dbus.exceptions.DBusException(
                 MANAGER_INTERFACE,
@@ -547,23 +605,11 @@ class Vg(utils.AutomatedProperties):
 
     @property
     def pvs(self):
-        rc = []
-        for p in self._pv_in_vg:
-            rc.append(self._object_manager.get_object_path_by_lvm_id(p))
-        return dbus.Array(rc, signature='o')
+        return self._pv_in_vg
 
     @property
     def lvs(self):
-        # List of logical volumes that are created from this vg
-        rc = []
-        for lv in self._lv_in_vg:
-            (lv_name, lv_attr) = lv[0], lv[1]
-
-            if lv_attr[0] != 't':
-                rc.append(lv_obj_path(lv_name))
-            else:
-                rc.append(thin_pool_path(lv_name))
-        return dbus.Array(rc, signature='o')
+        return self._lv_in_vg
 
     @property
     def lvm_id(self):
@@ -626,13 +672,42 @@ class Lv(utils.AutomatedProperties):
     _pool_lv_type = "o"
     _origin_lv_type = "o"
 
+    def _pv_devices(self, lvm_id):
+        rc = []
+        for pv in sorted(cmdhandler.lv_pv_devices(lvm_id)):
+            (pv_name, pv_segs, pv_uuid) = pv
+            pv_obj = self._object_manager.get_object_path_by_lvm_id(
+                pv_name, pv_uuid)
+            rc.append((pv_obj, pv_segs))
+        return dbus.Array(rc, signature="(oa(tt))")
+
     def __init__(self, c, object_path, object_manager,
                  uuid, name, path, size_bytes,
-                 vg_name, pool_lv,
+                 vg_name, vg_uuid, pool_lv,
                  origin_lv, data_percent, attr, tags, segtype):
         super(Lv, self).__init__(c, object_path, LV_INTERFACE, load_lvs)
         utils.init_class_from_arguments(self)
-        self._devices = cmdhandler.lv_pv_devices(self.lvm_id)
+        self._vg = self._object_manager.get_object_path_by_lvm_id(
+            vg_uuid, vg_name, vg_obj_path_generate)
+        self._devices = self._pv_devices(self.lvm_id)
+
+        # When https://bugzilla.redhat.com/show_bug.cgi?id=1264190 is
+        # completed, fix this to pass the pool_lv_uuid too
+        if pool_lv:
+            self._pool_lv = self._object_manager.get_object_path_by_lvm_id(
+                None, '%s/%s' % (vg_name, pool_lv),
+                thin_pool_obj_path_generate)
+        else:
+            self._pool_lv = '/'
+
+        if origin_lv:
+            self._origin_lv = self._object_manager.get_object_path_by_lvm_id(
+                None, '%s/%s' % (vg_name, origin_lv), vg_obj_path_generate)
+        else:
+            self._origin_lv = '/'
+
+    def _vg_name_lookup(self):
+        return self._object_manager.get_by_path(self._vg).name
 
     def _signal_vg_pv_changes(self):
         # Signal property changes...
@@ -666,10 +741,10 @@ class Lv(utils.AutomatedProperties):
         # Rename the logical volume
         rc, out, err = cmdhandler.lv_rename(self.lvm_id, name)
         if rc == 0:
-            # Refresh is a little more involved as we are changing it's path
-            self.refresh("%s/%s" % (self._vg_name, name))
-            self._signal_vg_pv_changes()
-            return lv_obj_path(name)
+            # Refresh the VG
+            self.refresh("%s/%s" % (self._vg_name_lookup(), name))
+            self._object_manager.get_by_path(self._vg).refresh()
+            return self.dbus_object_path()
         else:
             # Need to work on error handling, need consistent
             raise dbus.exceptions.DBusException(
@@ -682,7 +757,7 @@ class Lv(utils.AutomatedProperties):
 
     @property
     def vg(self):
-        return "%s/vg/%s" % (BASE_OBJ_PATH, self._vg_name)
+        return self._vg
 
     @property
     def attr(self):
@@ -690,7 +765,7 @@ class Lv(utils.AutomatedProperties):
 
     @property
     def lvm_id(self):
-        return "%s/%s" % (self._vg_name, self.name)
+        return "%s/%s" % (self._vg_name_lookup(), self.name)
 
     @property
     def is_thin_volume(self):
@@ -698,29 +773,15 @@ class Lv(utils.AutomatedProperties):
 
     @property
     def pool_lv(self):
-        if self._pool_lv:
-            full_name = "%s/%s" % (self._vg_name, self._pool_lv)
-            return self._object_manager.get_object_path_by_lvm_id(full_name)
-        else:
-            return '/'
+        return self._pool_lv
 
     @property
     def origin_lv(self):
-        if self._origin_lv:
-            full_name = "%s/%s" % (self._vg_name, self._origin_lv)
-            return self._object_manager.get_object_path_by_lvm_id(full_name)
-        else:
-            return '/'
+        return self._origin_lv
 
     @property
     def devices(self):
-        rc = []
-        for pv in self._devices:
-            # We have an lvm device path, convert to dbus object and add.
-            pv_obj = self._object_manager.get_object_path_by_lvm_id(pv[0])
-
-            rc.append((pv_obj, pv[1]))
-        return dbus.Array(rc, signature="(oa(tt))")
+        return self._devices
 
     @dbus.service.method(dbus_interface=LV_INTERFACE,
                          in_signature='a{sv}o(tt)o(tt)',
@@ -783,17 +844,18 @@ class Lv(utils.AutomatedProperties):
         rc, out, err = cmdhandler.vg_lv_snapshot(self.lvm_id, snapshot_options,
                                                  name, optional_size)
         if rc == 0:
-
-            full_name = "%s/%s" % (self._vg_name, name)
+            snapshot_path = "/"
+            full_name = "%s/%s" % (self._vg_name_lookup(), name)
             lvs = load_lvs(self._ap_c, self._object_manager, [full_name])
             for l in lvs:
                 self._object_manager.register_object(l, True)
+                snapshot_path = l.dbus_object_path()
 
             # Refresh self and all included PVs
             self.refresh()
             self._refresh_pvs()
 
-            return lv_obj_path(name)
+            return snapshot_path
         else:
             raise dbus.exceptions.DBusException(
                 MANAGER_INTERFACE,
@@ -819,14 +881,43 @@ class LvPool(utils.AutomatedProperties):
     Thin pool LV will have a method to create a LV.
     """
 
+    def _pv_devices(self, lvm_id):
+        rc = []
+        for pv in sorted(cmdhandler.lv_pv_devices(lvm_id)):
+            (pv_name, pv_segs, pv_uuid) = pv
+            pv_obj = self._object_manager.get_object_path_by_lvm_id(
+                pv_name, pv_uuid)
+            rc.append((pv_obj, pv_segs))
+        return dbus.Array(rc, signature="(oa(tt))")
+
     def __init__(self, c, object_path, object_manager,
                  uuid, name, path, size_bytes,
-                 vg_name, pool_lv,
+                 vg_name, vg_uuid, pool_lv,
                  origin_lv, data_percent, attr, tags, segtype):
         super(LvPool, self).__init__(c, object_path, THIN_POOL_INTERFACE,
                                      load_lvs)
         utils.init_class_from_arguments(self)
-        self._devices = cmdhandler.lv_pv_devices(self.lvm_id)
+        self._devices = self._pv_devices('%s/%s' % (vg_name, name))
+        self._vg = self._object_manager.get_object_path_by_lvm_id(
+            vg_uuid, vg_name)
+
+        # When https://bugzilla.redhat.com/show_bug.cgi?id=1264190 is
+        # completed, fix this to pass the pool_lv_uuid too
+        if pool_lv:
+            self._pool_lv = self._object_manager.get_object_path_by_lvm_id(
+                None, '%s/%s' % (vg_name, pool_lv),
+                thin_pool_obj_path_generate)
+        else:
+            self._pool_lv = '/'
+
+        if origin_lv:
+            self._origin_lv = self._object_manager.get_object_path_by_lvm_id(
+                None, '%s/%s' % (vg_name, origin_lv), vg_obj_path_generate)
+        else:
+            self._origin_lv = '/'
+
+    def _vg_name_lookup(self):
+        return self._object_manager.get_by_path(self._vg).name
 
     @dbus.service.method(dbus_interface=THIN_POOL_INTERFACE)
     def Remove(self):
@@ -847,25 +938,15 @@ class LvPool(utils.AutomatedProperties):
 
     @property
     def vg(self):
-        return "%s/vg/%s" % (BASE_OBJ_PATH, self._vg_name)
+        return self._vg
 
     @property
     def pool_lv(self):
-        if self._pool_lv:
-            # Look up the LV
-            full_name = "%s/%s" % (self._vg_name, self._pool_lv)
-            return self._object_manager.get_object_path_by_lvm_id(full_name)
-        else:
-            return '/'
+        return self._pool_lv
 
     @property
-    def pool_lv(self):
-        if self._origin_lv:
-            # Look up the LV
-            full_name = "%s/%s" % (self._vg_name, self._origin_lv)
-            return self._object_manager.get_object_path_by_lvm_id(full_name)
-        else:
-            return '/'
+    def origin_lv(self):
+        return self._origin_lv
 
     @property
     def attr(self):
@@ -873,15 +954,11 @@ class LvPool(utils.AutomatedProperties):
 
     @property
     def lvm_id(self):
-        return "%s/%s" % (self._vg_name, self.name)
+        return "%s/%s" % (self._vg_name_lookup(), self.name)
 
     @property
     def devices(self):
-        rc = []
-        for pv in self._devices:
-            pv_obj = self._object_manager.get_object_path_by_lvm_id(pv[0])
-            rc.append((pv_obj, pv[1]))
-        return dbus.Array(rc, signature="(oa(tt))")
+        return self._devices
 
     @dbus.service.method(dbus_interface=THIN_POOL_INTERFACE,
                          in_signature='a{sv}st',
@@ -894,8 +971,8 @@ class LvPool(utils.AutomatedProperties):
             lvs = load_lvs(self._ap_c, self._object_manager, [full_name])
             for l in lvs:
                 self._object_manager.register_object(l, True)
-
-            return lv_obj_path(name)
+                return l.dbus_object_path()
+            return "/"
         else:
             raise dbus.exceptions.DBusException(
                 MANAGER_INTERFACE,
@@ -908,7 +985,12 @@ def load_pvs(connection, obj_manager, device=None, object_path=None):
     rc = []
 
     for p in pvs:
-        p = Pv(connection, pv_obj_path_generate(object_path), obj_manager,
+
+        if not object_path:
+            object_path = obj_manager.get_object_path_by_lvm_id(
+                p['pv_uuid'], p['pv_name'], pv_obj_path_generate)
+
+        p = Pv(connection, object_path, obj_manager,
                p["pv_name"], p["pv_uuid"], p["pv_name"], p["pv_fmt"],
                n(p["pv_size"]),
                n(p["pv_free"]), n(p["pv_used"]), n(p["dev_size"]),
@@ -916,8 +998,10 @@ def load_pvs(connection, obj_manager, device=None, object_path=None):
                long(p["pv_ba_start"]), n(p["pv_ba_size"]),
                n(p["pe_start"]), long(p["pv_pe_count"]),
                long(p["pv_pe_alloc_count"]),
-               p["pv_attr"], p["pv_tags"], p["vg_name"])
+               p["pv_attr"], p["pv_tags"], p["vg_name"], p["vg_uuid"])
         rc.append(p)
+
+        object_path = None
     return rc
 
 
@@ -927,7 +1011,11 @@ def load_vgs(connection, obj_manager, vg_specific=None, object_path=None):
     rc = []
 
     for v in vgs:
-        vg = Vg(connection, vg_obj_path(v['vg_name']), obj_manager,
+        if not object_path:
+            object_path = obj_manager.get_object_path_by_lvm_id(
+                v['vg_uuid'], v['vg_name'], vg_obj_path_generate)
+
+        vg = Vg(connection, object_path, obj_manager,
                 v['vg_uuid'], v['vg_name'], v['vg_fmt'], n(v['vg_size']),
                 n(v['vg_free']),
                 v['vg_sysid'], n(v['vg_extent_size']), n(v['vg_extent_count']),
@@ -938,6 +1026,7 @@ def load_vgs(connection, obj_manager, vg_specific=None, object_path=None):
                 n(v['vg_mda_size']),
                 n(v['vg_mda_used_count']), v['vg_attr'], v['vg_tags'])
         rc.append(vg)
+        object_path = None
 
     return rc
 
@@ -948,23 +1037,38 @@ def load_lvs(connection, obj_manager, lv_name=None, object_path=None):
     rc = []
 
     for l in lvs:
+        ident = "%s/%s" % (l['vg_name'], l['lv_name'])
+
         # Check to see if this LV is a thinpool!
         if l['lv_attr'][0] != 't':
-            lv = Lv(connection, lv_obj_path(l['lv_name']),
+
+            if not object_path:
+                object_path = obj_manager.get_object_path_by_lvm_id(
+                    l['lv_uuid'], ident, lv_obj_path_generate)
+
+            lv = Lv(connection, object_path,
                     obj_manager,
                     l['lv_uuid'],
                     l['lv_name'], l['lv_path'], n(l['lv_size']),
-                    l['vg_name'], l['pool_lv'], l['origin'],
-                    n32(l['data_percent']), l['lv_attr'], l['lv_tags'], l['segtype'])
+                    l['vg_name'], l['vg_uuid'], l['pool_lv'], l['origin'],
+                    n32(l['data_percent']), l['lv_attr'], l['lv_tags'],
+                    l['segtype'])
         else:
-            lv = LvPool(connection, thin_pool_path(l['lv_name']),
+
+            if not object_path:
+                object_path = obj_manager.get_object_path_by_lvm_id(
+                    l['lv_uuid'], ident, thin_pool_obj_path_generate)
+
+            lv = LvPool(connection, object_path,
                         obj_manager,
                         l['lv_uuid'],
                         l['lv_name'], l['lv_path'], n(l['lv_size']),
-                        l['vg_name'], l['pool_lv'], l['origin'],
-                        n32(l['data_percent']), l['lv_attr'], l['lv_tags'], l['segtype'])
+                        l['vg_name'], l['vg_uuid'], l['pool_lv'], l['origin'],
+                        n32(l['data_percent']), l['lv_attr'], l['lv_tags'],
+                        l['segtype'])
 
         rc.append(lv)
+        object_path = None
     return rc
 
 
@@ -1042,7 +1146,7 @@ class Manager(utils.AutomatedProperties):
             vgs = load_vgs(self._ap_c, self._object_manager, [name])
             for v in vgs:
                 self._object_manager.register_object(v, True)
-                created_vg = vg_obj_path(v.name)
+                created_vg = v.dbus_object_path()
 
             # For each PV that was involved in this VG create we need to
             # signal the property changes, make sure to do this *after* the

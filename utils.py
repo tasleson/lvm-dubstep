@@ -250,7 +250,7 @@ class AutomatedProperties(dbus.service.Object):
               (str(interface_name), str(changed_properties),
                str(invalidated_properties)))
 
-    def refresh(self, new_identifier=None, search_key=None):
+    def refresh(self, search_key=None):
         """
         Take this object, go out and fetch the latest LVM copy and replace the
         one registered with dbus.  Not sure if there is a better way to do
@@ -266,38 +266,25 @@ class AutomatedProperties(dbus.service.Object):
         if not self._ap_search_method:
             return
 
-        emit = False
         search = self.lvm_id
-        if new_identifier:
-            emit = True
-            search = new_identifier
-
-        # When searching for a lv, if the vg name has changed we need to
-        # search for a new search string, but retain the same behavior for
-        # a regular refresh
         if search_key:
             search = search_key
 
-        self._object_manager.remove_object(self, emit)
+        self._object_manager.remove_object(self)
 
         # Go out and fetch the latest version of this object, eg. pvs, vgs, lvs
         found = self._ap_search_method(
             self._ap_c, self._object_manager, [search],
             self.dbus_object_path())
         for i in found:
+            self._object_manager.register_object(i)
+            changed = get_object_property_diff(self, i)
 
-            self._object_manager.register_object(i, emit)
-
-            # If we changed the identifier we really don't want to sent
-            # a properties changed signal, the user will get an object del/add
-            if not new_identifier:
-                changed = get_object_property_diff(self, i)
-
-                if changed:
-                    # Use the instance that is registered with dbus API as self
-                    # has been removed, calls to it will make no difference
-                    # with regards to the dbus API.
-                    i.PropertiesChanged(self._ap_interface, changed, [])
+            if changed:
+                # Use the instance that is registered with dbus API as self
+                # has been removed, calls to it will make no difference
+                # with regards to the dbus API.
+                i.PropertiesChanged(self._ap_interface, changed, [])
 
     @property
     def lvm_id(self):
@@ -305,6 +292,14 @@ class AutomatedProperties(dbus.service.Object):
         Intended to be overridden by classes that inherit
         """
         return str(id(self))
+
+    @property
+    def uuid(self):
+        """
+        Intended to be overridden by classes that inherit
+        """
+        import uuid
+        return uuid.uuid1()
 
 
 class ObjectManager(AutomatedProperties):
@@ -347,16 +342,49 @@ class ObjectManager(AutomatedProperties):
         print('SIGNAL: InterfacesRemoved(%s, %s)' %
               (str(object_path), str(interface_list)))
 
+    def _lookup_add(self, obj, path, lvm_id, uuid):
+        """
+        Store information about what we added to the caches so that we
+        can remove it cleanly
+        :param obj:     The dbus object we are storing
+        :param path:    The dbus object path
+        :param lvm_id:  The user name for the asset
+        :param uuid:    The uuid for the asset
+        :return:
+        """
+        # We could have a temp entry from the forward creation of a path
+        self._lookup_remove(path)
+
+        self._objects[path] = (obj, lvm_id, uuid)
+        self._id_to_object_path[lvm_id] = path
+
+        if uuid:
+            self._id_to_object_path[uuid] = path
+
+    def _lookup_remove(self, obj_path):
+
+        if obj_path in self._objects:
+            (obj, lvm_id, uuid) = self._objects[obj_path]
+            del self._id_to_object_path[lvm_id]
+
+            # uuid isn't always available at the moment
+            if uuid:
+                del self._id_to_object_path[uuid]
+
+            del self._objects[obj_path]
+
     def register_object(self, dbus_object, emit_signal=False):
         """
         Given a dbus object add it to the collection
         """
         path, props = dbus_object.emit_data()
 
-        # We want fast access to the object by a couple of different ways
-        # so we use two different hashes for fast lookups
-        self._objects[path] = dbus_object
-        self._id_to_object_path[dbus_object.lvm_id] = path
+        #print 'Registering object path %s for %s' % (path, dbus_object.lvm_id)
+
+        # We want fast access to the object by a number of different ways
+        # so we use multiple hashs with different keys
+        self._lookup_add(dbus_object, path, dbus_object.lvm_id,
+                         dbus_object.uuid)
 
         if emit_signal:
             self.InterfacesAdded(path, props)
@@ -366,14 +394,14 @@ class ObjectManager(AutomatedProperties):
         Given a dbus object, remove it from the collection and remove it
         from the dbus framework as well
         """
-
         # Store off the object path and the interface first
         path = dbus_object.dbus_object_path()
         interfaces = dbus_object.interface(True)
 
-        # Remove from our data structures
-        del self._id_to_object_path[dbus_object.lvm_id]
-        del self._objects[path]
+        #print 'UN-Registering object path %s for %s' % \
+        #      (path, dbus_object.lvm_id)
+
+        self._lookup_remove(path)
 
         # Remove from dbus library
         dbus_object.remove_from_connection(self._ap_c, path)
@@ -387,7 +415,7 @@ class ObjectManager(AutomatedProperties):
         Given a dbus path return the object registered for it
         """
         if path in self._objects:
-            return self._objects[path]
+            return self._objects[path][0]
         return None
 
     def get_by_lvm_id(self, lvm_id):
@@ -396,18 +424,30 @@ class ObjectManager(AutomatedProperties):
         """
         return self.get_by_path(self._id_to_object_path[lvm_id])
 
-    def get_object_path_by_lvm_id(self, lvm_id):
+    def get_object_path_by_lvm_id(self, uuid, lvm_id, path_create=None,
+                                  gen_new=True):
         """
         For a given lvm asset return the dbus object registered to it
         """
+        assert lvm_id       # TODO: Assert that uuid is present later too
+
         if lvm_id in self._id_to_object_path:
             return self._id_to_object_path[lvm_id]
-        return None
+        else:
+            if uuid and uuid in self._id_to_object_path:
+                return self._id_to_object_path[uuid]
+            else:
+                if gen_new:
+                    path = path_create()
+                    self._lookup_add(None, path, lvm_id, uuid)
+                    return path
+                else:
+                    return None
 
     def refresh_all(self):
         for k, v in self._objects.items():
             try:
-                v.refresh()
+                v[0].refresh()
             except Exception:
                 print 'Object path= ', k
                 traceback.print_exc(file=sys.stdout)
