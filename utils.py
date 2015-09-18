@@ -75,8 +75,17 @@ def init_class_from_arguments(obj_instance):
     for k, v in sys._getframe(1).f_locals.items():
         if k != 'self':
             nt = '_' + k
+
+            # If the current attribute has a value, but the incoming does
+            # not, don't overwrite it.  Otherwise the default values on the
+            # property decorator don't work as expected.
+            cur = getattr(obj_instance, nt, v)
+
             # print 'Init class %s = %s' % (nt, str(v))
-            setattr(obj_instance, nt, v)
+            if not(cur and len(str(cur)) and (v is None or len(str(v))) == 0):
+                setattr(obj_instance, nt, v)
+
+
 
 
 def get_properties(f, interface=None):
