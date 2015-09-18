@@ -291,8 +291,13 @@ class Vg(utils.AutomatedProperties):
         for lv in cmdhandler.lvs_in_vg(name):
             (lv_name, lv_attr, lv_uuid) = lv
             full_name = "%s/%s" % (self._name, lv_name)
+
+            gen = lv_obj_path_generate
+            if lv_attr[0] == 't':
+                gen = thin_pool_obj_path_generate
+
             lv_path = self._object_manager.get_object_path_by_lvm_id(
-                lv_uuid, full_name, lv_obj_path_generate)
+                lv_uuid, full_name, gen)
             rc.append(lv_path)
         return dbus.Array(rc, signature='o')
 
