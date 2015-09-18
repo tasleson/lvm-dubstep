@@ -1085,6 +1085,28 @@ class Manager(utils.AutomatedProperties):
         """
         self._object_manager.refresh_all()
 
+    @dbus.service.method(dbus_interface=MANAGER_INTERFACE,
+                         in_signature='s',
+                         out_signature='o')
+    def LookUpByLvmId(self, key):
+        """
+        Given a lvm id in one of the forms:
+
+        /dev/sda
+        some_vg
+        some_vg/some_lv
+        Oe1rPX-Pf0W-15E5-n41N-ZmtF-jXS0-Osg8fn
+
+        return the object path in O(1) time.
+
+        :return: Return the object path.  If object not found you will get '/'
+        """
+        p = self._object_manager.get_object_path_by_lvm_id(
+            key, key, gen_new=False)
+        if p:
+            return p
+        return '/'
+
 
 class Job(utils.AutomatedProperties):
     DBUS_INTERFACE = JOB_INTERFACE
