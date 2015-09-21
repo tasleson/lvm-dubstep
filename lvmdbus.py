@@ -920,7 +920,7 @@ def load_pvs(connection, obj_manager, device=None, object_path=None):
 
 
 def load_vgs(connection, obj_manager, vg_specific=None, object_path=None):
-    _vgs = cmdhandler.vg_retrieve(None, vg_specific)
+    _vgs = cmdhandler.vg_retrieve(vg_specific)
 
     vgs = sorted(_vgs, key=lambda k: k['vg_name'])
 

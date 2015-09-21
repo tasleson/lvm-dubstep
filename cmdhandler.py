@@ -506,7 +506,7 @@ def vg_extend(vg_name, extend_devices):
     return call(cmd)
 
 
-def vg_retrieve(connection, vg_specific):
+def vg_retrieve(vg_specific):
     columns = ['vg_name', 'vg_uuid', 'vg_fmt', 'vg_size', 'vg_free',
                'vg_sysid', 'vg_extent_size', 'vg_extent_count',
                'vg_free_count', 'vg_profile', 'max_lv', 'max_pv',
