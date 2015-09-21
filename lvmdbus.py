@@ -430,7 +430,7 @@ class Vg(utils.AutomatedProperties):
                     pv_devices.append(pv.lvm_id)
                 else:
                     raise dbus.exceptions.DBusException(
-                        VG_INTERFACE, 'PV Object path not fount = %s!' % pv_op)
+                        VG_INTERFACE, 'PV Object path not found = %s!' % pv_op)
 
         rc, out, err = cmdhandler.vg_reduce(self.lvm_id, missing, pv_devices)
         if rc == 0:
