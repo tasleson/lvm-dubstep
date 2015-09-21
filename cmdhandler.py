@@ -527,7 +527,7 @@ def vg_retrieve(vg_specific):
     return d
 
 
-def lv_retrieve(connection, lv_name):
+def lv_retrieve(lv_name):
     columns = ['lv_uuid', 'lv_name', 'lv_path', 'lv_size',
                 'vg_name', 'pool_lv',
                 'origin', 'data_percent',

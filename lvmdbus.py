@@ -948,7 +948,7 @@ def load_vgs(connection, obj_manager, vg_specific=None, object_path=None):
 
 
 def load_lvs(connection, obj_manager, lv_name=None, object_path=None):
-    _lvs = cmdhandler.lv_retrieve(None, lv_name)
+    _lvs = cmdhandler.lv_retrieve(lv_name)
 
     lvs = sorted(_lvs, key=lambda k: k['lv_name'])
 
