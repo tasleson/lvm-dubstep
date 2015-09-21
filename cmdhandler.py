@@ -276,8 +276,8 @@ def vg_lv_create_mirror(vg_name, create_options, name, size_bytes, num_copies):
     cmd.extend(options_to_cli_args(create_options))
 
     cmd.extend(['--type', 'mirror'])
-
     cmd.extend(['--mirrors', str(num_copies)])
+    cmd.extend(['--size', str(size_bytes) + 'B'])
     cmd.extend(['--name', name, vg_name])
     return call(cmd)
 
