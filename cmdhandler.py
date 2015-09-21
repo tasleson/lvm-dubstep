@@ -303,7 +303,7 @@ def pv_segments(device):
     return r
 
 
-def pv_retrieve(connection, device=None):
+def pv_retrieve(device=None):
     columns = ['pv_name', 'pv_uuid', 'pv_fmt', 'pv_size', 'pv_free',
                'pv_used', 'dev_size', 'pv_mda_size', 'pv_mda_free',
                'pv_ba_start', 'pv_ba_size', 'pe_start', 'pv_pe_count',
@@ -595,7 +595,7 @@ def lv_pv_devices(lv_name):
     return data
 
 if __name__ == '__main__':
-    pv_data = pv_retrieve(None)
+    pv_data = pv_retrieve()
 
     for p in pv_data:
         print str(p)

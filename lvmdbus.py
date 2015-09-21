@@ -892,7 +892,7 @@ def lv_object_factory(interface_name, *args):
 
 
 def load_pvs(connection, obj_manager, device=None, object_path=None):
-    _pvs = cmdhandler.pv_retrieve(None, device)
+    _pvs = cmdhandler.pv_retrieve(device)
 
     pvs = sorted(_pvs, key=lambda k: k['pv_name'])
 
