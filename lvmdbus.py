@@ -84,6 +84,7 @@ pv_id = itertools.count()
 vg_id = itertools.count()
 lv_id = itertools.count()
 thin_id = itertools.count()
+job_id = itertools.count()
 
 
 def pv_obj_path_generate(object_path=None):
@@ -110,8 +111,10 @@ def thin_pool_obj_path_generate(object_path=None):
     return THIN_POOL_PATH + "/%d" % thin_id.next()
 
 
-def job_obj_path(job_id):
-    return JOB_OBJ_PATH + "/%s" % job_id
+def job_obj_path_generate(object_path=None):
+    if object_path:
+        return object_path
+    return JOB_OBJ_PATH + "/%d" % job_id.next()
 
 
 @utils.dbus_property('uuid', 's')               # PV UUID/pv_uuid
@@ -814,11 +817,8 @@ def lv_object_factory(interface_name, *args):
                     # Create job object for monitoring
                     jobs = cmdhandler.pv_move_status()
                     if self.lvm_id in jobs:
-                        job_name = utils.md5(self.lvm_id + pv_src.lvm_id +
-                                             str(time.time()))
-
-                        job_obj = Job(self._c, job_obj_path(job_name),
-                                      self._object_manager, self.lvm_id)
+                        job_obj = Job(self._c, self._object_manager,
+                                      self.lvm_id)
                         self._object_manager.register_object(job_obj)
                         kick_q.put("wake up!")
                         return job_obj.dbus_object_path()
