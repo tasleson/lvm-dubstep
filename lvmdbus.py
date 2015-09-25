@@ -30,6 +30,7 @@ import utils
 from utils import n, n32
 import itertools
 import time
+import ctypes
 
 # Shared state variable across all processes
 run = Value('i', 1)
@@ -68,7 +69,8 @@ JOB_OBJ_PATH = BASE_OBJ_PATH + '/Job'
 def pprint(msg):
     if DEBUG:
         stdout_lock.acquire()
-        print "%d - %s" % (os.getpid(), msg)
+        tid = ctypes.CDLL('libc.so.6').syscall(186)
+        print "%d:%d - %s" % (os.getpid(), tid, msg)
         stdout_lock.release()
 
 
