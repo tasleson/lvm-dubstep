@@ -1107,6 +1107,13 @@ class Manager(utils.AutomatedProperties):
             return p
         return '/'
 
+    @dbus.service.method(dbus_interface=MANAGER_INTERFACE,
+                         in_signature='sss', out_signature='i')
+    def ExternalEvent(self, lvm_uuid, lvm_id, event):
+        print 'External event %s:%s:%s' % (lvm_uuid, lvm_id, event)
+        # TODO Add this to a work queue and return
+        return dbus.Int32(0)
+
 
 class Job(utils.AutomatedProperties):
     DBUS_INTERFACE = JOB_INTERFACE
