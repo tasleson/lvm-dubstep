@@ -353,7 +353,6 @@ class Vg(utils.AutomatedProperties):
     @dbus.service.method(dbus_interface=VG_INTERFACE,
                          in_signature='s', out_signature='o')
     def Rename(self, name):
-        old_name = self.name
         rc, out, err = cmdhandler.vg_rename(self.lvm_id, name)
         if rc == 0:
 
