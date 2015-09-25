@@ -678,8 +678,6 @@ def lv_object_factory(interface_name, *args):
     :param args: Arguments to be passed to object constructor
     :return: Object instance that matches interface wanted.
     """
-    DBUS_INTERFACE=interface_name
-
     @utils.dbus_property('uuid', 's')
     @utils.dbus_property('name', 's')
     @utils.dbus_property('path', 's')
@@ -693,6 +691,7 @@ def lv_object_factory(interface_name, *args):
                          dbus.Array([], signature="(oa(tt))"))
     @utils.dbus_property('attr', 's')
     class Lv(utils.AutomatedProperties):
+        DBUS_INTERFACE = interface_name
         _tags_type = "as"
         _is_thin_volume_type = "b"
 
