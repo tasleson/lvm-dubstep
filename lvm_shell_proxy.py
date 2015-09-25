@@ -8,16 +8,20 @@ from os import O_NONBLOCK
 SHELL = "lvm"
 SHELL_PROMPT = "lvm> "
 
+
 def _quote_arg(arg):
     if len(shlex.split(arg)) > 1:
         return '"%s"' % arg
     else:
         return arg
 
+
 class LVMShellProxy(object):
     def __init__(self):
         # run the lvm shell
-        self.lvm_shell = subprocess.Popen([SHELL], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, close_fds=True)
+        self.lvm_shell = subprocess.Popen(
+            [SHELL], stdin=subprocess.PIPE, stdout=subprocess.PIPE, 
+            stderr=subprocess.PIPE, close_fds=True)
         flags = fcntl(self.lvm_shell.stdout, F_GETFL)
         fcntl(self.lvm_shell.stdout, F_SETFL, flags | O_NONBLOCK)
         flags = fcntl(self.lvm_shell.stderr, F_GETFL)
@@ -75,17 +79,17 @@ class LVMShellProxy(object):
 
         # if there was something on STDERR, there was some error
         if stderr:
-            ret = 1
+            rc = 1
         else:
-            ret = 0
+            rc = 0
 
-        if debug or ret != 0:
+        if debug or rc != 0:
             print('CMD: %s' % cmd)
-            print("EC = %d" % ret)
+            print("EC = %d" % rc)
             print("STDOUT=\n %s\n" % stdout)
             print("STDERR=\n %s\n" % stderr)
 
-        return (ret, stdout, stderr)
+        return (rc, stdout, stderr)
 
     def __del__(self):
         self.lvm_shell.terminate()
