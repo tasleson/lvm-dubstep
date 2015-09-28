@@ -168,12 +168,12 @@ class Pv(utils.AutomatedProperties):
         return dbus.Array(rc, signature="(oa(tt))")
 
     # noinspection PyUnusedLocal
-    def __init__(self, c, object_path, lvm_path, uuid, name,
+    def __init__(self, object_path, lvm_path, uuid, name,
                  fmt, size_bytes, free_bytes, used_bytes, dev_size_bytes,
                  mda_size_bytes, mda_free_bytes, ba_start, ba_size_bytes,
                  pe_start, pe_count, pe_alloc_count, attr, tags, vg_name,
                  vg_uuid):
-        super(Pv, self).__init__(c, object_path, PV_INTERFACE, load_pvs)
+        super(Pv, self).__init__(object_path, PV_INTERFACE, load_pvs)
         utils.init_class_from_arguments(self)
         self._pe_segments = cmdhandler.pv_segments(lvm_path)
         self._lv = self._lv_object_list(vg_name)
@@ -322,12 +322,12 @@ class Vg(utils.AutomatedProperties):
         return dbus.Array(rc, signature='o')
 
     # noinspection PyUnusedLocal
-    def __init__(self, c, object_path, uuid, name, fmt,
+    def __init__(self, object_path, uuid, name, fmt,
                  size_bytes, free_bytes, sys_id, extent_size_bytes,
                  extent_count, free_count, profile, max_lv, max_pv, pv_count,
                  lv_count, snap_count, seqno, mda_count, mda_free,
                  mda_size_bytes, mda_used_count, attr, tags):
-        super(Vg, self).__init__(c, object_path, VG_INTERFACE, load_vgs)
+        super(Vg, self).__init__(object_path, VG_INTERFACE, load_vgs)
         utils.init_class_from_arguments(self)
         self._pv_in_vg = self._pv_paths_build(name)
         self._lv_in_vg = self._lv_paths_build(name)
@@ -495,7 +495,7 @@ class Vg(utils.AutomatedProperties):
         if rc == 0:
             created_lv = "/"
             full_name = "%s/%s" % (self.name, name)
-            lvs = load_lvs(self._ap_c, [full_name])
+            lvs = load_lvs([full_name])
             for l in lvs:
                 cfg.om.register_object(l, True)
                 created_lv = l.dbus_object_path()
@@ -520,7 +520,7 @@ class Vg(utils.AutomatedProperties):
         if rc == 0:
             created_lv = "/"
             full_name = "%s/%s" % (self.name, name)
-            lvs = load_lvs(self._ap_c, [full_name])
+            lvs = load_lvs([full_name])
             for l in lvs:
                 cfg.om.register_object(l, True)
                 created_lv = l.dbus_object_path()
@@ -546,7 +546,7 @@ class Vg(utils.AutomatedProperties):
         if rc == 0:
             created_lv = "/"
             full_name = "%s/%s" % (self.name, name)
-            lvs = load_lvs(self._ap_c, [full_name])
+            lvs = load_lvs([full_name])
             for l in lvs:
                 cfg.om.register_object(l, True)
                 created_lv = l.dbus_object_path()
@@ -570,7 +570,7 @@ class Vg(utils.AutomatedProperties):
         if rc == 0:
             created_lv = "/"
             full_name = "%s/%s" % (self.name, name)
-            lvs = load_lvs(self._ap_c, [full_name])
+            lvs = load_lvs([full_name])
             for l in lvs:
                 cfg.om.register_object(l, True)
                 created_lv = l.dbus_object_path()
@@ -596,7 +596,7 @@ class Vg(utils.AutomatedProperties):
         if rc == 0:
             created_lv = "/"
             full_name = "%s/%s" % (self.name, name)
-            lvs = load_lvs(self._ap_c, [full_name])
+            lvs = load_lvs([full_name])
             for l in lvs:
                 cfg.om.register_object(l, True)
                 created_lv = l.dbus_object_path()
@@ -714,12 +714,12 @@ def lv_object_factory(interface_name, *args):
             return dbus.Array(rc, signature="(oa(tt))")
 
         # noinspection PyUnusedLocal
-        def __init__(self, c, object_path,
+        def __init__(self, object_path,
                      uuid, name, path, size_bytes,
                      vg_name, vg_uuid, pool_lv,
                      origin_lv, data_percent, attr, tags, segtype):
 
-            super(Lv, self).__init__(c, object_path, interface_name, load_lvs)
+            super(Lv, self).__init__(object_path, interface_name, load_lvs)
             utils.init_class_from_arguments(self)
 
             self._vg = cfg.om.get_object_path_by_lvm_id(
@@ -858,7 +858,7 @@ def lv_object_factory(interface_name, *args):
             if rc == 0:
                 snapshot_path = "/"
                 full_name = "%s/%s" % (self._vg_name_lookup(), name)
-                lvs = load_lvs(self._ap_c, [full_name])
+                lvs = load_lvs([full_name])
                 for l in lvs:
                     cfg.om.register_object(l, True)
                     snapshot_path = l.dbus_object_path()
@@ -883,7 +883,7 @@ def lv_object_factory(interface_name, *args):
                                                    name, size_bytes)
             if rc == 0:
                 full_name = "%s/%s" % (self._vg_name, name)
-                lvs = load_lvs(self._ap_c, [full_name])
+                lvs = load_lvs([full_name])
                 for l in lvs:
                     cfg.om.register_object(l, True)
                     return l.dbus_object_path()
@@ -901,7 +901,7 @@ def lv_object_factory(interface_name, *args):
         raise Exception("Unsupported interface name %s" % (interface_name))
 
 
-def load_pvs(connection, device=None, object_path=None):
+def load_pvs(device=None, object_path=None):
     _pvs = cmdhandler.pv_retrieve(device)
 
     pvs = sorted(_pvs, key=lambda k: k['pv_name'])
@@ -914,7 +914,7 @@ def load_pvs(connection, device=None, object_path=None):
             object_path = cfg.om.get_object_path_by_lvm_id(
                 p['pv_uuid'], p['pv_name'], pv_obj_path_generate)
 
-        p = Pv(connection, object_path,
+        p = Pv(object_path,
                p["pv_name"], p["pv_uuid"], p["pv_name"], p["pv_fmt"],
                n(p["pv_size"]),
                n(p["pv_free"]), n(p["pv_used"]), n(p["dev_size"]),
@@ -929,7 +929,7 @@ def load_pvs(connection, device=None, object_path=None):
     return rc
 
 
-def load_vgs(connection, vg_specific=None, object_path=None):
+def load_vgs(vg_specific=None, object_path=None):
     _vgs = cmdhandler.vg_retrieve(vg_specific)
 
     vgs = sorted(_vgs, key=lambda k: k['vg_name'])
@@ -941,7 +941,7 @@ def load_vgs(connection, vg_specific=None, object_path=None):
             object_path = cfg.om.get_object_path_by_lvm_id(
                 v['vg_uuid'], v['vg_name'], vg_obj_path_generate)
 
-        vg = Vg(connection, object_path,
+        vg = Vg(object_path,
                 v['vg_uuid'], v['vg_name'], v['vg_fmt'], n(v['vg_size']),
                 n(v['vg_free']),
                 v['vg_sysid'], n(v['vg_extent_size']), n(v['vg_extent_count']),
@@ -957,7 +957,7 @@ def load_vgs(connection, vg_specific=None, object_path=None):
     return rc
 
 
-def load_lvs(connection, lv_name=None, object_path=None):
+def load_lvs(lv_name=None, object_path=None):
     _lvs = cmdhandler.lv_retrieve(lv_name)
 
     lvs = sorted(_lvs, key=lambda k: k['lv_name'])
@@ -974,7 +974,7 @@ def load_lvs(connection, lv_name=None, object_path=None):
                 object_path = cfg.om.get_object_path_by_lvm_id(
                     l['lv_uuid'], ident, lv_obj_path_generate)
 
-            lv = lv_object_factory(LV_INTERFACE, connection, object_path,
+            lv = lv_object_factory(LV_INTERFACE, object_path,
                                    l['lv_uuid'], l['lv_name'],
                                    l['lv_path'], n(l['lv_size']), l['vg_name'],
                                    l['vg_uuid'], l['pool_lv'], l['origin'],
@@ -987,7 +987,7 @@ def load_lvs(connection, lv_name=None, object_path=None):
                     l['lv_uuid'], ident, thin_pool_obj_path_generate)
 
             lv = lv_object_factory(
-                THIN_POOL_INTERFACE, connection, object_path,
+                THIN_POOL_INTERFACE, object_path,
                 l['lv_uuid'], l['lv_name'], l['lv_path'], n(l['lv_size']),
                 l['vg_name'], l['vg_uuid'], l['pool_lv'], l['origin'],
                 n32(l['data_percent']), l['lv_attr'], l['lv_tags'],
@@ -998,30 +998,28 @@ def load_lvs(connection, lv_name=None, object_path=None):
     return rc
 
 
-def load(connection):
+def load():
     # Go through and load all the PVs, VGs and LVs
-    for p in load_pvs(connection):
+    for p in load_pvs():
         cfg.om.register_object(p)
 
-    for v in load_vgs(connection):
+    for v in load_vgs():
         cfg.om.register_object(v)
 
-    for l in load_lvs(connection):
+    for l in load_lvs():
         cfg.om.register_object(l)
 
 
 class Lvm(utils.ObjectManager):
-    def __init__(self, connection, object_path):
-        super(Lvm, self).__init__(connection, object_path,
-                                  BASE_INTERFACE)
+    def __init__(self, object_path):
+        super(Lvm, self).__init__(object_path, BASE_INTERFACE)
 
 
 class Manager(utils.AutomatedProperties):
     DBUS_INTERFACE = MANAGER_INTERFACE
 
-    def __init__(self, connection, object_path):
-        super(Manager, self).__init__(connection, object_path,
-                                      MANAGER_INTERFACE)
+    def __init__(self, object_path):
+        super(Manager, self).__init__(object_path, MANAGER_INTERFACE)
 
     @staticmethod
     def _pv_create(dbus_object, create_options, device):
@@ -1037,7 +1035,7 @@ class Manager(utils.AutomatedProperties):
         created_pv = []
         rc, out, err = cmdhandler.pv_create(create_options, [device])
         if rc == 0:
-            pvs = load_pvs(dbus_object._ap_c, [device])
+            pvs = load_pvs([device])
             for p in pvs:
                 cfg.om.register_object(p, True)
                 created_pv = p.dbus_object_path()
@@ -1073,7 +1071,7 @@ class Manager(utils.AutomatedProperties):
         created_vg = "/"
 
         if rc == 0:
-            vgs = load_vgs(dbus_object._ap_c, [name])
+            vgs = load_vgs([name])
             for v in vgs:
                 cfg.om.register_object(v, True)
                 created_vg = v.dbus_object_path()
@@ -1192,8 +1190,8 @@ class AsyncJob(utils.AutomatedProperties):
     _result_type = 'o'
     _get_error_type = '(is)'
 
-    def __init__(self, c, request):
-        super(AsyncJob, self).__init__(c, job_obj_path_generate(),
+    def __init__(self, request):
+        super(AsyncJob, self).__init__(cfg.bus, job_obj_path_generate(),
                                        JOB_INTERFACE)
         self._request = request
         self._percent = 1
@@ -1266,7 +1264,7 @@ class RequestEntry(object):
 
     def _return_job(self):
         self._job = True
-        job = AsyncJob(self.dbus_object._ap_c, self)
+        job = AsyncJob(self)
         self.cb(('/', job.dbus_object_path()))
 
     def run_cmd(self):
@@ -1426,10 +1424,10 @@ if __name__ == '__main__':
     dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
     gobject.threads_init()
     dbus.mainloop.glib.threads_init()
-    sys_bus = dbus.SystemBus()
-    base_name = dbus.service.BusName(BASE_INTERFACE, sys_bus)
-    cfg.om = Lvm(sys_bus, BASE_OBJ_PATH)
-    cfg.om.register_object(Manager(sys_bus, MANAGER_OBJ_PATH))
+    cfg.bus = dbus.SystemBus()
+    base_name = dbus.service.BusName(BASE_INTERFACE, cfg.bus)
+    cfg.om = Lvm(BASE_OBJ_PATH)
+    cfg.om.register_object(Manager(MANAGER_OBJ_PATH))
 
     # Start up process to monitor moves
     process_list.append(
@@ -1438,7 +1436,7 @@ if __name__ == '__main__':
     # Using a thread to process requests.
     process_list.append(threading.Thread(target=process_request))
 
-    load(sys_bus)
+    load()
     loop = gobject.MainLoop()
 
     for process in process_list:

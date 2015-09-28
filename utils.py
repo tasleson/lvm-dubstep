@@ -192,9 +192,8 @@ class AutomatedProperties(dbus.service.Object):
 
     DBUS_INTERFACE = ''
 
-    def __init__(self, conn, object_path, interface, search_method=None):
-        dbus.service.Object.__init__(self, conn, object_path)
-        self._ap_c = conn
+    def __init__(self, object_path, interface, search_method=None):
+        dbus.service.Object.__init__(self, cfg.bus, object_path)
         self._ap_interface = interface
         self._ap_o_path = object_path
         self._ap_search_method = search_method
@@ -254,7 +253,7 @@ class AutomatedProperties(dbus.service.Object):
     @dbus.service.method(dbus_interface=dbus.INTROSPECTABLE_IFACE,
                          out_signature='s')
     def Introspect(self):
-        r = dbus.service.Object.Introspect(self, self._ap_o_path, self._ap_c)
+        r = dbus.service.Object.Introspect(self, self._ap_o_path, cfg.bus)
         # Look at the properties in the class
         return add_properties(r, self._ap_interface, get_properties(self)[0])
 
@@ -289,9 +288,7 @@ class AutomatedProperties(dbus.service.Object):
         cfg.om.remove_object(self)
 
         # Go out and fetch the latest version of this object, eg. pvs, vgs, lvs
-        found = self._ap_search_method(
-            self._ap_c, [search],
-            self.dbus_object_path())
+        found = self._ap_search_method([search], self.dbus_object_path())
         for i in found:
             cfg.om.register_object(i)
             changed = get_object_property_diff(self, i)
@@ -323,9 +320,8 @@ class ObjectManager(AutomatedProperties):
     Implements the org.freedesktop.DBus.ObjectManager interface
     """
 
-    def __init__(self, conn, object_path, interface):
-        super(ObjectManager, self).__init__(conn, object_path, interface)
-        self._ap_c = conn
+    def __init__(self, object_path, interface):
+        super(ObjectManager, self).__init__(object_path, interface)
         self._ap_interface = interface
         self._ap_o_path = object_path
         self._objects = {}
@@ -420,7 +416,7 @@ class ObjectManager(AutomatedProperties):
         self._lookup_remove(path)
 
         # Remove from dbus library
-        dbus_object.remove_from_connection(self._ap_c, path)
+        dbus_object.remove_from_connection(cfg.bus, path)
 
         # Optionally emit a signal
         if emit_signal:

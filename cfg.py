@@ -15,3 +15,6 @@
 
 # This is the global object manager
 om = None
+
+# This is the global bus connection
+bus = None
