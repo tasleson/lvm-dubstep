@@ -19,6 +19,7 @@ import hashlib
 import traceback
 import sys
 import inspect
+import cfg
 
 
 def md5(t):
@@ -285,14 +286,14 @@ class AutomatedProperties(dbus.service.Object):
         if search_key:
             search = search_key
 
-        self._object_manager.remove_object(self)
+        cfg.om.remove_object(self)
 
         # Go out and fetch the latest version of this object, eg. pvs, vgs, lvs
         found = self._ap_search_method(
-            self._ap_c, self._object_manager, [search],
+            self._ap_c, [search],
             self.dbus_object_path())
         for i in found:
-            self._object_manager.register_object(i)
+            cfg.om.register_object(i)
             changed = get_object_property_diff(self, i)
 
             if changed:

@@ -33,6 +33,7 @@ import threading
 import time
 import ctypes
 import traceback
+import cfg
 
 # Shared state variable across all processes
 run = multiprocessing.Value('i', 1)
@@ -77,6 +78,7 @@ def pprint(msg):
         stdout_lock.release()
 
 
+# noinspection PyUnusedLocal
 def handler(signum, frame):
     run.value = 0
     pprint('Signal handler called with signal %d' % signum)
@@ -157,15 +159,16 @@ class Pv(utils.AutomatedProperties):
                 lv_uuid = lv[3]
 
                 if attrib[0] == 't':
-                    lv_path = self._object_manager.get_object_path_by_lvm_id(
+                    lv_path = cfg.om.get_object_path_by_lvm_id(
                         lv_uuid, full_name, thin_pool_obj_path_generate)
                 else:
-                    lv_path = self._object_manager.get_object_path_by_lvm_id(
+                    lv_path = cfg.om.get_object_path_by_lvm_id(
                         lv_uuid, full_name, lv_obj_path_generate)
                 rc.append((lv_path, segs))
         return dbus.Array(rc, signature="(oa(tt))")
 
-    def __init__(self, c, object_path, object_manager, lvm_path, uuid, name,
+    # noinspection PyUnusedLocal
+    def __init__(self, c, object_path, lvm_path, uuid, name,
                  fmt, size_bytes, free_bytes, used_bytes, dev_size_bytes,
                  mda_size_bytes, mda_free_bytes, ba_start, ba_size_bytes,
                  pe_start, pe_count, pe_alloc_count, attr, tags, vg_name,
@@ -176,7 +179,7 @@ class Pv(utils.AutomatedProperties):
         self._lv = self._lv_object_list(vg_name)
 
         if vg_name:
-            self._vg_path = self._object_manager.get_object_path_by_lvm_id(
+            self._vg_path = cfg.om.get_object_path_by_lvm_id(
                 vg_uuid, vg_name, vg_obj_path_generate)
         else:
             self._vg_path = '/'
@@ -187,7 +190,7 @@ class Pv(utils.AutomatedProperties):
         rc, out, err = cmdhandler.pv_remove(self.lvm_id)
 
         if rc == 0:
-            self._object_manager.remove_object(self, True)
+            cfg.om.remove_object(self, True)
         else:
             # Need to work on error handling, need consistent
             raise dbus.exceptions.DBusException(
@@ -304,20 +307,22 @@ class Vg(utils.AutomatedProperties):
             if lv_attr[0] == 't':
                 gen = thin_pool_obj_path_generate
 
-            lv_path = self._object_manager.get_object_path_by_lvm_id(
+            lv_path = cfg.om.get_object_path_by_lvm_id(
                 lv_uuid, full_name, gen)
             rc.append(lv_path)
         return dbus.Array(rc, signature='o')
 
-    def _pv_paths_build(self, name):
+    @staticmethod
+    def _pv_paths_build(name):
         rc = []
         for p in cmdhandler.pvs_in_vg(name):
             (pv_name, pv_uuid) = p
-            rc.append(self._object_manager.get_object_path_by_lvm_id(
+            rc.append(cfg.om.get_object_path_by_lvm_id(
                 pv_uuid, pv_name, pv_obj_path_generate))
         return dbus.Array(rc, signature='o')
 
-    def __init__(self, c, object_path, object_manager, uuid, name, fmt,
+    # noinspection PyUnusedLocal
+    def __init__(self, c, object_path, uuid, name, fmt,
                  size_bytes, free_bytes, sys_id, extent_size_bytes,
                  extent_count, free_count, profile, max_lv, max_pv, pv_count,
                  lv_count, snap_count, seqno, mda_count, mda_free,
@@ -335,7 +340,7 @@ class Vg(utils.AutomatedProperties):
             pv_list = self.pvs
 
         for p in pv_list:
-            pv = self._object_manager.get_by_path(p)
+            pv = cfg.om.get_by_path(p)
             pv.refresh()
 
     def _refresh_lvs(self, lv_list=None, vg_name=None):
@@ -346,7 +351,7 @@ class Vg(utils.AutomatedProperties):
             lv_list = self.lvs
 
         for i in lv_list:
-            obj = self._object_manager.get_by_path(i)
+            obj = cfg.om.get_by_path(i)
 
             if vg_name:
                 obj.refresh(search_key="%s/%s" % (vg_name, obj.name))
@@ -369,7 +374,7 @@ class Vg(utils.AutomatedProperties):
                 # unfortunate that we need to go out and fetch all of these
                 # TODO: Change to some kind of batch operation where we do
                 # all with one lvs command instead of fetching one at a time
-                lv_obj = self._object_manager.get_by_path(lv)
+                lv_obj = cfg.om.get_by_path(lv)
                 lv_obj.refresh()
 
             return self.dbus_object_path()
@@ -385,7 +390,7 @@ class Vg(utils.AutomatedProperties):
         rc, out, err = cmdhandler.vg_remove(self.lvm_id)
 
         if rc == 0:
-            self._object_manager.remove_object(self, True)
+            cfg.om.remove_object(self, True)
 
             # The vg is gone from LVM and from the dbus API, signal changes
             # in all the previously involved PVs
@@ -415,7 +420,7 @@ class Vg(utils.AutomatedProperties):
 
             if 'activate' in change_options:
                 for lv in self.lvs:
-                    lv_obj = self._object_manager.get_by_path(lv)
+                    lv_obj = cfg.om.get_by_path(lv)
                     lv_obj.refresh()
         else:
             raise dbus.exceptions.DBusException(
@@ -432,7 +437,7 @@ class Vg(utils.AutomatedProperties):
         if pv_object_paths and len(pv_object_paths) > 0:
             for pv_op in pv_object_paths:
                 print('pv_op=', pv_op)
-                pv = self._object_manager.get_by_path(pv_op)
+                pv = cfg.om.get_by_path(pv_op)
                 if pv:
                     pv_devices.append(pv.lvm_id)
                 else:
@@ -454,7 +459,7 @@ class Vg(utils.AutomatedProperties):
         extend_devices = []
 
         for i in pv_object_paths:
-            pv = self._object_manager.get_by_path(i)
+            pv = cfg.om.get_by_path(i)
             if pv:
                 extend_devices.append(pv.lvm_id)
             else:
@@ -490,9 +495,9 @@ class Vg(utils.AutomatedProperties):
         if rc == 0:
             created_lv = "/"
             full_name = "%s/%s" % (self.name, name)
-            lvs = load_lvs(self._ap_c, self._object_manager, [full_name])
+            lvs = load_lvs(self._ap_c, [full_name])
             for l in lvs:
-                self._object_manager.register_object(l, True)
+                cfg.om.register_object(l, True)
                 created_lv = l.dbus_object_path()
 
             # Refresh self and all included PVs
@@ -515,9 +520,9 @@ class Vg(utils.AutomatedProperties):
         if rc == 0:
             created_lv = "/"
             full_name = "%s/%s" % (self.name, name)
-            lvs = load_lvs(self._ap_c, self._object_manager, [full_name])
+            lvs = load_lvs(self._ap_c, [full_name])
             for l in lvs:
-                self._object_manager.register_object(l, True)
+                cfg.om.register_object(l, True)
                 created_lv = l.dbus_object_path()
 
             # Refresh self and all included PVs
@@ -541,9 +546,9 @@ class Vg(utils.AutomatedProperties):
         if rc == 0:
             created_lv = "/"
             full_name = "%s/%s" % (self.name, name)
-            lvs = load_lvs(self._ap_c, self._object_manager, [full_name])
+            lvs = load_lvs(self._ap_c, [full_name])
             for l in lvs:
-                self._object_manager.register_object(l, True)
+                cfg.om.register_object(l, True)
                 created_lv = l.dbus_object_path()
 
             # Refresh self and all included PVs
@@ -565,9 +570,9 @@ class Vg(utils.AutomatedProperties):
         if rc == 0:
             created_lv = "/"
             full_name = "%s/%s" % (self.name, name)
-            lvs = load_lvs(self._ap_c, self._object_manager, [full_name])
+            lvs = load_lvs(self._ap_c, [full_name])
             for l in lvs:
-                self._object_manager.register_object(l, True)
+                cfg.om.register_object(l, True)
                 created_lv = l.dbus_object_path()
 
             # Refresh self and all included PVs
@@ -591,9 +596,9 @@ class Vg(utils.AutomatedProperties):
         if rc == 0:
             created_lv = "/"
             full_name = "%s/%s" % (self.name, name)
-            lvs = load_lvs(self._ap_c, self._object_manager, [full_name])
+            lvs = load_lvs(self._ap_c, [full_name])
             for l in lvs:
-                self._object_manager.register_object(l, True)
+                cfg.om.register_object(l, True)
                 created_lv = l.dbus_object_path()
 
             # Refresh self and all included PVs
@@ -698,16 +703,18 @@ def lv_object_factory(interface_name, *args):
         _tags_type = "as"
         _is_thin_volume_type = "b"
 
-        def _pv_devices(self, lvm_id):
+        @staticmethod
+        def _pv_devices(lvm_id):
             rc = []
             for pv in sorted(cmdhandler.lv_pv_devices(lvm_id)):
                 (pv_name, pv_segs, pv_uuid) = pv
-                pv_obj = self._object_manager.get_object_path_by_lvm_id(
+                pv_obj = cfg.om.get_object_path_by_lvm_id(
                     pv_name, pv_uuid)
                 rc.append((pv_obj, pv_segs))
             return dbus.Array(rc, signature="(oa(tt))")
 
-        def __init__(self, c, object_path, object_manager,
+        # noinspection PyUnusedLocal
+        def __init__(self, c, object_path,
                      uuid, name, path, size_bytes,
                      vg_name, vg_uuid, pool_lv,
                      origin_lv, data_percent, attr, tags, segtype):
@@ -715,7 +722,7 @@ def lv_object_factory(interface_name, *args):
             super(Lv, self).__init__(c, object_path, interface_name, load_lvs)
             utils.init_class_from_arguments(self)
 
-            self._vg = self._object_manager.get_object_path_by_lvm_id(
+            self._vg = cfg.om.get_object_path_by_lvm_id(
                 vg_uuid, vg_name, vg_obj_path_generate)
 
             self._devices = self._pv_devices(self.lvm_id)
@@ -723,27 +730,27 @@ def lv_object_factory(interface_name, *args):
             # When https://bugzilla.redhat.com/show_bug.cgi?id=1264190 is
             # completed, fix this to pass the pool_lv_uuid too
             if pool_lv:
-                self._pool_lv = self._object_manager.get_object_path_by_lvm_id(
+                self._pool_lv = cfg.om.get_object_path_by_lvm_id(
                     None, '%s/%s' % (vg_name, pool_lv),
                     thin_pool_obj_path_generate)
 
             if origin_lv:
                 self._origin_lv = \
-                    self._object_manager.get_object_path_by_lvm_id(
+                    cfg.om.get_object_path_by_lvm_id(
                         None, '%s/%s' % (vg_name, origin_lv),
                         vg_obj_path_generate)
 
         def _vg_name_lookup(self):
-            return self._object_manager.get_by_path(self._vg).name
+            return cfg.om.get_by_path(self._vg).name
 
         def _signal_vg_pv_changes(self):
             # Signal property changes...
-            vg_obj = self._object_manager.get_by_path(self.vg)
+            vg_obj = cfg.om.get_by_path(self.vg)
             if vg_obj:
                 vg_obj.refresh()
 
             for d in self.devices:
-                pv = self._object_manager.get_by_path(d[0])
+                pv = cfg.om.get_by_path(d[0])
                 if pv:
                     pv.refresh()
 
@@ -754,7 +761,7 @@ def lv_object_factory(interface_name, *args):
 
             if rc == 0:
                 self._signal_vg_pv_changes()
-                self._object_manager.remove_object(self, True)
+                cfg.om.remove_object(self, True)
             else:
                 # Need to work on error handling, need consistent
                 raise dbus.exceptions.DBusException(
@@ -770,7 +777,7 @@ def lv_object_factory(interface_name, *args):
             if rc == 0:
                 # Refresh the VG
                 self.refresh("%s/%s" % (self._vg_name_lookup(), name))
-                self._object_manager.get_by_path(self._vg).refresh()
+                cfg.om.get_by_path(self._vg).refresh()
                 return self.dbus_object_path()
             else:
                 # Need to work on error handling, need consistent
@@ -796,10 +803,10 @@ def lv_object_factory(interface_name, *args):
         def Move(self, move_options, pv_src_obj, pv_source_range, pv_dest_obj,
                  pv_dest_range):
             pv_dest = None
-            pv_src = self._object_manager.get_by_path(pv_src_obj)
+            pv_src = cfg.om.get_by_path(pv_src_obj)
             if pv_src:
                 if pv_dest_obj != '/':
-                    pv_dest_t = self._object_manager.get_by_path(pv_dest_obj)
+                    pv_dest_t = cfg.om.get_by_path(pv_dest_obj)
                     if not pv_dest_t:
                         raise dbus.exceptions.DBusException(
                             interface_name, 'pv_dest_obj (%s) not found' %
@@ -818,9 +825,9 @@ def lv_object_factory(interface_name, *args):
                     # Create job object for monitoring
                     jobs = cmdhandler.pv_move_status()
                     if self.lvm_id in jobs:
-                        job_obj = Job(self._c, self._object_manager,
+                        job_obj = Job(self._c,
                                       self.lvm_id)
-                        self._object_manager.register_object(job_obj)
+                        cfg.om.register_object(job_obj)
                         kick_q.put("wake up!")
                         return job_obj.dbus_object_path()
                 else:
@@ -851,9 +858,9 @@ def lv_object_factory(interface_name, *args):
             if rc == 0:
                 snapshot_path = "/"
                 full_name = "%s/%s" % (self._vg_name_lookup(), name)
-                lvs = load_lvs(self._ap_c, self._object_manager, [full_name])
+                lvs = load_lvs(self._ap_c, [full_name])
                 for l in lvs:
-                    self._object_manager.register_object(l, True)
+                    cfg.om.register_object(l, True)
                     snapshot_path = l.dbus_object_path()
 
                 # Refresh self and all included PVs
@@ -876,9 +883,9 @@ def lv_object_factory(interface_name, *args):
                                                    name, size_bytes)
             if rc == 0:
                 full_name = "%s/%s" % (self._vg_name, name)
-                lvs = load_lvs(self._ap_c, self._object_manager, [full_name])
+                lvs = load_lvs(self._ap_c, [full_name])
                 for l in lvs:
-                    self._object_manager.register_object(l, True)
+                    cfg.om.register_object(l, True)
                     return l.dbus_object_path()
                 return "/"
             else:
@@ -894,7 +901,7 @@ def lv_object_factory(interface_name, *args):
         raise Exception("Unsupported interface name %s" % (interface_name))
 
 
-def load_pvs(connection, obj_manager, device=None, object_path=None):
+def load_pvs(connection, device=None, object_path=None):
     _pvs = cmdhandler.pv_retrieve(device)
 
     pvs = sorted(_pvs, key=lambda k: k['pv_name'])
@@ -904,10 +911,10 @@ def load_pvs(connection, obj_manager, device=None, object_path=None):
     for p in pvs:
 
         if not object_path:
-            object_path = obj_manager.get_object_path_by_lvm_id(
+            object_path = cfg.om.get_object_path_by_lvm_id(
                 p['pv_uuid'], p['pv_name'], pv_obj_path_generate)
 
-        p = Pv(connection, object_path, obj_manager,
+        p = Pv(connection, object_path,
                p["pv_name"], p["pv_uuid"], p["pv_name"], p["pv_fmt"],
                n(p["pv_size"]),
                n(p["pv_free"]), n(p["pv_used"]), n(p["dev_size"]),
@@ -922,7 +929,7 @@ def load_pvs(connection, obj_manager, device=None, object_path=None):
     return rc
 
 
-def load_vgs(connection, obj_manager, vg_specific=None, object_path=None):
+def load_vgs(connection, vg_specific=None, object_path=None):
     _vgs = cmdhandler.vg_retrieve(vg_specific)
 
     vgs = sorted(_vgs, key=lambda k: k['vg_name'])
@@ -931,10 +938,10 @@ def load_vgs(connection, obj_manager, vg_specific=None, object_path=None):
 
     for v in vgs:
         if not object_path:
-            object_path = obj_manager.get_object_path_by_lvm_id(
+            object_path = cfg.om.get_object_path_by_lvm_id(
                 v['vg_uuid'], v['vg_name'], vg_obj_path_generate)
 
-        vg = Vg(connection, object_path, obj_manager,
+        vg = Vg(connection, object_path,
                 v['vg_uuid'], v['vg_name'], v['vg_fmt'], n(v['vg_size']),
                 n(v['vg_free']),
                 v['vg_sysid'], n(v['vg_extent_size']), n(v['vg_extent_count']),
@@ -950,7 +957,7 @@ def load_vgs(connection, obj_manager, vg_specific=None, object_path=None):
     return rc
 
 
-def load_lvs(connection, obj_manager, lv_name=None, object_path=None):
+def load_lvs(connection, lv_name=None, object_path=None):
     _lvs = cmdhandler.lv_retrieve(lv_name)
 
     lvs = sorted(_lvs, key=lambda k: k['lv_name'])
@@ -964,11 +971,11 @@ def load_lvs(connection, obj_manager, lv_name=None, object_path=None):
         if l['lv_attr'][0] != 't':
 
             if not object_path:
-                object_path = obj_manager.get_object_path_by_lvm_id(
+                object_path = cfg.om.get_object_path_by_lvm_id(
                     l['lv_uuid'], ident, lv_obj_path_generate)
 
             lv = lv_object_factory(LV_INTERFACE, connection, object_path,
-                                   obj_manager, l['lv_uuid'], l['lv_name'],
+                                   l['lv_uuid'], l['lv_name'],
                                    l['lv_path'], n(l['lv_size']), l['vg_name'],
                                    l['vg_uuid'], l['pool_lv'], l['origin'],
                                    n32(l['data_percent']), l['lv_attr'],
@@ -976,11 +983,11 @@ def load_lvs(connection, obj_manager, lv_name=None, object_path=None):
         else:
 
             if not object_path:
-                object_path = obj_manager.get_object_path_by_lvm_id(
+                object_path = cfg.om.get_object_path_by_lvm_id(
                     l['lv_uuid'], ident, thin_pool_obj_path_generate)
 
             lv = lv_object_factory(
-                THIN_POOL_INTERFACE, connection, object_path, obj_manager,
+                THIN_POOL_INTERFACE, connection, object_path,
                 l['lv_uuid'], l['lv_name'], l['lv_path'], n(l['lv_size']),
                 l['vg_name'], l['vg_uuid'], l['pool_lv'], l['origin'],
                 n32(l['data_percent']), l['lv_attr'], l['lv_tags'],
@@ -991,16 +998,16 @@ def load_lvs(connection, obj_manager, lv_name=None, object_path=None):
     return rc
 
 
-def load(connection, obj_m):
+def load(connection):
     # Go through and load all the PVs, VGs and LVs
-    for p in load_pvs(connection, obj_m):
-        obj_m.register_object(p)
+    for p in load_pvs(connection):
+        cfg.om.register_object(p)
 
-    for v in load_vgs(connection, obj_m):
-        obj_m.register_object(v)
+    for v in load_vgs(connection):
+        cfg.om.register_object(v)
 
-    for l in load_lvs(connection, obj_m):
-        obj_m.register_object(l)
+    for l in load_lvs(connection):
+        cfg.om.register_object(l)
 
 
 class Lvm(utils.ObjectManager):
@@ -1012,18 +1019,17 @@ class Lvm(utils.ObjectManager):
 class Manager(utils.AutomatedProperties):
     DBUS_INTERFACE = MANAGER_INTERFACE
 
-    def __init__(self, connection, object_path, object_manager):
+    def __init__(self, connection, object_path):
         super(Manager, self).__init__(connection, object_path,
                                       MANAGER_INTERFACE)
-        self._object_manager = object_manager
 
     @staticmethod
     def _pv_create(dbus_object, create_options, device):
 
         # Check to see if we are already trying to create a PV for an existing
         # PV
-        pv = dbus_object._object_manager.get_object_path_by_lvm_id(
-                device, device, None, False)
+        pv = cfg.om.get_object_path_by_lvm_id(
+            device, device, None, False)
         if pv:
             raise dbus.exceptions.DBusException(
                 MANAGER_INTERFACE, "PV Already exists!")
@@ -1031,10 +1037,9 @@ class Manager(utils.AutomatedProperties):
         created_pv = []
         rc, out, err = cmdhandler.pv_create(create_options, [device])
         if rc == 0:
-            pvs = load_pvs(dbus_object._ap_c,
-                           dbus_object._object_manager, [device])
+            pvs = load_pvs(dbus_object._ap_c, [device])
             for p in pvs:
-                dbus_object._object_manager.register_object(p, True)
+                cfg.om.register_object(p, True)
                 created_pv = p.dbus_object_path()
         else:
             raise dbus.exceptions.DBusException(
@@ -1057,7 +1062,7 @@ class Manager(utils.AutomatedProperties):
         pv_devices = []
 
         for p in pv_object_paths:
-            pv = dbus_object._object_manager.get_by_path(p)
+            pv = cfg.om.get_by_path(p)
             if pv:
                 pv_devices.append(pv.name)
             else:
@@ -1068,17 +1073,16 @@ class Manager(utils.AutomatedProperties):
         created_vg = "/"
 
         if rc == 0:
-            vgs = load_vgs(dbus_object._ap_c,
-                           dbus_object._object_manager, [name])
+            vgs = load_vgs(dbus_object._ap_c, [name])
             for v in vgs:
-                dbus_object._object_manager.register_object(v, True)
+                cfg.om.register_object(v, True)
                 created_vg = v.dbus_object_path()
 
             # For each PV that was involved in this VG create we need to
             # signal the property changes, make sure to do this *after* the
             # vg is available on the bus
             for p in pv_object_paths:
-                pv = dbus_object._object_manager.get_by_path(p)
+                pv = cfg.om.get_by_path(p)
                 pv.refresh()
         else:
             raise dbus.exceptions.DBusException(
@@ -1103,7 +1107,7 @@ class Manager(utils.AutomatedProperties):
         more of a test method at the moment to make sure we are handling object
         paths correctly.
         """
-        self._object_manager.refresh_all()
+        cfg.om.refresh_all()
 
     @dbus.service.method(dbus_interface=MANAGER_INTERFACE,
                          in_signature='s',
@@ -1121,7 +1125,7 @@ class Manager(utils.AutomatedProperties):
 
         :return: Return the object path.  If object not found you will get '/'
         """
-        p = self._object_manager.get_object_path_by_lvm_id(
+        p = cfg.om.get_object_path_by_lvm_id(
             key, key, gen_new=False)
         if p:
             return p
@@ -1142,9 +1146,9 @@ class Job(utils.AutomatedProperties):
     _result_type = 'o'
     _get_error_type = '(is)'
 
-    def __init__(self, c, object_manager, lv_name):
+    def __init__(self, c, lv_name):
         super(Job, self).__init__(c, job_obj_path_generate(), JOB_INTERFACE)
-        utils.init_class_from_arguments(self)
+        self._lv_name = lv_name
 
     @property
     def percent(self):
@@ -1171,7 +1175,7 @@ class Job(utils.AutomatedProperties):
     @dbus.service.method(dbus_interface=JOB_INTERFACE)
     def Remove(self):
         if self.is_complete:
-            self._object_manager.remove_object(self, True)
+            cfg.om.remove_object(self, True)
         else:
             raise dbus.exceptions.DBusException(
                 JOB_INTERFACE, 'Job is not complete!')
@@ -1188,10 +1192,10 @@ class AsyncJob(utils.AutomatedProperties):
     _result_type = 'o'
     _get_error_type = '(is)'
 
-    def __init__(self, c, object_manager, request):
+    def __init__(self, c, request):
         super(AsyncJob, self).__init__(c, job_obj_path_generate(),
                                        JOB_INTERFACE)
-        utils.init_class_from_arguments(self)
+        self._request = request
         self._percent = 1
 
     @property
@@ -1217,7 +1221,7 @@ class AsyncJob(utils.AutomatedProperties):
     @dbus.service.method(dbus_interface=JOB_INTERFACE)
     def Remove(self):
         if self.is_complete:
-            self._object_manager.remove_object(self, True)
+            cfg.om.remove_object(self, True)
             self._request = None
         else:
             raise dbus.exceptions.DBusException(
@@ -1262,9 +1266,7 @@ class RequestEntry(object):
 
     def _return_job(self):
         self._job = True
-        job = AsyncJob(self.dbus_object._ap_c,
-                       self.dbus_object._object_manager,
-                       self)
+        job = AsyncJob(self.dbus_object._ap_c, self)
         self.cb(('/', job.dbus_object_path()))
 
     def run_cmd(self):
@@ -1426,17 +1428,17 @@ if __name__ == '__main__':
     dbus.mainloop.glib.threads_init()
     sys_bus = dbus.SystemBus()
     base_name = dbus.service.BusName(BASE_INTERFACE, sys_bus)
-    lvm = Lvm(sys_bus, BASE_OBJ_PATH)
-    lvm.register_object(Manager(sys_bus, MANAGER_OBJ_PATH, lvm))
+    cfg.om = Lvm(sys_bus, BASE_OBJ_PATH)
+    cfg.om.register_object(Manager(sys_bus, MANAGER_OBJ_PATH))
 
     # Start up process to monitor moves
     process_list.append(
-        multiprocessing.Process(target=signal_move_changes, args=(lvm,)))
+        threading.Thread(target=signal_move_changes, args=(cfg.om,)))
 
     # Using a thread to process requests.
     process_list.append(threading.Thread(target=process_request))
 
-    load(sys_bus, lvm)
+    load(sys_bus)
     loop = gobject.MainLoop()
 
     for process in process_list:
