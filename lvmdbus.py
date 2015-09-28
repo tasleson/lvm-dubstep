@@ -16,8 +16,8 @@
 # Copyright 2014, Tony Asleson <tasleson@redhat.com>
 
 
-from multiprocessing import Process, Queue, Lock, Value
-from Queue import Empty
+import multiprocessing
+import Queue
 import dbus
 import dbus.service
 import dbus.mainloop.glib
@@ -29,19 +29,22 @@ import cmdhandler
 import utils
 from utils import n, n32
 import itertools
+import threading
 import time
 import ctypes
+import traceback
 
 # Shared state variable across all processes
-run = Value('i', 1)
+run = multiprocessing.Value('i', 1)
 
 #Debug
 DEBUG = True
 
 # Lock used by pprint
-stdout_lock = Lock()
+stdout_lock = multiprocessing.Lock()
 
-kick_q = Queue()
+kick_q = multiprocessing.Queue()
+worker_q = Queue.Queue()
 
 # Main event loop
 loop = None
@@ -1014,14 +1017,13 @@ class Manager(utils.AutomatedProperties):
                                       MANAGER_INTERFACE)
         self._object_manager = object_manager
 
-    @dbus.service.method(dbus_interface=MANAGER_INTERFACE,
-                         in_signature='a{sv}s',
-                         out_signature='o')
-    def PvCreate(self, create_options, device):
+    @staticmethod
+    def _pv_create(dbus_object, create_options, device):
 
         # Check to see if we are already trying to create a PV for an existing
         # PV
-        pv = self._object_manager.get_object_path_by_lvm_id(device)
+        pv = dbus_object._object_manager.get_object_path_by_lvm_id(
+                device, device, None, False)
         if pv:
             raise dbus.exceptions.DBusException(
                 MANAGER_INTERFACE, "PV Already exists!")
@@ -1029,9 +1031,10 @@ class Manager(utils.AutomatedProperties):
         created_pv = []
         rc, out, err = cmdhandler.pv_create(create_options, [device])
         if rc == 0:
-            pvs = load_pvs(self._ap_c, self._object_manager, [device])
+            pvs = load_pvs(dbus_object._ap_c,
+                           dbus_object._object_manager, [device])
             for p in pvs:
-                self._object_manager.register_object(p, True)
+                dbus_object._object_manager.register_object(p, True)
                 created_pv = p.dbus_object_path()
         else:
             raise dbus.exceptions.DBusException(
@@ -1041,14 +1044,20 @@ class Manager(utils.AutomatedProperties):
         return created_pv
 
     @dbus.service.method(dbus_interface=MANAGER_INTERFACE,
-                         in_signature='a{sv}aos',
-                         out_signature='o')
-    def VgCreate(self, create_options, pv_object_paths, name):
+                         in_signature='a{sv}si',
+                         out_signature='(oo)',
+                         async_callbacks=('cb', 'cbe'))
+    def PvCreate(self, create_options, device, tmo, cb, cbe):
+        r = RequestEntry(tmo, self, Manager._pv_create,
+                         (self, create_options, device), cb, cbe)
+        worker_q.put(r)
 
+    @staticmethod
+    def _create_vg(dbus_object, create_options, pv_object_paths, name):
         pv_devices = []
 
         for p in pv_object_paths:
-            pv = self._object_manager.get_by_path(p)
+            pv = dbus_object._object_manager.get_by_path(p)
             if pv:
                 pv_devices.append(pv.name)
             else:
@@ -1059,22 +1068,33 @@ class Manager(utils.AutomatedProperties):
         created_vg = "/"
 
         if rc == 0:
-            vgs = load_vgs(self._ap_c, self._object_manager, [name])
+            vgs = load_vgs(dbus_object._ap_c,
+                           dbus_object._object_manager, [name])
             for v in vgs:
-                self._object_manager.register_object(v, True)
+                dbus_object._object_manager.register_object(v, True)
                 created_vg = v.dbus_object_path()
 
             # For each PV that was involved in this VG create we need to
             # signal the property changes, make sure to do this *after* the
             # vg is available on the bus
             for p in pv_object_paths:
-                pv = self._object_manager.get_by_path(p)
+                pv = dbus_object._object_manager.get_by_path(p)
                 pv.refresh()
         else:
             raise dbus.exceptions.DBusException(
                 MANAGER_INTERFACE,
                 'Exit code %s, stderr = %s' % (str(rc), err))
         return created_vg
+
+    @dbus.service.method(dbus_interface=MANAGER_INTERFACE,
+                         in_signature='a{sv}aosi',
+                         out_signature='(oo)',
+                         async_callbacks=('cb', 'cbe'))
+    def VgCreate(self, create_options, pv_object_paths, name, tmo, cb, cbe):
+        r = RequestEntry(tmo, self, Manager._create_vg,
+                         (self, create_options, pv_object_paths, name),
+                         cb, cbe)
+        worker_q.put(r)
 
     @dbus.service.method(dbus_interface=MANAGER_INTERFACE)
     def Refresh(self):
@@ -1119,9 +1139,11 @@ class Job(utils.AutomatedProperties):
     DBUS_INTERFACE = JOB_INTERFACE
     _percent_type = 'y'
     _is_complete_type = 'b'
+    _result_type = 'o'
+    _get_error_type = '(is)'
 
-    def __init__(self, c, object_path, object_manager, lv_name):
-        super(Job, self).__init__(c, object_path, JOB_INTERFACE)
+    def __init__(self, c, object_manager, lv_name):
+        super(Job, self).__init__(c, job_obj_path_generate(), JOB_INTERFACE)
         utils.init_class_from_arguments(self)
 
     @property
@@ -1138,6 +1160,14 @@ class Job(utils.AutomatedProperties):
             return True
         return False
 
+    @property
+    def get_error(self):
+        if self.is_complete:
+            return (0, '')
+        else:
+            raise dbus.exceptions.DBusException(
+                JOB_INTERFACE, 'Job is not complete!')
+
     @dbus.service.method(dbus_interface=JOB_INTERFACE)
     def Remove(self):
         if self.is_complete:
@@ -1145,6 +1175,175 @@ class Job(utils.AutomatedProperties):
         else:
             raise dbus.exceptions.DBusException(
                 JOB_INTERFACE, 'Job is not complete!')
+
+    @property
+    def result(self):
+        return '/'
+
+
+class AsyncJob(utils.AutomatedProperties):
+    DBUS_INTERFACE = JOB_INTERFACE
+    _percent_type = 'y'
+    _is_complete_type = 'b'
+    _result_type = 'o'
+    _get_error_type = '(is)'
+
+    def __init__(self, c, object_manager, request):
+        super(AsyncJob, self).__init__(c, job_obj_path_generate(),
+                                       JOB_INTERFACE)
+        utils.init_class_from_arguments(self)
+        self._percent = 1
+
+    @property
+    def percent(self):
+        return self._percent
+
+    @property
+    def is_complete(self):
+        done = self._request.is_done()
+        if done:
+            self._percent = 100
+        return done
+
+    @property
+    def get_error(self):
+        if self.is_complete:
+            (rc, error) = self._request.get_errors()
+            return (rc, str(error))
+        else:
+            raise dbus.exceptions.DBusException(
+                JOB_INTERFACE, 'Job is not complete!')
+
+    @dbus.service.method(dbus_interface=JOB_INTERFACE)
+    def Remove(self):
+        if self.is_complete:
+            self._object_manager.remove_object(self, True)
+            self._request = None
+        else:
+            raise dbus.exceptions.DBusException(
+                JOB_INTERFACE, 'Job is not complete!')
+
+    @property
+    def result(self):
+        return self._request.result()
+
+
+def _request_timeout(r):
+    r.timer_expired()
+
+
+class RequestEntry(object):
+    def __init__(self, tmo, dbus_object, method, arguments, cb, cb_error,
+                 has_return=True):
+        self.tmo = tmo
+        self.dbus_object = dbus_object
+        self.method = method
+        self.arguments = arguments
+        self.cb = cb
+        self.cb_error = cb_error
+
+        self.timer_id = -1
+        self.lock = threading.Lock()
+        self.done = False
+        self._result = None
+        self._job = False
+        self._rc = 0
+        self._rc_error = None
+        self._return_result = has_return
+
+        if self.tmo == -1:
+            # Client is willing to block forever
+            pass
+        elif tmo == 0:
+            self._return_job()
+        else:
+            self.timer_id = gobject.timeout_add_seconds(
+                tmo, _request_timeout, self)
+
+    def _return_job(self):
+        self._job = True
+        job = AsyncJob(self.dbus_object._ap_c,
+                       self.dbus_object._object_manager,
+                       self)
+        self.cb(('/', job.dbus_object_path()))
+
+    def run_cmd(self):
+        try:
+            result = self.method(*self.arguments)
+            self.register_result(result)
+        except dbus.DBusException as de:
+            # Use the request entry to return the result as the client may
+            # have gotten a job by the time we hit an error
+            self.register_error(-1, de)
+
+    def is_done(self):
+        with self.lock:
+            rc = self.done
+        return rc
+
+    def get_errors(self):
+        with self.lock:
+            return (self._rc, self._rc_error)
+
+    def result(self):
+        with self.lock:
+            if self.done:
+                return self._result
+            return '/'
+
+    def _reg_ending(self, result, error_rc=0, error=None):
+        with self.lock:
+            self.done = True
+            if self.timer_id != -1:
+                # Try to prevent the timer from firing
+                gobject.source_remove(self.timer_id)
+
+            self._result = result
+            self._rc = error_rc
+            self._rc_error = error
+
+            if not self._job:
+                # We finished and there is no job, so return result or error
+                # now!
+                if error_rc == 0:
+                    if self._return_result:
+                        self.cb((result, '/'))
+                    else:
+                        self.cb(None)
+                else:
+                    self.cb_error(self._rc_error)
+
+    def register_error(self, error_rc, error):
+        self._reg_ending(None, error_rc, error)
+
+    def register_result(self, result):
+        self._reg_ending(result)
+
+    def timer_expired(self):
+        with self.lock:
+            # Set the timer back to -1 as we will get a warning if we try
+            # to remove a timer that doesn't exist
+            self.timer_id = -1
+            if not self.done:
+                # Create dbus job object and return path to caller
+                self._return_job()
+            else:
+                # The job is done, we have nothing to do
+                pass
+
+        return False
+
+
+def process_request():
+    while run.value != 0:
+        try:
+            req = worker_q.get(True, 5)
+            req.run_cmd()
+        except Queue.Empty:
+            pass
+        except Exception:
+            traceback.print_exc(file=sys.stdout)
+            pass
 
 
 def signal_move_changes(obj_mgr):
@@ -1184,7 +1383,7 @@ def signal_move_changes(obj_mgr):
             kick_q.get(True, 5)
         except IOError:
             pass
-        except Empty:
+        except Queue.Empty:
             pass
 
         while True:
@@ -1231,7 +1430,11 @@ if __name__ == '__main__':
     lvm.register_object(Manager(sys_bus, MANAGER_OBJ_PATH, lvm))
 
     # Start up process to monitor moves
-    process_list.append(Process(target=signal_move_changes, args=(lvm,)))
+    process_list.append(
+        multiprocessing.Process(target=signal_move_changes, args=(lvm,)))
+
+    # Using a thread to process requests.
+    process_list.append(threading.Thread(target=process_request))
 
     load(sys_bus, lvm)
     loop = gobject.MainLoop()
@@ -1248,5 +1451,4 @@ if __name__ == '__main__':
 
     for process in process_list:
         process.join()
-        pprint("PID(%d), exit value= %d" % (process.pid, process.exitcode))
     sys.exit(0)
