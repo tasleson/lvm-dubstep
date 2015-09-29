@@ -1028,7 +1028,7 @@ class Manager(utils.AutomatedProperties):
         super(Manager, self).__init__(object_path, MANAGER_INTERFACE)
 
     @staticmethod
-    def _pv_create(dbus_object, create_options, device):
+    def _pv_create(create_options, device):
 
         # Check to see if we are already trying to create a PV for an existing
         # PV
@@ -1057,12 +1057,12 @@ class Manager(utils.AutomatedProperties):
                          out_signature='(oo)',
                          async_callbacks=('cb', 'cbe'))
     def PvCreate(self, create_options, device, tmo, cb, cbe):
-        r = RequestEntry(tmo, self, Manager._pv_create,
-                         (self, create_options, device), cb, cbe)
+        r = RequestEntry(tmo, Manager._pv_create,
+                         (create_options, device), cb, cbe)
         worker_q.put(r)
 
     @staticmethod
-    def _create_vg(dbus_object, create_options, pv_object_paths, name):
+    def _create_vg(create_options, pv_object_paths, name):
         pv_devices = []
 
         for p in pv_object_paths:
@@ -1099,8 +1099,8 @@ class Manager(utils.AutomatedProperties):
                          out_signature='(oo)',
                          async_callbacks=('cb', 'cbe'))
     def VgCreate(self, create_options, pv_object_paths, name, tmo, cb, cbe):
-        r = RequestEntry(tmo, self, Manager._create_vg,
-                         (self, create_options, pv_object_paths, name),
+        r = RequestEntry(tmo, Manager._create_vg,
+                         (create_options, pv_object_paths, name),
                          cb, cbe)
         worker_q.put(r)
 
@@ -1241,10 +1241,9 @@ def _request_timeout(r):
 
 
 class RequestEntry(object):
-    def __init__(self, tmo, dbus_object, method, arguments, cb, cb_error,
+    def __init__(self, tmo, method, arguments, cb, cb_error,
                  has_return=True):
         self.tmo = tmo
-        self.dbus_object = dbus_object
         self.method = method
         self.arguments = arguments
         self.cb = cb
