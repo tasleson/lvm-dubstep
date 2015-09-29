@@ -1390,8 +1390,6 @@ def process_request():
 
 def signal_move_changes(obj_mgr):
     prev_jobs = {}
-    cur_jobs = {}
-    have_one = None
 
     def gen_signals(p, c):
         if p:
@@ -1443,7 +1441,6 @@ def signal_move_changes(obj_mgr):
                 #Signal any that remain in running!
                 gen_signals(prev_jobs, cur_jobs)
                 prev_jobs = None
-                cur_jobs = None
                 break
 
             time.sleep(1)
