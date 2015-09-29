@@ -825,8 +825,7 @@ def lv_object_factory(interface_name, *args):
                     # Create job object for monitoring
                     jobs = cmdhandler.pv_move_status()
                     if self.lvm_id in jobs:
-                        job_obj = Job(self._c,
-                                      self.lvm_id)
+                        job_obj = Job(self.lvm_id)
                         cfg.om.register_object(job_obj)
                         kick_q.put("wake up!")
                         return job_obj.dbus_object_path()
@@ -1150,8 +1149,8 @@ class Job(utils.AutomatedProperties):
     _result_type = 'o'
     _get_error_type = '(is)'
 
-    def __init__(self, c, lv_name):
-        super(Job, self).__init__(c, job_obj_path_generate(), JOB_INTERFACE)
+    def __init__(self, lv_name):
+        super(Job, self).__init__(job_obj_path_generate(), JOB_INTERFACE)
         self._lv_name = lv_name
 
     @property
@@ -1197,7 +1196,7 @@ class AsyncJob(utils.AutomatedProperties):
     _get_error_type = '(is)'
 
     def __init__(self, request):
-        super(AsyncJob, self).__init__(cfg.bus, job_obj_path_generate(),
+        super(AsyncJob, self).__init__(job_obj_path_generate(),
                                        JOB_INTERFACE)
         self._request = request
         self._percent = 1
