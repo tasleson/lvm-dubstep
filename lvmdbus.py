@@ -244,15 +244,33 @@ class Pv(utils.AutomatedProperties):
                          False)
         worker_q.put(r)
 
-    @dbus.service.method(dbus_interface=PV_INTERFACE,
-                         in_signature='b')
-    def AllocationEnabled(self, yes):
-        rc, out, err = cmdhandler.pv_allocatable(self.lvm_id, yes)
-        if rc == 0:
-            self.refresh()
+    @staticmethod
+    def _allocation_enabled(pv_uuid, pv_name, yes_no):
+        # Make sure we have a dbus object representing it
+        dbo = cfg.om.get_by_uuid_lvm_id(pv_uuid, pv_name)
+
+        if dbo:
+            rc, out, err = cmdhandler.pv_allocatable(pv_name, yes_no)
+            if rc == 0:
+                dbo.refresh()
+            else:
+                raise dbus.exceptions.DBusException(
+                    PV_INTERFACE, 'Exit code %s, stderr = %s' % (str(rc), err))
         else:
             raise dbus.exceptions.DBusException(
-                PV_INTERFACE, 'Exit code %s, stderr = %s' % (str(rc), err))
+                PV_INTERFACE, 'PV with uuid %s and name %s not present!' %
+                (pv_uuid, pv_name))
+        return '/'
+
+    @dbus.service.method(dbus_interface=PV_INTERFACE,
+                         in_signature='bi',
+                         out_signature='o',
+                         async_callbacks=('cb', 'cbe'))
+    def AllocationEnabled(self, yes, tmo, cb, cbe):
+        r = RequestEntry(tmo, Pv._allocation_enabled,
+                         (self.uuid, self.lvm_id, yes),
+                         cb, cbe, False)
+        worker_q.put(r)
 
     @property
     def tags(self):
