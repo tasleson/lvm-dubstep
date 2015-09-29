@@ -38,9 +38,9 @@ def is_numeric(s):
 
 
 def rtype(dbus_type):
-    """Decorator making sure that the decorated function returns a value of
+    """
+    Decorator making sure that the decorated function returns a value of
     specified type.
-
     """
 
     def decorator(fn):
@@ -85,8 +85,6 @@ def init_class_from_arguments(obj_instance):
             # print 'Init class %s = %s' % (nt, str(v))
             if not(cur and len(str(cur)) and (v is None or len(str(v))) == 0):
                 setattr(obj_instance, nt, v)
-
-
 
 
 def get_properties(f, interface=None):
@@ -220,6 +218,7 @@ class AutomatedProperties(dbus.service.Object):
         return rc
 
     # Properties
+    # noinspection PyUnusedLocal
     @dbus.service.method(dbus_interface=dbus.PROPERTIES_IFACE,
                          in_signature='ss', out_signature='v')
     def Get(self, interface_name, property_name):
@@ -336,7 +335,7 @@ class ObjectManager(AutomatedProperties):
             for k, v in self._objects.items():
                 path, props = v[0].emit_data()
                 rc[path] = props
-        except Exception as e:
+        except Exception:
             traceback.print_exc(file=sys.stdout)
             sys.exit(1)
 
