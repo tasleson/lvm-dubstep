@@ -215,16 +215,34 @@ class Pv(utils.AutomatedProperties):
                          cb, cbe, return_tuple=False)
         worker_q.put(r)
 
-    @dbus.service.method(dbus_interface=PV_INTERFACE, in_signature='t')
-    def ReSize(self, new_size_bytes):
+    @staticmethod
+    def _resize(pv_uuid, pv_name, new_size_bytes):
+        # Make sure we have a dbus object representing it
+        dbo = cfg.om.get_by_uuid_lvm_id(pv_uuid, pv_name)
 
-        rc, out, err = cmdhandler.pv_resize(self.lvm_id, new_size_bytes)
-        if rc == 0:
-            self.refresh()
+        if dbo:
+            rc, out, err = cmdhandler.pv_resize(pv_name, new_size_bytes)
+            if rc == 0:
+                dbo.refresh()
+            else:
+                raise dbus.exceptions.DBusException(
+                    PV_INTERFACE,
+                    'Exit code %s, stderr = %s' % (str(rc), err))
         else:
             raise dbus.exceptions.DBusException(
-                PV_INTERFACE,
-                'Exit code %s, stderr = %s' % (str(rc), err))
+                PV_INTERFACE, 'PV with uuid %s and name %s not present!' %
+                (pv_uuid, pv_name))
+        return '/'
+
+    @dbus.service.method(dbus_interface=PV_INTERFACE,
+                         in_signature='ti',
+                         out_signature='o',
+                         async_callbacks=('cb', 'cbe'))
+    def ReSize(self, new_size_bytes, tmo, cb, cbe):
+        r = RequestEntry(tmo, Pv._resize,
+                         (self.uuid, self.lvm_id, new_size_bytes), cb, cbe,
+                         False)
+        worker_q.put(r)
 
     @dbus.service.method(dbus_interface=PV_INTERFACE,
                          in_signature='b')
