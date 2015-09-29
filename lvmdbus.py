@@ -184,18 +184,36 @@ class Pv(utils.AutomatedProperties):
         else:
             self._vg_path = '/'
 
-    @dbus.service.method(dbus_interface=PV_INTERFACE)
-    def Remove(self):
+    @staticmethod
+    def _remove(pv_uuid, pv_name):
         # Remove the PV, if successful then remove from the model
-        rc, out, err = cmdhandler.pv_remove(self.lvm_id)
+        # Make sure we have a dbus object representing it
+        dbo = cfg.om.get_by_uuid_lvm_id(pv_uuid, pv_name)
 
-        if rc == 0:
-            cfg.om.remove_object(self, True)
+        if dbo:
+            rc, out, err = cmdhandler.pv_remove(pv_name)
+            if rc == 0:
+                cfg.om.remove_object(dbo, True)
+            else:
+                # Need to work on error handling, need consistent
+                raise dbus.exceptions.DBusException(
+                    PV_INTERFACE,
+                    'Exit code %s, stderr = %s' % (str(rc), err))
         else:
-            # Need to work on error handling, need consistent
             raise dbus.exceptions.DBusException(
-                PV_INTERFACE,
-                'Exit code %s, stderr = %s' % (str(rc), err))
+                PV_INTERFACE, 'PV with uuid %s and name %s not present!' %
+                (pv_uuid, pv_name))
+        return '/'
+
+    @dbus.service.method(dbus_interface=PV_INTERFACE,
+                         in_signature='i',
+                         out_signature='o',
+                         async_callbacks=('cb', 'cbe'))
+    def Remove(self, tmo, cb, cbe):
+        r = RequestEntry(tmo, Pv._remove,
+                         (self.uuid, self.lvm_id),
+                         cb, cbe, return_tuple=False)
+        worker_q.put(r)
 
     @dbus.service.method(dbus_interface=PV_INTERFACE, in_signature='t')
     def ReSize(self, new_size_bytes):
