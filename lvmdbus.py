@@ -1241,7 +1241,7 @@ def _request_timeout(r):
 
 class RequestEntry(object):
     def __init__(self, tmo, method, arguments, cb, cb_error,
-                 has_return=True):
+                 return_tuple=True):
         self.tmo = tmo
         self.method = method
         self.arguments = arguments
@@ -1255,7 +1255,7 @@ class RequestEntry(object):
         self._job = False
         self._rc = 0
         self._rc_error = None
-        self._return_result = has_return
+        self._return_tuple = return_tuple
 
         if self.tmo == -1:
             # Client is willing to block forever
@@ -1269,7 +1269,9 @@ class RequestEntry(object):
     def _return_job(self):
         self._job = True
         job = AsyncJob(self)
-        self.cb(('/', job.dbus_object_path()))
+        if self._return_tuple:
+            self.cb(('/', job.dbus_object_path()))
+        return self.cb(job.dbus_object_path())
 
     def run_cmd(self):
         try:
@@ -1310,10 +1312,10 @@ class RequestEntry(object):
                 # We finished and there is no job, so return result or error
                 # now!
                 if error_rc == 0:
-                    if self._return_result:
+                    if self._return_tuple:
                         self.cb((result, '/'))
                     else:
-                        self.cb(None)
+                        self.cb(result)
                 else:
                     self.cb_error(self._rc_error)
 
