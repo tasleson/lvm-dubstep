@@ -893,10 +893,16 @@ def lv_object_factory(interface_name, *args):
                     MANAGER_INTERFACE,
                     'Exit code %s, stderr = %s' % (str(rc), err))
 
+    # Without this we each object has a new 'type' when constructed, so
+    # we save off the object and construct instances of it.
+    if not hasattr(lv_object_factory, "lv_t"):
+        lv_object_factory.lv_t = Lv
+        lv_object_factory.lv_pool_t = LvPoolInherit
+
     if interface_name == LV_INTERFACE:
-        return Lv(*args)
+        return lv_object_factory.lv_t(*args)
     elif interface_name == THIN_POOL_INTERFACE:
-        return LvPoolInherit(*args)
+        return lv_object_factory.lv_pool_t(*args)
     else:
         raise Exception("Unsupported interface name %s" % (interface_name))
 
