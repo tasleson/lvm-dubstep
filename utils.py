@@ -429,6 +429,10 @@ class ObjectManager(AutomatedProperties):
             return self._objects[path][0]
         return None
 
+    def get_by_uuid_lvm_id(self, uuid, lvm_id):
+        return self.get_by_path(
+            self.get_object_path_by_lvm_id(uuid, lvm_id, None, False))
+
     def get_by_lvm_id(self, lvm_id):
         """
         Given an lvm identifier, return the object registered for it
