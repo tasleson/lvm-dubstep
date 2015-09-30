@@ -386,7 +386,7 @@ class Vg(utils.AutomatedProperties):
         self._pv_in_vg = self._pv_paths_build(name)
         self._lv_in_vg = self._lv_paths_build(name)
 
-    def _refresh_pvs(self, pv_list=None):
+    def refresh_pvs(self, pv_list=None):
         """
         Refresh the state of the PVs for this vg given a PV object path
         """
@@ -397,7 +397,7 @@ class Vg(utils.AutomatedProperties):
             pv = cfg.om.get_by_path(p)
             pv.refresh()
 
-    def _refresh_lvs(self, lv_list=None, vg_name=None):
+    def refresh_lvs(self, lv_list=None, vg_name=None):
         """
         Refresh the state of the PVs for this vg given a PV object path
         """
@@ -448,7 +448,7 @@ class Vg(utils.AutomatedProperties):
 
             # The vg is gone from LVM and from the dbus API, signal changes
             # in all the previously involved PVs
-            self._refresh_pvs()
+            self.refresh_pvs()
 
         else:
             # Need to work on error handling, need consistent
@@ -501,7 +501,7 @@ class Vg(utils.AutomatedProperties):
         rc, out, err = cmdhandler.vg_reduce(self.lvm_id, missing, pv_devices)
         if rc == 0:
             self.refresh()
-            self._refresh_pvs()
+            self.refresh_pvs()
 
         else:
             raise dbus.exceptions.DBusException(
@@ -531,7 +531,7 @@ class Vg(utils.AutomatedProperties):
                 current_pvs = list(self.pvs)
                 self.refresh()
                 current_pvs.extend(pv_object_paths)
-                self._refresh_pvs(current_pvs)
+                self.refresh_pvs(current_pvs)
             else:
                 raise dbus.exceptions.DBusException(
                     VG_INTERFACE,
@@ -556,7 +556,7 @@ class Vg(utils.AutomatedProperties):
 
             # Refresh self and all included PVs
             self.refresh()
-            self._refresh_pvs()
+            self.refresh_pvs()
 
             return created_lv
         else:
@@ -581,7 +581,7 @@ class Vg(utils.AutomatedProperties):
 
             # Refresh self and all included PVs
             self.refresh()
-            self._refresh_pvs()
+            self.refresh_pvs()
 
             return created_lv
         else:
@@ -607,7 +607,7 @@ class Vg(utils.AutomatedProperties):
 
             # Refresh self and all included PVs
             self.refresh()
-            self._refresh_pvs()
+            self.refresh_pvs()
 
             return created_lv
         else:
@@ -631,7 +631,7 @@ class Vg(utils.AutomatedProperties):
 
             # Refresh self and all included PVs
             self.refresh()
-            self._refresh_pvs()
+            self.refresh_pvs()
 
             return created_lv
         else:
@@ -657,7 +657,7 @@ class Vg(utils.AutomatedProperties):
 
             # Refresh self and all included PVs
             self.refresh()
-            self._refresh_pvs()
+            self.refresh_pvs()
 
             return created_lv
         else:
