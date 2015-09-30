@@ -1284,8 +1284,7 @@ class Job(utils.AutomatedProperties):
         if self.is_complete:
             return (0, '')
         else:
-            raise dbus.exceptions.DBusException(
-                JOB_INTERFACE, 'Job is not complete!')
+            return (-1, 'Job is not complete!')
 
     @dbus.service.method(dbus_interface=JOB_INTERFACE)
     def Remove(self):
@@ -1330,8 +1329,7 @@ class AsyncJob(utils.AutomatedProperties):
             (rc, error) = self._request.get_errors()
             return (rc, str(error))
         else:
-            raise dbus.exceptions.DBusException(
-                JOB_INTERFACE, 'Job is not complete!')
+            return (-1, 'Job is not complete!')
 
     @dbus.service.method(dbus_interface=JOB_INTERFACE)
     def Remove(self):
@@ -1381,6 +1379,7 @@ class RequestEntry(object):
     def _return_job(self):
         self._job = True
         job = AsyncJob(self)
+        cfg.om.register_object(job, True)
         if self._return_tuple:
             self.cb(('/', job.dbus_object_path()))
         return self.cb(job.dbus_object_path())
