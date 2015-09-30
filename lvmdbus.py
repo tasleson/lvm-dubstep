@@ -453,23 +453,39 @@ class Vg(utils.AutomatedProperties):
                          cbe, False)
         worker_q.put(r)
 
-    @dbus.service.method(dbus_interface=VG_INTERFACE)
-    def Remove(self):
-        # Remove the VG, if successful then remove from the model
-        rc, out, err = cmdhandler.vg_remove(self.lvm_id)
+    @staticmethod
+    def _remove(uuid, vg_name):
+        # Make sure we have a dbus object representing it
+        dbo = cfg.om.get_by_uuid_lvm_id(uuid, vg_name)
 
-        if rc == 0:
-            cfg.om.remove_object(self, True)
+        if dbo:
+            # Remove the VG, if successful then remove from the model
+            rc, out, err = cmdhandler.vg_remove(vg_name)
 
-            # The vg is gone from LVM and from the dbus API, signal changes
-            # in all the previously involved PVs
-            self.refresh_pvs()
-
+            if rc == 0:
+                cfg.om.remove_object(dbo, True)
+                # The vg is gone from LVM and from the dbus API, signal changes
+                # in all the previously involved PVs
+                dbo.refresh_pvs()
+            else:
+                # Need to work on error handling, need consistent
+                raise dbus.exceptions.DBusException(
+                    VG_INTERFACE,
+                    'Exit code %s, stderr = %s' % (str(rc), err))
         else:
-            # Need to work on error handling, need consistent
             raise dbus.exceptions.DBusException(
-                VG_INTERFACE,
-                'Exit code %s, stderr = %s' % (str(rc), err))
+                VG_INTERFACE, 'VG with uuid %s and name %s not present!' %
+                (uuid, vg_name))
+        return '/'
+
+    @dbus.service.method(dbus_interface=VG_INTERFACE,
+                         in_signature='i', out_signature='o',
+                         async_callbacks=('cb', 'cbe'))
+    def Remove(self, tmo, cb, cbe):
+        r = RequestEntry(tmo, Vg._remove,
+                         (self.uuid, self.lvm_id),
+                         cb, cbe, False)
+        worker_q.put(r)
 
     # This should be broken into a number of different methods
     # instead of having one method that takes a hash for parameters.  Some of
