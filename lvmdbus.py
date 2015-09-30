@@ -977,22 +977,39 @@ def lv_object_factory(interface_name, *args):
                              (self.uuid, self.lvm_id), cb, cbe, False)
             worker_q.put(r)
 
-        @dbus.service.method(dbus_interface=interface_name,
-                             in_signature='s',
-                             out_signature='o')
-        def Rename(self, name):
-            # Rename the logical volume
-            rc, out, err = cmdhandler.lv_rename(self.lvm_id, name)
-            if rc == 0:
-                # Refresh the VG
-                self.refresh("%s/%s" % (self.vg_name_lookup(), name))
-                cfg.om.get_by_path(self._vg).refresh()
-                return self.dbus_object_path()
+        @staticmethod
+        def _rename(lv_uuid, lv_name, new_name):
+            # Make sure we have a dbus object representing it
+            dbo = cfg.om.get_by_uuid_lvm_id(lv_uuid, lv_name)
+
+            if dbo:
+                # Rename the logical volume
+                rc, out, err = cmdhandler.lv_rename(lv_name, new_name)
+                if rc == 0:
+                    # Refresh the VG
+                    vg_name = dbo.vg_name_lookup()
+
+                    dbo.refresh("%s/%s" % (vg_name, new_name))
+                    cfg.om.get_by_path(dbo.vg).refresh()
+                else:
+                    # Need to work on error handling, need consistent
+                    raise dbus.exceptions.DBusException(
+                        interface_name,
+                        'Exit code %s, stderr = %s' % (str(rc), err))
             else:
-                # Need to work on error handling, need consistent
                 raise dbus.exceptions.DBusException(
-                    interface_name,
-                    'Exit code %s, stderr = %s' % (str(rc), err))
+                    LV_INTERFACE, 'LV with uuid %s and name %s not present!' %
+                    (lv_uuid, lv_name))
+            return '/'
+
+        @dbus.service.method(dbus_interface=interface_name,
+                             in_signature='si',
+                             out_signature='o',
+                             async_callbacks=('cb', 'cbe'))
+        def Rename(self, name, tmo, cb, cbe):
+            r = RequestEntry(tmo, Lv._rename,
+                             (self.uuid, self.lvm_id, name), cb, cbe, False)
+            worker_q.put(r)
 
         @property
         def tags(self):
