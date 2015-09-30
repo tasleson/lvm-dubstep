@@ -1382,7 +1382,8 @@ class RequestEntry(object):
         cfg.om.register_object(job, True)
         if self._return_tuple:
             self.cb(('/', job.dbus_object_path()))
-        return self.cb(job.dbus_object_path())
+        else:
+            self.cb(job.dbus_object_path())
 
     def run_cmd(self):
         try:
