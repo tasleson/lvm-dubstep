@@ -667,31 +667,52 @@ class Vg(utils.AutomatedProperties):
                          cb, cbe)
         worker_q.put(r)
 
-    @dbus.service.method(dbus_interface=VG_INTERFACE,
-                         in_signature='a{sv}stuub',
-                         out_signature='o')
-    def LvCreateStriped(self, create_options, name, size_bytes, num_stripes,
-                        stripe_size_kb, thin_pool):
-        rc, out, err = cmdhandler.vg_lv_create_striped(
-            self.lvm_id, create_options, name, size_bytes, num_stripes,
-            stripe_size_kb, thin_pool)
-        if rc == 0:
-            created_lv = "/"
-            full_name = "%s/%s" % (self.name, name)
-            lvs = load_lvs([full_name])
-            for l in lvs:
-                cfg.om.register_object(l, True)
-                created_lv = l.dbus_object_path()
+    @staticmethod
+    def _lv_create_striped(uuid, vg_name, create_options, name, size_bytes,
+                           num_stripes, stripe_size_kb, thin_pool):
+        # Make sure we have a dbus object representing it
+        dbo = cfg.om.get_by_uuid_lvm_id(uuid, vg_name)
 
-            # Refresh self and all included PVs
-            self.refresh()
-            self.refresh_pvs()
+        if dbo:
+            rc, out, err = cmdhandler.vg_lv_create_striped(vg_name,
+                                                           create_options,
+                                                           name, size_bytes,
+                                                           num_stripes,
+                                                           stripe_size_kb,
+                                                           thin_pool)
+            if rc == 0:
+                created_lv = "/"
+                full_name = "%s/%s" % (vg_name, name)
+                lvs = load_lvs([full_name])
+                for l in lvs:
+                    cfg.om.register_object(l, True)
+                    created_lv = l.dbus_object_path()
 
-            return created_lv
+                # Refresh self and all included PVs
+                dbo.refresh()
+                dbo.refresh_pvs()
+            else:
+                raise dbus.exceptions.DBusException(
+                    MANAGER_INTERFACE,
+                    'Exit code %s, stderr = %s' % (str(rc), err))
         else:
             raise dbus.exceptions.DBusException(
-                MANAGER_INTERFACE,
-                'Exit code %s, stderr = %s' % (str(rc), err))
+                VG_INTERFACE, 'VG with uuid %s and name %s not present!' %
+                (uuid, vg_name))
+
+        return created_lv
+
+    @dbus.service.method(dbus_interface=VG_INTERFACE,
+                         in_signature='a{sv}stuubi',
+                         out_signature='(oo)',
+                         async_callbacks=('cb', 'cbe'))
+    def LvCreateStriped(self, create_options, name, size_bytes, num_stripes,
+                        stripe_size_kb, thin_pool, tmo, cb, cbe):
+        r = RequestEntry(tmo, Vg._lv_create_striped,
+                         (self.uuid, self.lvm_id, create_options, name,
+                          size_bytes, num_stripes, stripe_size_kb, thin_pool),
+                         cb, cbe)
+        worker_q.put(r)
 
     @dbus.service.method(dbus_interface=VG_INTERFACE,
                          in_signature='a{sv}stu',
