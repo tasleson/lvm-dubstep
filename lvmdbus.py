@@ -529,31 +529,47 @@ class Vg(utils.AutomatedProperties):
                          cb, cbe, False)
         worker_q.put(r)
 
-    @dbus.service.method(dbus_interface=VG_INTERFACE,
-                         in_signature='bao')
-    def Reduce(self, missing, pv_object_paths):
+    @staticmethod
+    def _reduce(uuid, vg_name, missing, pv_object_paths):
+        # Make sure we have a dbus object representing it
+        dbo = cfg.om.get_by_uuid_lvm_id(uuid, vg_name)
 
-        pv_devices = []
+        if dbo:
+            pv_devices = []
 
-        # If pv_object_paths is not empty, then get the device paths
-        if pv_object_paths and len(pv_object_paths) > 0:
-            for pv_op in pv_object_paths:
-                print('pv_op=', pv_op)
-                pv = cfg.om.get_by_path(pv_op)
-                if pv:
-                    pv_devices.append(pv.lvm_id)
-                else:
-                    raise dbus.exceptions.DBusException(
-                        VG_INTERFACE, 'PV Object path not found = %s!' % pv_op)
+            # If pv_object_paths is not empty, then get the device paths
+            if pv_object_paths and len(pv_object_paths) > 0:
+                for pv_op in pv_object_paths:
+                    pv = cfg.om.get_by_path(pv_op)
+                    if pv:
+                        pv_devices.append(pv.lvm_id)
+                    else:
+                        raise dbus.exceptions.DBusException(
+                            VG_INTERFACE,
+                            'PV Object path not found = %s!' % pv_op)
 
-        rc, out, err = cmdhandler.vg_reduce(self.lvm_id, missing, pv_devices)
-        if rc == 0:
-            self.refresh()
-            self.refresh_pvs()
-
+            rc, out, err = cmdhandler.vg_reduce(vg_name, missing, pv_devices)
+            if rc == 0:
+                dbo.refresh()
+                dbo.refresh_pvs()
+            else:
+                raise dbus.exceptions.DBusException(
+                    VG_INTERFACE, 'Exit code %s, stderr = %s' % (str(rc), err))
         else:
             raise dbus.exceptions.DBusException(
-                VG_INTERFACE, 'Exit code %s, stderr = %s' % (str(rc), err))
+                VG_INTERFACE, 'VG with uuid %s and name %s not present!' %
+                (uuid, vg_name))
+        return '/'
+
+    @dbus.service.method(dbus_interface=VG_INTERFACE,
+                         in_signature='baoi',
+                         out_signature='o',
+                         async_callbacks=('cb', 'cbe'))
+    def Reduce(self, missing, pv_object_paths, tmo, cb, cbe):
+        r = RequestEntry(tmo, Vg._reduce,
+                         (self.uuid, self.lvm_id, missing, pv_object_paths),
+                         cb, cbe, False)
+        worker_q.put(r)
 
     @dbus.service.method(dbus_interface=VG_INTERFACE,
                          in_signature='ao')
