@@ -623,30 +623,6 @@ class Vg(utils.AutomatedProperties):
         worker_q.put(r)
 
     @dbus.service.method(dbus_interface=VG_INTERFACE,
-                         in_signature='a{sv}st',
-                         out_signature='o')
-    def LvCreate(self, create_options, name, size_bytes):
-        rc, out, err = cmdhandler.vg_lv_create(self.lvm_id, create_options,
-                                               name, size_bytes)
-        if rc == 0:
-            created_lv = "/"
-            full_name = "%s/%s" % (self.name, name)
-            lvs = load_lvs([full_name])
-            for l in lvs:
-                cfg.om.register_object(l, True)
-                created_lv = l.dbus_object_path()
-
-            # Refresh self and all included PVs
-            self.refresh()
-            self.refresh_pvs()
-
-            return created_lv
-        else:
-            raise dbus.exceptions.DBusException(
-                MANAGER_INTERFACE,
-                'Exit code %s, stderr = %s' % (str(rc), err))
-
-    @dbus.service.method(dbus_interface=VG_INTERFACE,
                          in_signature='a{sv}stb',
                          out_signature='o')
     def LvCreateLinear(self, create_options, name, size_bytes,
