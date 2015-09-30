@@ -412,31 +412,46 @@ class Vg(utils.AutomatedProperties):
             else:
                 obj.refresh()
 
-    @dbus.service.method(dbus_interface=VG_INTERFACE,
-                         in_signature='s', out_signature='o')
-    def Rename(self, name):
-        rc, out, err = cmdhandler.vg_rename(self.lvm_id, name)
-        if rc == 0:
+    @staticmethod
+    def _rename(uuid, vg_name, new_name):
+        # Make sure we have a dbus object representing it
+        dbo = cfg.om.get_by_uuid_lvm_id(uuid, vg_name)
 
-            # The refresh will fix up all the lookups for this object, however
-            # the LVs will still have the wrong lookup entries.
-            self.refresh(name)
+        if dbo:
+            rc, out, err = cmdhandler.vg_rename(vg_name, new_name)
+            if rc == 0:
 
-            for lv in self.lvs:
-                # This will fix the lookups, and the object state actually
-                # has an update as the path property is changing, but it's
-                # unfortunate that we need to go out and fetch all of these
-                # TODO: Change to some kind of batch operation where we do
-                # all with one lvs command instead of fetching one at a time
-                lv_obj = cfg.om.get_by_path(lv)
-                lv_obj.refresh()
+                # The refresh will fix up all the lookups for this object,
+                # however the LVs will still have the wrong lookup entries.
+                dbo.refresh(new_name)
 
-            return self.dbus_object_path()
+                for lv in dbo.lvs:
+                    # This will fix the lookups, and the object state actually
+                    # has an update as the path property is changing, but it's
+                    # unfortunate that we need to go out and fetch all of these
+                    # TODO: Change to some kind of batch operation where we do
+                    # all with one lvs command instead of
+                    # fetching one at a time
+                    lv_obj = cfg.om.get_by_path(lv)
+                    lv_obj.refresh()
+            else:
+                # Need to work on error handling, need consistent
+                raise dbus.exceptions.DBusException(
+                    VG_INTERFACE,
+                    'Exit code %s, stderr = %s' % (str(rc), err))
         else:
-            # Need to work on error handling, need consistent
             raise dbus.exceptions.DBusException(
-                LV_INTERFACE,
-                'Exit code %s, stderr = %s' % (str(rc), err))
+                VG_INTERFACE, 'VG with uuid %s and name %s not present!' %
+                (uuid, vg_name))
+        return '/'
+
+    @dbus.service.method(dbus_interface=VG_INTERFACE,
+                         in_signature='si', out_signature='o',
+                         async_callbacks=('cb', 'cbe'))
+    def Rename(self, name, tmo, cb, cbe):
+        r = RequestEntry(tmo, Vg._rename, (self.uuid, self.lvm_id, name), cb,
+                         cbe, False)
+        worker_q.put(r)
 
     @dbus.service.method(dbus_interface=VG_INTERFACE)
     def Remove(self):
