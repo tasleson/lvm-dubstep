@@ -571,38 +571,56 @@ class Vg(utils.AutomatedProperties):
                          cb, cbe, False)
         worker_q.put(r)
 
-    @dbus.service.method(dbus_interface=VG_INTERFACE,
-                         in_signature='ao')
-    def Extend(self, pv_object_paths):
-        extend_devices = []
+    @staticmethod
+    def _extend(uuid, vg_name, pv_object_paths):
+        # Make sure we have a dbus object representing it
+        dbo = cfg.om.get_by_uuid_lvm_id(uuid, vg_name)
 
-        for i in pv_object_paths:
-            pv = cfg.om.get_by_path(i)
-            if pv:
-                extend_devices.append(pv.lvm_id)
+        if dbo:
+            extend_devices = []
+
+            for i in pv_object_paths:
+                pv = cfg.om.get_by_path(i)
+                if pv:
+                    extend_devices.append(pv.lvm_id)
+                else:
+                    raise dbus.exceptions.DBusException(
+                        VG_INTERFACE, 'PV Object path not found = %s!' % i)
+
+            if len(extend_devices):
+                rc, out, err = cmdhandler.vg_extend(vg_name, extend_devices)
+                if rc == 0:
+                    # This is a little confusing, because when we call
+                    # dbo.refresh the current 'dbo' doesn't get updated,
+                    # the object that gets called with the next dbus call will
+                    # be the updated object so we need to manually append the
+                    # object path of PVS and go see refresh method for more
+                    # details.
+                    current_pvs = list(dbo.pvs)
+                    dbo.refresh()
+                    current_pvs.extend(pv_object_paths)
+                    dbo.refresh_pvs(current_pvs)
+                else:
+                    raise dbus.exceptions.DBusException(
+                        VG_INTERFACE,
+                        'Exit code %s, stderr = %s' % (str(rc), err))
             else:
                 raise dbus.exceptions.DBusException(
-                    VG_INTERFACE, 'PV Object path not found = %s!' % i)
-
-        if len(extend_devices):
-            rc, out, err = cmdhandler.vg_extend(self.lvm_id, extend_devices)
-            if rc == 0:
-                # This is a little confusing, because when we call self.refresh
-                # the current 'self' doesn't get updated, the object that gets
-                # called with the next dbus call will be the updated object
-                # so we need to manually append the object path of PVS and go
-                # see refresh method for more details.
-                current_pvs = list(self.pvs)
-                self.refresh()
-                current_pvs.extend(pv_object_paths)
-                self.refresh_pvs(current_pvs)
-            else:
-                raise dbus.exceptions.DBusException(
-                    VG_INTERFACE,
-                    'Exit code %s, stderr = %s' % (str(rc), err))
+                    VG_INTERFACE, 'No pv_object_paths provided!')
         else:
             raise dbus.exceptions.DBusException(
-                VG_INTERFACE, 'No pv_object_paths provided!')
+                VG_INTERFACE, 'VG with uuid %s and name %s not present!' %
+                (uuid, vg_name))
+        return '/'
+
+    @dbus.service.method(dbus_interface=VG_INTERFACE,
+                         in_signature='aoi', out_signature='o',
+                         async_callbacks=('cb', 'cbe'))
+    def Extend(self, pv_object_paths, tmo, cb, cbe):
+        r = RequestEntry(tmo, Vg._extend,
+                         (self.uuid, self.lvm_id, pv_object_paths),
+                         cb, cbe, False)
+        worker_q.put(r)
 
     @dbus.service.method(dbus_interface=VG_INTERFACE,
                          in_signature='a{sv}st',
