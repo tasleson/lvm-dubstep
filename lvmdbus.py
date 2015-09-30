@@ -1063,40 +1063,56 @@ def lv_object_factory(interface_name, *args):
                 raise dbus.exceptions.DBusException(
                     interface_name, 'pv_src_obj (%s) not found' % pv_src_obj)
 
-        @dbus.service.method(dbus_interface=interface_name,
-                             in_signature='a{sv}st',
-                             out_signature='o')
-        def Snapshot(self, snapshot_options, name, optional_size):
+        @staticmethod
+        def _snap_shot(lv_uuid, lv_name, snapshot_options, name,
+                       optional_size):
+            # Make sure we have a dbus object representing it
+            dbo = cfg.om.get_by_uuid_lvm_id(lv_uuid, lv_name)
 
-            # If you specify a size you get a 'thick' snapshot even if it is a
-            # thin lv
-            if not self.is_thin_volume:
-                if optional_size == 0:
-                    # TODO: Should we pick a sane default or force user to
-                    # make a decision?
-                    space = self.size_bytes / 80
-                    remainder = space % 512
-                    optional_size = space + 512 - remainder
+            if dbo:
+                # If you specify a size you get a 'thick' snapshot even if
+                # it is a thin lv
+                if not dbo.is_thin_volume:
+                    if optional_size == 0:
+                        # TODO: Should we pick a sane default or force user to
+                        # make a decision?
+                        space = dbo.size_bytes / 80
+                        remainder = space % 512
+                        optional_size = space + 512 - remainder
 
-            rc, out, err = cmdhandler.vg_lv_snapshot(
-                self.lvm_id, snapshot_options, name, optional_size)
-            if rc == 0:
-                snapshot_path = "/"
-                full_name = "%s/%s" % (self.vg_name_lookup(), name)
-                lvs = load_lvs([full_name])
-                for l in lvs:
-                    cfg.om.register_object(l, True)
-                    snapshot_path = l.dbus_object_path()
+                rc, out, err = cmdhandler.vg_lv_snapshot(
+                    lv_name, snapshot_options, name, optional_size)
+                if rc == 0:
+                    snapshot_path = "/"
+                    full_name = "%s/%s" % (dbo.vg_name_lookup(), name)
+                    lvs = load_lvs([full_name])
+                    for l in lvs:
+                        cfg.om.register_object(l, True)
+                        snapshot_path = l.dbus_object_path()
 
-                # Refresh self and all included PVs
-                self.refresh()
-                self._refresh_pvs()
-
-                return snapshot_path
+                    # Refresh self and all included PVs
+                    dbo.refresh()
+                    dbo.signal_vg_pv_changes()
+                else:
+                    raise dbus.exceptions.DBusException(
+                        MANAGER_INTERFACE,
+                        'Exit code %s, stderr = %s' % (str(rc), err))
             else:
                 raise dbus.exceptions.DBusException(
-                    MANAGER_INTERFACE,
-                    'Exit code %s, stderr = %s' % (str(rc), err))
+                    LV_INTERFACE, 'LV with uuid %s and name %s not present!' %
+                    (lv_uuid, lv_name))
+            return snapshot_path
+
+        @dbus.service.method(dbus_interface=interface_name,
+                             in_signature='a{sv}sti',
+                             out_signature='(oo)',
+                             async_callbacks=('cb', 'cbe'))
+        def Snapshot(self, snapshot_options, name, optional_size, tmo, cb,
+                     cbe):
+            r = RequestEntry(tmo, Lv._snap_shot,
+                             (self.uuid, self.lvm_id, snapshot_options, name,
+                              optional_size), cb, cbe)
+            worker_q.put(r)
 
     class LvPoolInherit(Lv):
 
