@@ -945,19 +945,37 @@ def lv_object_factory(interface_name, *args):
                 if pv:
                     pv.refresh()
 
-        @dbus.service.method(dbus_interface=interface_name)
-        def Remove(self):
-            # Remove the LV, if successful then remove from the model
-            rc, out, err = cmdhandler.lv_remove(self.lvm_id)
+        @staticmethod
+        def _remove(lv_uuid, lv_name):
+            # Make sure we have a dbus object representing it
+            dbo = cfg.om.get_by_uuid_lvm_id(lv_uuid, lv_name)
 
-            if rc == 0:
-                self.signal_vg_pv_changes()
-                cfg.om.remove_object(self, True)
+            if dbo:
+                # Remove the LV, if successful then remove from the model
+                rc, out, err = cmdhandler.lv_remove(lv_name)
+
+                if rc == 0:
+                    dbo.signal_vg_pv_changes()
+                    cfg.om.remove_object(dbo, True)
+                else:
+                    # Need to work on error handling, need consistent
+                    raise dbus.exceptions.DBusException(
+                        interface_name,
+                        'Exit code %s, stderr = %s' % (str(rc), err))
             else:
-                # Need to work on error handling, need consistent
                 raise dbus.exceptions.DBusException(
-                    interface_name,
-                    'Exit code %s, stderr = %s' % (str(rc), err))
+                    LV_INTERFACE, 'LV with uuid %s and name %s not present!' %
+                    (lv_uuid, lv_name))
+            return '/'
+
+        @dbus.service.method(dbus_interface=interface_name,
+                             in_signature='i',
+                             out_signature='o',
+                             async_callbacks=('cb', 'cbe'))
+        def Remove(self, tmo, cb, cbe):
+            r = RequestEntry(tmo, Lv._remove,
+                             (self.uuid, self.lvm_id), cb, cbe, False)
+            worker_q.put(r)
 
         @dbus.service.method(dbus_interface=interface_name,
                              in_signature='s',
