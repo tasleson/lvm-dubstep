@@ -1116,23 +1116,41 @@ def lv_object_factory(interface_name, *args):
 
     class LvPoolInherit(Lv):
 
-        @dbus.service.method(dbus_interface=interface_name,
-                             in_signature='a{sv}st',
-                             out_signature='o')
-        def LvCreate(self, create_options, name, size_bytes):
-            rc, out, err = cmdhandler.lv_lv_create(self.lvm_id, create_options,
-                                                   name, size_bytes)
-            if rc == 0:
-                full_name = "%s/%s" % (self._vg_name, name)
-                lvs = load_lvs([full_name])
-                for l in lvs:
-                    cfg.om.register_object(l, True)
-                    return l.dbus_object_path()
-                return "/"
+        @staticmethod
+        def _lv_create(lv_uuid, lv_name, create_options, name, size_bytes):
+            # Make sure we have a dbus object representing it
+            dbo = cfg.om.get_by_uuid_lvm_id(lv_uuid, lv_name)
+
+            lv_created = '/'
+
+            if dbo:
+                rc, out, err = cmdhandler.lv_lv_create(
+                    lv_name, create_options, name, size_bytes)
+                if rc == 0:
+                    full_name = "%s/%s" % (dbo.vg_name_lookup(), name)
+                    lvs = load_lvs([full_name])
+                    for l in lvs:
+                        cfg.om.register_object(l, True)
+                        lv_created = l.dbus_object_path()
+                else:
+                    raise dbus.exceptions.DBusException(
+                        MANAGER_INTERFACE,
+                        'Exit code %s, stderr = %s' % (str(rc), err))
             else:
                 raise dbus.exceptions.DBusException(
-                    MANAGER_INTERFACE,
-                    'Exit code %s, stderr = %s' % (str(rc), err))
+                    LV_INTERFACE, 'LV with uuid %s and name %s not present!' %
+                    (lv_uuid, lv_name))
+            return lv_created
+
+        @dbus.service.method(dbus_interface=interface_name,
+                             in_signature='a{sv}sti',
+                             out_signature='(oo)',
+                             async_callbacks=('cb', 'cbe'))
+        def LvCreate(self, create_options, name, size_bytes, tmo, cb, cbe):
+            r = RequestEntry(tmo, LvPoolInherit._lv_create,
+                             (self.uuid, self.lvm_id, create_options, name,
+                              size_bytes), cb, cbe)
+            worker_q.put(r)
 
     # Without this we each object has a new 'type' when constructed, so
     # we save off the object and construct instances of it.
