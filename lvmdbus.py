@@ -931,10 +931,10 @@ def lv_object_factory(interface_name, *args):
                         None, '%s/%s' % (vg_name, origin_lv),
                         vg_obj_path_generate)
 
-        def _vg_name_lookup(self):
+        def vg_name_lookup(self):
             return cfg.om.get_by_path(self._vg).name
 
-        def _signal_vg_pv_changes(self):
+        def signal_vg_pv_changes(self):
             # Signal property changes...
             vg_obj = cfg.om.get_by_path(self.vg)
             if vg_obj:
@@ -951,7 +951,7 @@ def lv_object_factory(interface_name, *args):
             rc, out, err = cmdhandler.lv_remove(self.lvm_id)
 
             if rc == 0:
-                self._signal_vg_pv_changes()
+                self.signal_vg_pv_changes()
                 cfg.om.remove_object(self, True)
             else:
                 # Need to work on error handling, need consistent
@@ -967,7 +967,7 @@ def lv_object_factory(interface_name, *args):
             rc, out, err = cmdhandler.lv_rename(self.lvm_id, name)
             if rc == 0:
                 # Refresh the VG
-                self.refresh("%s/%s" % (self._vg_name_lookup(), name))
+                self.refresh("%s/%s" % (self.vg_name_lookup(), name))
                 cfg.om.get_by_path(self._vg).refresh()
                 return self.dbus_object_path()
             else:
@@ -982,7 +982,7 @@ def lv_object_factory(interface_name, *args):
 
         @property
         def lvm_id(self):
-            return "%s/%s" % (self._vg_name_lookup(), self.name)
+            return "%s/%s" % (self.vg_name_lookup(), self.name)
 
         @property
         def is_thin_volume(self):
@@ -1047,7 +1047,7 @@ def lv_object_factory(interface_name, *args):
                 self.lvm_id, snapshot_options, name, optional_size)
             if rc == 0:
                 snapshot_path = "/"
-                full_name = "%s/%s" % (self._vg_name_lookup(), name)
+                full_name = "%s/%s" % (self.vg_name_lookup(), name)
                 lvs = load_lvs([full_name])
                 for l in lvs:
                     cfg.om.register_object(l, True)
