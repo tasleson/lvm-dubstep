@@ -487,30 +487,47 @@ class Vg(utils.AutomatedProperties):
                          cb, cbe, False)
         worker_q.put(r)
 
-    # This should be broken into a number of different methods
+    @staticmethod
+    def _change(uuid, vg_name, change_options):
+        dbo = cfg.om.get_by_uuid_lvm_id(uuid, vg_name)
+
+        if dbo:
+            rc, out, err = cmdhandler.vg_change(change_options, vg_name)
+
+            # To use an example with d-feet (Method input)
+            # {"activate": __import__('gi.repository.GLib', globals(),
+            # locals(), ['Variant']).Variant("s", "n")}
+
+            if rc == 0:
+                dbo.refresh()
+
+                if 'activate' in change_options:
+                    for lv in dbo.lvs:
+                        lv_obj = cfg.om.get_by_path(lv)
+                        lv_obj.refresh()
+            else:
+                raise dbus.exceptions.DBusException(
+                    VG_INTERFACE,
+                    'Exit code %s, stderr = %s' % (str(rc), err))
+        else:
+            raise dbus.exceptions.DBusException(
+                VG_INTERFACE, 'VG with uuid %s and name %s not present!' %
+                (uuid, vg_name))
+        return '/'
+
+    # TODO: This should be broken into a number of different methods
     # instead of having one method that takes a hash for parameters.  Some of
     # the changes that vgchange does works on entire system, not just a
     # specfic vg, thus that should be in the Manager interface.
     @dbus.service.method(dbus_interface=VG_INTERFACE,
-                         in_signature='a{sv}')
-    def Change(self, change_options):
-        rc, out, err = cmdhandler.vg_change(change_options, self.lvm_id)
-
-        # To use an example with d-feet (Method input)
-        # {"activate": __import__('gi.repository.GLib', globals(), locals(),
-        # ['Variant']).Variant("s", "n")}
-
-        if rc == 0:
-            self.refresh()
-
-            if 'activate' in change_options:
-                for lv in self.lvs:
-                    lv_obj = cfg.om.get_by_path(lv)
-                    lv_obj.refresh()
-        else:
-            raise dbus.exceptions.DBusException(
-                VG_INTERFACE,
-                'Exit code %s, stderr = %s' % (str(rc), err))
+                         in_signature='a{sv}i',
+                         out_signature='o',
+                         async_callbacks=('cb', 'cbe'))
+    def Change(self, change_options, tmo, cb, cbe):
+        r = RequestEntry(tmo, Vg._change,
+                         (self.uuid, self.lvm_id, change_options),
+                         cb, cbe, False)
+        worker_q.put(r)
 
     @dbus.service.method(dbus_interface=VG_INTERFACE,
                          in_signature='bao')
