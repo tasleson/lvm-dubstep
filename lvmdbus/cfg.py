@@ -13,8 +13,26 @@
 #
 # Copyright 2014, Tony Asleson <tasleson@redhat.com>
 
+import multiprocessing
+import Queue
+
 # This is the global object manager
 om = None
 
 # This is the global bus connection
 bus = None
+
+# Shared state variable across all processes
+run = multiprocessing.Value('i', 1)
+
+#Debug
+DEBUG = True
+
+# Lock used by pprint
+stdout_lock = multiprocessing.Lock()
+
+kick_q = multiprocessing.Queue()
+worker_q = Queue.Queue()
+
+# Main event loop
+loop = None

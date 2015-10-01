@@ -15,8 +15,6 @@
 #
 # Copyright 2014, Tony Asleson <tasleson@redhat.com>
 
-
-import multiprocessing
 import Queue
 import dbus
 import dbus.service
@@ -34,21 +32,6 @@ import time
 import ctypes
 import traceback
 import cfg
-
-# Shared state variable across all processes
-run = multiprocessing.Value('i', 1)
-
-#Debug
-DEBUG = True
-
-# Lock used by pprint
-stdout_lock = multiprocessing.Lock()
-
-kick_q = multiprocessing.Queue()
-worker_q = Queue.Queue()
-
-# Main event loop
-loop = None
 
 BASE_INTERFACE = 'com.redhat.lvm1'
 PV_INTERFACE = BASE_INTERFACE + '.pv'
@@ -71,21 +54,19 @@ JOB_OBJ_PATH = BASE_OBJ_PATH + '/Job'
 # @param msg    Message to output to stdout
 # @return None
 def pprint(msg):
-    if DEBUG:
-        stdout_lock.acquire()
+    if cfg.DEBUG:
+        cfg.stdout_lock.acquire()
         tid = ctypes.CDLL('libc.so.6').syscall(186)
         print "%d:%d - %s" % (os.getpid(), tid, msg)
-        stdout_lock.release()
+        cfg.stdout_lock.release()
 
 
 # noinspection PyUnusedLocal
 def handler(signum, frame):
-    global run
-    global loop
-    run.value = 0
+    cfg.run.value = 0
     pprint('Signal handler called with signal %d' % signum)
-    if loop is not None:
-        loop.quit()
+    if cfg.loop is not None:
+        cfg.loop.quit()
 
 
 pv_id = itertools.count()
@@ -216,7 +197,7 @@ class Pv(utils.AutomatedProperties):
         r = RequestEntry(tmo, Pv._remove,
                          (self.uuid, self.lvm_id, remove_options),
                          cb, cbe, return_tuple=False)
-        worker_q.put(r)
+        cfg.worker_q.put(r)
 
     @staticmethod
     def _resize(pv_uuid, pv_name, new_size_bytes, resize_options):
@@ -246,7 +227,7 @@ class Pv(utils.AutomatedProperties):
         r = RequestEntry(tmo, Pv._resize,
                          (self.uuid, self.lvm_id, new_size_bytes,
                           resize_options), cb, cbe, False)
-        worker_q.put(r)
+        cfg.worker_q.put(r)
 
     @staticmethod
     def _allocation_enabled(pv_uuid, pv_name, yes_no, allocation_options):
@@ -275,7 +256,7 @@ class Pv(utils.AutomatedProperties):
         r = RequestEntry(tmo, Pv._allocation_enabled,
                          (self.uuid, self.lvm_id, yes, allocation_options),
                          cb, cbe, False)
-        worker_q.put(r)
+        cfg.worker_q.put(r)
 
     @property
     def Tags(self):
@@ -458,7 +439,7 @@ class Vg(utils.AutomatedProperties):
         r = RequestEntry(tmo, Vg._rename,
                          (self.uuid, self.lvm_id, name, rename_options),
                          cb, cbe, False)
-        worker_q.put(r)
+        cfg.worker_q.put(r)
 
     @staticmethod
     def _remove(uuid, vg_name, remove_options):
@@ -492,7 +473,7 @@ class Vg(utils.AutomatedProperties):
         r = RequestEntry(tmo, Vg._remove,
                          (self.uuid, self.lvm_id, remove_options),
                          cb, cbe, False)
-        worker_q.put(r)
+        cfg.worker_q.put(r)
 
     @staticmethod
     def _change(uuid, vg_name, change_options):
@@ -534,7 +515,7 @@ class Vg(utils.AutomatedProperties):
         r = RequestEntry(tmo, Vg._change,
                          (self.uuid, self.lvm_id, change_options),
                          cb, cbe, False)
-        worker_q.put(r)
+        cfg.worker_q.put(r)
 
     @staticmethod
     def _reduce(uuid, vg_name, missing, pv_object_paths, reduce_options):
@@ -578,7 +559,7 @@ class Vg(utils.AutomatedProperties):
                          (self.uuid, self.lvm_id, missing, pv_object_paths,
                           reduce_options),
                          cb, cbe, False)
-        worker_q.put(r)
+        cfg.worker_q.put(r)
 
     @staticmethod
     def _extend(uuid, vg_name, pv_object_paths, extend_options):
@@ -631,7 +612,7 @@ class Vg(utils.AutomatedProperties):
                          (self.uuid, self.lvm_id, pv_object_paths,
                           extend_options),
                          cb, cbe, False)
-        worker_q.put(r)
+        cfg.worker_q.put(r)
 
     @staticmethod
     def _lv_create_linear(uuid, vg_name, name, size_bytes,
@@ -675,7 +656,7 @@ class Vg(utils.AutomatedProperties):
                          (self.uuid, self.lvm_id,
                           name, size_bytes, thin_pool, create_options),
                          cb, cbe)
-        worker_q.put(r)
+        cfg.worker_q.put(r)
 
     @staticmethod
     def _lv_create_striped(uuid, vg_name, name, size_bytes, num_stripes,
@@ -724,7 +705,7 @@ class Vg(utils.AutomatedProperties):
                           size_bytes, num_stripes, stripe_size_kb, thin_pool,
                           create_options),
                          cb, cbe)
-        worker_q.put(r)
+        cfg.worker_q.put(r)
 
     @staticmethod
     def _lv_create_mirror(uuid, vg_name, name, size_bytes,
@@ -767,7 +748,7 @@ class Vg(utils.AutomatedProperties):
         r = RequestEntry(tmo, Vg._lv_create_mirror,
                          (self.uuid, self.lvm_id, name, size_bytes, num_copies,
                           create_options), cb, cbe)
-        worker_q.put(r)
+        cfg.worker_q.put(r)
 
     @staticmethod
     def _lv_create_raid(uuid, vg_name, name, raid_type, size_bytes,
@@ -814,7 +795,7 @@ class Vg(utils.AutomatedProperties):
                          (self.uuid, self.lvm_id, name,
                           raid_type, size_bytes, num_stripes, stripe_size_kb,
                           thin_pool, create_options), cb, cbe)
-        worker_q.put(r)
+        cfg.worker_q.put(r)
 
     def _attribute(self, pos, ch):
         if self._attr[pos] == ch:
@@ -990,7 +971,7 @@ def lv_object_factory(interface_name, *args):
             r = RequestEntry(tmo, Lv._remove,
                              (self.uuid, self.lvm_id, remove_options),
                              cb, cbe, False)
-            worker_q.put(r)
+            cfg.worker_q.put(r)
 
         @staticmethod
         def _rename(lv_uuid, lv_name, new_name, rename_options):
@@ -1026,7 +1007,7 @@ def lv_object_factory(interface_name, *args):
             r = RequestEntry(tmo, Lv._rename,
                              (self.uuid, self.lvm_id, name, rename_options),
                              cb, cbe, False)
-            worker_q.put(r)
+            cfg.worker_q.put(r)
 
         @property
         def Tags(self):
@@ -1070,7 +1051,7 @@ def lv_object_factory(interface_name, *args):
                     if self.lvm_id in jobs:
                         job_obj = Job(self.lvm_id)
                         cfg.om.register_object(job_obj)
-                        kick_q.put("wake up!")
+                        cfg.kick_q.put("wake up!")
                         return job_obj.dbus_object_path()
                 else:
                     raise dbus.exceptions.DBusException(
@@ -1129,7 +1110,7 @@ def lv_object_factory(interface_name, *args):
             r = RequestEntry(tmo, Lv._snap_shot,
                              (self.uuid, self.lvm_id, name,
                               optional_size, snapshot_options), cb, cbe)
-            worker_q.put(r)
+            cfg.worker_q.put(r)
 
     class LvPoolInherit(Lv):
 
@@ -1167,7 +1148,7 @@ def lv_object_factory(interface_name, *args):
             r = RequestEntry(tmo, LvPoolInherit._lv_create,
                              (self.uuid, self.lvm_id, name,
                               size_bytes, create_options), cb, cbe)
-            worker_q.put(r)
+            cfg.worker_q.put(r)
 
     # Without this we each object has a new 'type' when constructed, so
     # we save off the object and construct instances of it.
@@ -1335,7 +1316,7 @@ class Manager(utils.AutomatedProperties):
     def PvCreate(self, create_options, device, tmo, cb, cbe):
         r = RequestEntry(tmo, Manager._pv_create,
                          (create_options, device), cb, cbe)
-        worker_q.put(r)
+        cfg.worker_q.put(r)
 
     @staticmethod
     def _create_vg(create_options, pv_object_paths, name):
@@ -1378,7 +1359,7 @@ class Manager(utils.AutomatedProperties):
         r = RequestEntry(tmo, Manager._create_vg,
                          (create_options, pv_object_paths, name),
                          cb, cbe)
-        worker_q.put(r)
+        cfg.worker_q.put(r)
 
     @dbus.service.method(dbus_interface=MANAGER_INTERFACE)
     def Refresh(self):
@@ -1618,9 +1599,9 @@ class RequestEntry(object):
 
 
 def process_request():
-    while run.value != 0:
+    while cfg.run.value != 0:
         try:
-            req = worker_q.get(True, 5)
+            req = cfg.worker_q.get(True, 5)
             req.run_cmd()
         except Queue.Empty:
             pass
@@ -1659,16 +1640,16 @@ def signal_move_changes(obj_mgr):
             # Update previous to current
             p.update(c)
 
-    while run.value != 0:
+    while cfg.run.value != 0:
         try:
-            kick_q.get(True, 5)
+            cfg.kick_q.get(True, 5)
         except IOError:
             pass
         except Queue.Empty:
             pass
 
         while True:
-            if run.value == 0:
+            if cfg.run.value == 0:
                 break
 
             cur_jobs = cmdhandler.pv_move_status()
@@ -1691,7 +1672,6 @@ def signal_move_changes(obj_mgr):
 
 def main():
     # Queue to wake up move monitor
-    global loop
     process_list = []
 
     start = time.time()
@@ -1719,7 +1699,7 @@ def main():
     process_list.append(threading.Thread(target=process_request))
 
     load()
-    loop = gobject.MainLoop()
+    cfg.loop = gobject.MainLoop()
 
     for process in process_list:
         process.damon = True
@@ -1730,8 +1710,8 @@ def main():
           (end - start, cmdhandler.total_time, cmdhandler.total_count)
 
     try:
-        if run.value:
-            loop.run()
+        if cfg.run.value != 0:
+            cfg.loop.run()
 
             for process in process_list:
                 process.join()
