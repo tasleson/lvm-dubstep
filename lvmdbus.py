@@ -185,13 +185,13 @@ class Pv(utils.AutomatedProperties):
             self._vg_path = '/'
 
     @staticmethod
-    def _remove(pv_uuid, pv_name):
+    def _remove(pv_uuid, pv_name, remove_options):
         # Remove the PV, if successful then remove from the model
         # Make sure we have a dbus object representing it
         dbo = cfg.om.get_by_uuid_lvm_id(pv_uuid, pv_name)
 
         if dbo:
-            rc, out, err = cmdhandler.pv_remove(pv_name)
+            rc, out, err = cmdhandler.pv_remove(pv_name, remove_options)
             if rc == 0:
                 cfg.om.remove_object(dbo, True)
             else:
@@ -206,22 +206,23 @@ class Pv(utils.AutomatedProperties):
         return '/'
 
     @dbus.service.method(dbus_interface=PV_INTERFACE,
-                         in_signature='i',
+                         in_signature='ia{sv}',
                          out_signature='o',
                          async_callbacks=('cb', 'cbe'))
-    def Remove(self, tmo, cb, cbe):
+    def Remove(self, tmo, remove_options, cb, cbe):
         r = RequestEntry(tmo, Pv._remove,
-                         (self.uuid, self.lvm_id),
+                         (self.uuid, self.lvm_id, remove_options),
                          cb, cbe, return_tuple=False)
         worker_q.put(r)
 
     @staticmethod
-    def _resize(pv_uuid, pv_name, new_size_bytes):
+    def _resize(pv_uuid, pv_name, new_size_bytes, resize_options):
         # Make sure we have a dbus object representing it
         dbo = cfg.om.get_by_uuid_lvm_id(pv_uuid, pv_name)
 
         if dbo:
-            rc, out, err = cmdhandler.pv_resize(pv_name, new_size_bytes)
+            rc, out, err = cmdhandler.pv_resize(pv_name, new_size_bytes,
+                                                resize_options)
             if rc == 0:
                 dbo.refresh()
             else:
@@ -235,22 +236,23 @@ class Pv(utils.AutomatedProperties):
         return '/'
 
     @dbus.service.method(dbus_interface=PV_INTERFACE,
-                         in_signature='ti',
+                         in_signature='tia{sv}',
                          out_signature='o',
                          async_callbacks=('cb', 'cbe'))
-    def ReSize(self, new_size_bytes, tmo, cb, cbe):
+    def ReSize(self, new_size_bytes, tmo, resize_options, cb, cbe):
         r = RequestEntry(tmo, Pv._resize,
-                         (self.uuid, self.lvm_id, new_size_bytes), cb, cbe,
-                         False)
+                         (self.uuid, self.lvm_id, new_size_bytes,
+                          resize_options), cb, cbe, False)
         worker_q.put(r)
 
     @staticmethod
-    def _allocation_enabled(pv_uuid, pv_name, yes_no):
+    def _allocation_enabled(pv_uuid, pv_name, yes_no, allocation_options):
         # Make sure we have a dbus object representing it
         dbo = cfg.om.get_by_uuid_lvm_id(pv_uuid, pv_name)
 
         if dbo:
-            rc, out, err = cmdhandler.pv_allocatable(pv_name, yes_no)
+            rc, out, err = cmdhandler.pv_allocatable(pv_name, yes_no,
+                                                     allocation_options)
             if rc == 0:
                 dbo.refresh()
             else:
@@ -263,12 +265,12 @@ class Pv(utils.AutomatedProperties):
         return '/'
 
     @dbus.service.method(dbus_interface=PV_INTERFACE,
-                         in_signature='bi',
+                         in_signature='bia{sv}',
                          out_signature='o',
                          async_callbacks=('cb', 'cbe'))
-    def AllocationEnabled(self, yes, tmo, cb, cbe):
+    def AllocationEnabled(self, yes, tmo, allocation_options, cb, cbe):
         r = RequestEntry(tmo, Pv._allocation_enabled,
-                         (self.uuid, self.lvm_id, yes),
+                         (self.uuid, self.lvm_id, yes, allocation_options),
                          cb, cbe, False)
         worker_q.put(r)
 
@@ -413,12 +415,13 @@ class Vg(utils.AutomatedProperties):
                 obj.refresh()
 
     @staticmethod
-    def _rename(uuid, vg_name, new_name):
+    def _rename(uuid, vg_name, new_name, rename_options):
         # Make sure we have a dbus object representing it
         dbo = cfg.om.get_by_uuid_lvm_id(uuid, vg_name)
 
         if dbo:
-            rc, out, err = cmdhandler.vg_rename(vg_name, new_name)
+            rc, out, err = cmdhandler.vg_rename(vg_name, new_name,
+                                                rename_options)
             if rc == 0:
 
                 # The refresh will fix up all the lookups for this object,
@@ -446,21 +449,22 @@ class Vg(utils.AutomatedProperties):
         return '/'
 
     @dbus.service.method(dbus_interface=VG_INTERFACE,
-                         in_signature='si', out_signature='o',
+                         in_signature='sia{sv}', out_signature='o',
                          async_callbacks=('cb', 'cbe'))
-    def Rename(self, name, tmo, cb, cbe):
-        r = RequestEntry(tmo, Vg._rename, (self.uuid, self.lvm_id, name), cb,
-                         cbe, False)
+    def Rename(self, name, tmo, rename_options, cb, cbe):
+        r = RequestEntry(tmo, Vg._rename,
+                         (self.uuid, self.lvm_id, name, rename_options),
+                         cb, cbe, False)
         worker_q.put(r)
 
     @staticmethod
-    def _remove(uuid, vg_name):
+    def _remove(uuid, vg_name, remove_options):
         # Make sure we have a dbus object representing it
         dbo = cfg.om.get_by_uuid_lvm_id(uuid, vg_name)
 
         if dbo:
             # Remove the VG, if successful then remove from the model
-            rc, out, err = cmdhandler.vg_remove(vg_name)
+            rc, out, err = cmdhandler.vg_remove(vg_name, remove_options)
 
             if rc == 0:
                 cfg.om.remove_object(dbo, True)
@@ -479,11 +483,11 @@ class Vg(utils.AutomatedProperties):
         return '/'
 
     @dbus.service.method(dbus_interface=VG_INTERFACE,
-                         in_signature='i', out_signature='o',
+                         in_signature='ia{sv}', out_signature='o',
                          async_callbacks=('cb', 'cbe'))
-    def Remove(self, tmo, cb, cbe):
+    def Remove(self, tmo, remove_options, cb, cbe):
         r = RequestEntry(tmo, Vg._remove,
-                         (self.uuid, self.lvm_id),
+                         (self.uuid, self.lvm_id, remove_options),
                          cb, cbe, False)
         worker_q.put(r)
 
@@ -530,7 +534,7 @@ class Vg(utils.AutomatedProperties):
         worker_q.put(r)
 
     @staticmethod
-    def _reduce(uuid, vg_name, missing, pv_object_paths):
+    def _reduce(uuid, vg_name, missing, pv_object_paths, reduce_options):
         # Make sure we have a dbus object representing it
         dbo = cfg.om.get_by_uuid_lvm_id(uuid, vg_name)
 
@@ -548,7 +552,8 @@ class Vg(utils.AutomatedProperties):
                             VG_INTERFACE,
                             'PV Object path not found = %s!' % pv_op)
 
-            rc, out, err = cmdhandler.vg_reduce(vg_name, missing, pv_devices)
+            rc, out, err = cmdhandler.vg_reduce(vg_name, missing, pv_devices,
+                                                reduce_options)
             if rc == 0:
                 dbo.refresh()
                 dbo.refresh_pvs()
@@ -562,17 +567,18 @@ class Vg(utils.AutomatedProperties):
         return '/'
 
     @dbus.service.method(dbus_interface=VG_INTERFACE,
-                         in_signature='baoi',
+                         in_signature='baoia{sv}',
                          out_signature='o',
                          async_callbacks=('cb', 'cbe'))
-    def Reduce(self, missing, pv_object_paths, tmo, cb, cbe):
+    def Reduce(self, missing, pv_object_paths, reduce_options, tmo, cb, cbe):
         r = RequestEntry(tmo, Vg._reduce,
-                         (self.uuid, self.lvm_id, missing, pv_object_paths),
+                         (self.uuid, self.lvm_id, missing, pv_object_paths,
+                          reduce_options),
                          cb, cbe, False)
         worker_q.put(r)
 
     @staticmethod
-    def _extend(uuid, vg_name, pv_object_paths):
+    def _extend(uuid, vg_name, pv_object_paths, extend_options):
         # Make sure we have a dbus object representing it
         dbo = cfg.om.get_by_uuid_lvm_id(uuid, vg_name)
 
@@ -588,7 +594,8 @@ class Vg(utils.AutomatedProperties):
                         VG_INTERFACE, 'PV Object path not found = %s!' % i)
 
             if len(extend_devices):
-                rc, out, err = cmdhandler.vg_extend(vg_name, extend_devices)
+                rc, out, err = cmdhandler.vg_extend(vg_name, extend_devices,
+                                                    extend_options)
                 if rc == 0:
                     # This is a little confusing, because when we call
                     # dbo.refresh the current 'dbo' doesn't get updated,
@@ -614,11 +621,12 @@ class Vg(utils.AutomatedProperties):
         return '/'
 
     @dbus.service.method(dbus_interface=VG_INTERFACE,
-                         in_signature='aoi', out_signature='o',
+                         in_signature='aoia{sv}', out_signature='o',
                          async_callbacks=('cb', 'cbe'))
-    def Extend(self, pv_object_paths, tmo, cb, cbe):
+    def Extend(self, pv_object_paths, tmo, extend_options, cb, cbe):
         r = RequestEntry(tmo, Vg._extend,
-                         (self.uuid, self.lvm_id, pv_object_paths),
+                         (self.uuid, self.lvm_id, pv_object_paths,
+                          extend_options),
                          cb, cbe, False)
         worker_q.put(r)
 
@@ -946,13 +954,13 @@ def lv_object_factory(interface_name, *args):
                     pv.refresh()
 
         @staticmethod
-        def _remove(lv_uuid, lv_name):
+        def _remove(lv_uuid, lv_name, remove_options):
             # Make sure we have a dbus object representing it
             dbo = cfg.om.get_by_uuid_lvm_id(lv_uuid, lv_name)
 
             if dbo:
                 # Remove the LV, if successful then remove from the model
-                rc, out, err = cmdhandler.lv_remove(lv_name)
+                rc, out, err = cmdhandler.lv_remove(lv_name, remove_options)
 
                 if rc == 0:
                     dbo.signal_vg_pv_changes()
@@ -969,22 +977,24 @@ def lv_object_factory(interface_name, *args):
             return '/'
 
         @dbus.service.method(dbus_interface=interface_name,
-                             in_signature='i',
+                             in_signature='ia{sv}',
                              out_signature='o',
                              async_callbacks=('cb', 'cbe'))
-        def Remove(self, tmo, cb, cbe):
+        def Remove(self, tmo, remove_options, cb, cbe):
             r = RequestEntry(tmo, Lv._remove,
-                             (self.uuid, self.lvm_id), cb, cbe, False)
+                             (self.uuid, self.lvm_id, remove_options),
+                             cb, cbe, False)
             worker_q.put(r)
 
         @staticmethod
-        def _rename(lv_uuid, lv_name, new_name):
+        def _rename(lv_uuid, lv_name, new_name, rename_options):
             # Make sure we have a dbus object representing it
             dbo = cfg.om.get_by_uuid_lvm_id(lv_uuid, lv_name)
 
             if dbo:
                 # Rename the logical volume
-                rc, out, err = cmdhandler.lv_rename(lv_name, new_name)
+                rc, out, err = cmdhandler.lv_rename(lv_name, new_name,
+                                                    rename_options)
                 if rc == 0:
                     # Refresh the VG
                     vg_name = dbo.vg_name_lookup()
@@ -1003,12 +1013,13 @@ def lv_object_factory(interface_name, *args):
             return '/'
 
         @dbus.service.method(dbus_interface=interface_name,
-                             in_signature='si',
+                             in_signature='sia{sv}',
                              out_signature='o',
                              async_callbacks=('cb', 'cbe'))
-        def Rename(self, name, tmo, cb, cbe):
+        def Rename(self, name, rename_options, tmo, cb, cbe):
             r = RequestEntry(tmo, Lv._rename,
-                             (self.uuid, self.lvm_id, name), cb, cbe, False)
+                             (self.uuid, self.lvm_id, name, rename_options),
+                             cb, cbe, False)
             worker_q.put(r)
 
         @property

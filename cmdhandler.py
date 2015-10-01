@@ -136,16 +136,25 @@ def lvs_in_vg(vg_name):
     return []
 
 
-def pv_remove(device):
-    return call(['pvremove', device])
+def pv_remove(device, remove_options):
+    cmd = ['pvremove']
+    cmd.extend(options_to_cli_args(remove_options))
+    cmd.extend(device)
+    return call(cmd)
 
 
-def vg_rename(vg, new_name):
-    return call(['vgrename', vg, new_name])
+def vg_rename(vg, new_name, rename_options):
+    cmd = ['vgrename']
+    cmd.extend(options_to_cli_args(rename_options))
+    cmd.extend([vg, new_name])
+    return call(cmd)
 
 
-def vg_remove(vg_name):
-    return call(['vgremove', '-f', vg_name])
+def vg_remove(vg_name, remove_options):
+    cmd = ['vgremove']
+    cmd.extend(options_to_cli_args(remove_options))
+    cmd.extend(['-f', vg_name])
+    return call(cmd)
 
 
 def vg_lv_create(vg_name, create_options, name, size_bytes):
@@ -282,12 +291,18 @@ def vg_lv_create_mirror(vg_name, create_options, name, size_bytes, num_copies):
     return call(cmd)
 
 
-def lv_remove(lv_path):
-    return call(['lvremove', '-f', lv_path])
+def lv_remove(lv_path, remove_options):
+    cmd = ['lvremove']
+    cmd.extend(options_to_cli_args(remove_options))
+    cmd.extend(['-f', lv_path])
+    return call(cmd)
 
 
-def lv_rename(lv_path, new_name):
-    return call(['lvrename', lv_path, new_name])
+def lv_rename(lv_path, new_name, rename_options):
+    cmd = ['lvrename']
+    cmd.extend(options_to_cli_args(rename_options))
+    cmd.extend([lv_path, new_name])
+    return call(cmd)
 
 
 def lv_lv_create(lv_full_name, create_options, name, size_bytes):
@@ -328,8 +343,10 @@ def pv_retrieve(device=None):
     return d
 
 
-def pv_resize(device, size_bytes):
+def pv_resize(device, size_bytes, create_options):
     cmd = ['pvresize']
+
+    cmd.extend(options_to_cli_args(create_options))
 
     if size_bytes != 0:
         cmd.extend(['--setphysicalvolumesize', str(size_bytes) + 'B'])
@@ -423,13 +440,15 @@ def pv_move_status():
     return lv_in_motion
 
 
-def pv_allocatable(device, yes):
+def pv_allocatable(device, yes, allocation_options):
     yn = 'n'
 
     if yes:
         yn = 'y'
 
-    cmd = ['pvchange', '-x', yn, device]
+    cmd = ['pvchange']
+    cmd.extend(options_to_cli_args(allocation_options))
+    cmd.extend(['-x', yn, device])
     return call(cmd)
 
 
@@ -490,21 +509,24 @@ def vg_change(change_options, name):
     return call(cmd)
 
 
-def vg_reduce(vg_name, missing, pv_devices):
+def vg_reduce(vg_name, missing, pv_devices, reduce_options):
     cmd = ['vgreduce']
+    cmd.extend(options_to_cli_args(reduce_options))
+
     if len(pv_devices) == 0:
         cmd.append('--all')
     if missing:
         cmd.append('--removemissing')
 
     cmd.append(vg_name)
-
     cmd.extend(pv_devices)
     return call(cmd)
 
 
-def vg_extend(vg_name, extend_devices):
-    cmd = ['vgextend', vg_name]
+def vg_extend(vg_name, extend_devices, extend_options):
+    cmd = ['vgextend']
+    cmd.extend(options_to_cli_args(extend_options))
+    cmd.append(vg_name)
     cmd.extend(extend_devices)
     return call(cmd)
 
