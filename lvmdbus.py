@@ -524,10 +524,10 @@ class Vg(utils.AutomatedProperties):
     # the changes that vgchange does works on entire system, not just a
     # specfic vg, thus that should be in the Manager interface.
     @dbus.service.method(dbus_interface=VG_INTERFACE,
-                         in_signature='a{sv}i',
+                         in_signature='ia{sv}',
                          out_signature='o',
                          async_callbacks=('cb', 'cbe'))
-    def Change(self, change_options, tmo, cb, cbe):
+    def Change(self, tmo, change_options, cb, cbe):
         r = RequestEntry(tmo, Vg._change,
                          (self.uuid, self.lvm_id, change_options),
                          cb, cbe, False)
@@ -570,7 +570,7 @@ class Vg(utils.AutomatedProperties):
                          in_signature='baoia{sv}',
                          out_signature='o',
                          async_callbacks=('cb', 'cbe'))
-    def Reduce(self, missing, pv_object_paths, reduce_options, tmo, cb, cbe):
+    def Reduce(self, missing, pv_object_paths, tmo, reduce_options, cb, cbe):
         r = RequestEntry(tmo, Vg._reduce,
                          (self.uuid, self.lvm_id, missing, pv_object_paths,
                           reduce_options),
@@ -631,8 +631,8 @@ class Vg(utils.AutomatedProperties):
         worker_q.put(r)
 
     @staticmethod
-    def _lv_create_linear(uuid, vg_name, create_options, name, size_bytes,
-                          thin_pool):
+    def _lv_create_linear(uuid, vg_name, name, size_bytes,
+                          thin_pool, create_options):
         # Make sure we have a dbus object representing it
         dbo = cfg.om.get_by_uuid_lvm_id(uuid, vg_name)
 
@@ -664,20 +664,20 @@ class Vg(utils.AutomatedProperties):
         return created_lv
 
     @dbus.service.method(dbus_interface=VG_INTERFACE,
-                         in_signature='a{sv}stbi',
+                         in_signature='stbia{sv}',
                          out_signature='(oo)',
                          async_callbacks=('cb', 'cbe'))
-    def LvCreateLinear(self, create_options, name, size_bytes,
-                       thin_pool, tmo, cb, cbe):
+    def LvCreateLinear(self, name, size_bytes,
+                       thin_pool, tmo, create_options, cb, cbe):
         r = RequestEntry(tmo, Vg._lv_create_linear,
-                         (self.uuid, self.lvm_id, create_options,
-                          name, size_bytes, thin_pool),
+                         (self.uuid, self.lvm_id,
+                          name, size_bytes, thin_pool, create_options),
                          cb, cbe)
         worker_q.put(r)
 
     @staticmethod
-    def _lv_create_striped(uuid, vg_name, create_options, name, size_bytes,
-                           num_stripes, stripe_size_kb, thin_pool):
+    def _lv_create_striped(uuid, vg_name, name, size_bytes, num_stripes,
+                           stripe_size_kb, thin_pool, create_options):
         # Make sure we have a dbus object representing it
         dbo = cfg.om.get_by_uuid_lvm_id(uuid, vg_name)
 
@@ -711,20 +711,22 @@ class Vg(utils.AutomatedProperties):
         return created_lv
 
     @dbus.service.method(dbus_interface=VG_INTERFACE,
-                         in_signature='a{sv}stuubi',
+                         in_signature='stuubia{sv}',
                          out_signature='(oo)',
                          async_callbacks=('cb', 'cbe'))
-    def LvCreateStriped(self, create_options, name, size_bytes, num_stripes,
-                        stripe_size_kb, thin_pool, tmo, cb, cbe):
+    def LvCreateStriped(self, name, size_bytes, num_stripes,
+                        stripe_size_kb, thin_pool, tmo, create_options,
+                        cb, cbe):
         r = RequestEntry(tmo, Vg._lv_create_striped,
-                         (self.uuid, self.lvm_id, create_options, name,
-                          size_bytes, num_stripes, stripe_size_kb, thin_pool),
+                         (self.uuid, self.lvm_id, name,
+                          size_bytes, num_stripes, stripe_size_kb, thin_pool,
+                          create_options),
                          cb, cbe)
         worker_q.put(r)
 
     @staticmethod
-    def _lv_create_mirror(uuid, vg_name, create_options, name, size_bytes,
-                          num_copies):
+    def _lv_create_mirror(uuid, vg_name, name, size_bytes,
+                          num_copies, create_options):
         # Make sure we have a dbus object representing it
         dbo = cfg.om.get_by_uuid_lvm_id(uuid, vg_name)
 
@@ -755,19 +757,20 @@ class Vg(utils.AutomatedProperties):
         return created_lv
 
     @dbus.service.method(dbus_interface=VG_INTERFACE,
-                         in_signature='a{sv}stui',
+                         in_signature='stuia{sv}',
                          out_signature='(oo)',
                          async_callbacks=('cb', 'cbe'))
-    def LvCreateMirror(self, create_options, name, size_bytes, num_copies,
-                       tmo, cb, cbe):
+    def LvCreateMirror(self, name, size_bytes, num_copies,
+                       tmo, create_options, cb, cbe):
         r = RequestEntry(tmo, Vg._lv_create_mirror,
-                         (self.uuid, self.lvm_id, create_options,
-                          name, size_bytes, num_copies), cb, cbe)
+                         (self.uuid, self.lvm_id, name, size_bytes, num_copies,
+                          create_options), cb, cbe)
         worker_q.put(r)
 
     @staticmethod
-    def _lv_create_raid(uuid, vg_name, create_options, name, raid_type,
-                        size_bytes, num_stripes, stripe_size_kb, thin_pool):
+    def _lv_create_raid(uuid, vg_name, name, raid_type, size_bytes,
+                        num_stripes, stripe_size_kb, thin_pool,
+                        create_options):
         # Make sure we have a dbus object representing it
         dbo = cfg.om.get_by_uuid_lvm_id(uuid, vg_name)
 
@@ -799,15 +802,16 @@ class Vg(utils.AutomatedProperties):
         return created_lv
 
     @dbus.service.method(dbus_interface=VG_INTERFACE,
-                         in_signature='a{sv}sstuubi',
+                         in_signature='sstuubia{sv}',
                          out_signature='(oo)',
                          async_callbacks=('cb', 'cbe'))
-    def LvCreateRaid(self, create_options, name, raid_type, size_bytes,
-                        num_stripes, stripe_size_kb, thin_pool, tmo, cb, cbe):
+    def LvCreateRaid(self, name, raid_type, size_bytes,
+                     num_stripes, stripe_size_kb, thin_pool, tmo,
+                     create_options, cb, cbe):
         r = RequestEntry(tmo, Vg._lv_create_raid,
-                         (self.uuid, self.lvm_id, create_options, name,
+                         (self.uuid, self.lvm_id, name,
                           raid_type, size_bytes, num_stripes, stripe_size_kb,
-                          thin_pool), cb, cbe)
+                          thin_pool, create_options), cb, cbe)
         worker_q.put(r)
 
     def _attribute(self, pos, ch):
@@ -1016,7 +1020,7 @@ def lv_object_factory(interface_name, *args):
                              in_signature='sia{sv}',
                              out_signature='o',
                              async_callbacks=('cb', 'cbe'))
-        def Rename(self, name, rename_options, tmo, cb, cbe):
+        def Rename(self, name, tmo, rename_options, cb, cbe):
             r = RequestEntry(tmo, Lv._rename,
                              (self.uuid, self.lvm_id, name, rename_options),
                              cb, cbe, False)
@@ -1035,10 +1039,10 @@ def lv_object_factory(interface_name, *args):
             return self._attr[0] == 'V'
 
         @dbus.service.method(dbus_interface=interface_name,
-                             in_signature='a{sv}o(tt)o(tt)',
+                             in_signature='o(tt)o(tt)a{sv}',
                              out_signature='o')
-        def Move(self, move_options, pv_src_obj, pv_source_range, pv_dest_obj,
-                 pv_dest_range):
+        def Move(self, pv_src_obj, pv_source_range, pv_dest_obj,
+                 pv_dest_range, move_options):
             pv_dest = None
             pv_src = cfg.om.get_by_path(pv_src_obj)
             if pv_src:
@@ -1075,8 +1079,8 @@ def lv_object_factory(interface_name, *args):
                     interface_name, 'pv_src_obj (%s) not found' % pv_src_obj)
 
         @staticmethod
-        def _snap_shot(lv_uuid, lv_name, snapshot_options, name,
-                       optional_size):
+        def _snap_shot(lv_uuid, lv_name, name, optional_size,
+                       snapshot_options):
             # Make sure we have a dbus object representing it
             dbo = cfg.om.get_by_uuid_lvm_id(lv_uuid, lv_name)
 
@@ -1115,20 +1119,20 @@ def lv_object_factory(interface_name, *args):
             return snapshot_path
 
         @dbus.service.method(dbus_interface=interface_name,
-                             in_signature='a{sv}sti',
+                             in_signature='sita{sv}',
                              out_signature='(oo)',
                              async_callbacks=('cb', 'cbe'))
-        def Snapshot(self, snapshot_options, name, optional_size, tmo, cb,
-                     cbe):
+        def Snapshot(self, name, tmo, optional_size, snapshot_options,
+                     cb, cbe):
             r = RequestEntry(tmo, Lv._snap_shot,
-                             (self.uuid, self.lvm_id, snapshot_options, name,
-                              optional_size), cb, cbe)
+                             (self.uuid, self.lvm_id, name,
+                              optional_size, snapshot_options), cb, cbe)
             worker_q.put(r)
 
     class LvPoolInherit(Lv):
 
         @staticmethod
-        def _lv_create(lv_uuid, lv_name, create_options, name, size_bytes):
+        def _lv_create(lv_uuid, lv_name, name, size_bytes, create_options):
             # Make sure we have a dbus object representing it
             dbo = cfg.om.get_by_uuid_lvm_id(lv_uuid, lv_name)
 
@@ -1154,13 +1158,13 @@ def lv_object_factory(interface_name, *args):
             return lv_created
 
         @dbus.service.method(dbus_interface=interface_name,
-                             in_signature='a{sv}sti',
+                             in_signature='stia{sv}',
                              out_signature='(oo)',
                              async_callbacks=('cb', 'cbe'))
-        def LvCreate(self, create_options, name, size_bytes, tmo, cb, cbe):
+        def LvCreate(self, name, size_bytes, tmo, create_options, cb, cbe):
             r = RequestEntry(tmo, LvPoolInherit._lv_create,
-                             (self.uuid, self.lvm_id, create_options, name,
-                              size_bytes), cb, cbe)
+                             (self.uuid, self.lvm_id, name,
+                              size_bytes, create_options), cb, cbe)
             worker_q.put(r)
 
     # Without this we each object has a new 'type' when constructed, so
