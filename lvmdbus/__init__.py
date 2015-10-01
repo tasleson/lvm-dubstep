@@ -1,0 +1,1 @@
+from lvmdbus import main

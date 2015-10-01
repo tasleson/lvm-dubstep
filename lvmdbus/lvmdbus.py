@@ -80,9 +80,12 @@ def pprint(msg):
 
 # noinspection PyUnusedLocal
 def handler(signum, frame):
+    global run
+    global loop
     run.value = 0
     pprint('Signal handler called with signal %d' % signum)
-    loop.quit()
+    if loop is not None:
+        loop.quit()
 
 
 pv_id = itertools.count()
@@ -1685,8 +1688,10 @@ def signal_move_changes(obj_mgr):
 
     sys.exit(0)
 
-if __name__ == '__main__':
+
+def main():
     # Queue to wake up move monitor
+    global loop
     process_list = []
 
     start = time.time()
@@ -1724,8 +1729,12 @@ if __name__ == '__main__':
     print 'Service ready! total time= %.2f, lvm time= %.2f count= %d' % \
           (end - start, cmdhandler.total_time, cmdhandler.total_count)
 
-    loop.run()
+    try:
+        if run.value:
+            loop.run()
 
-    for process in process_list:
-        process.join()
-    sys.exit(0)
+            for process in process_list:
+                process.join()
+    except KeyboardInterrupt:
+        pass
+    return 0

@@ -8,7 +8,7 @@ LVM D-Bus proof of concept
 1. Copy the configuration file to allow the service to run on the system bus
   * `# cp com.redhat.lvm1.conf /etc/dbus-1/system.d/`
 2. Run as root
-  * `# ./lvmdbus.py`
+  * `# ./lvmdbusd`
 3. Fire up a client, such as d-feet or other and look around
 
 #### Documentation
