@@ -122,32 +122,32 @@ def job_obj_path_generate(object_path=None):
     return JOB_OBJ_PATH + "/%d" % job_id.next()
 
 
-@utils.dbus_property('uuid', 's')               # PV UUID/pv_uuid
-@utils.dbus_property('name', 's')               # PV/pv_name
-@utils.dbus_property('fmt', 's')                # Fmt/pv_fmt
-@utils.dbus_property('size_bytes', 't', 0)      # PSize/pv_size
-@utils.dbus_property('free_bytes', 't', 0)      # PFree/pv_free
-@utils.dbus_property('used_bytes', 't', 0)      # Used/pv_used
-@utils.dbus_property('dev_size_bytes', 't', 0)  # DevSize/dev_size
-@utils.dbus_property('mda_size_bytes', 't', 0)  # PMdaSize/pv_mda_size
-@utils.dbus_property('mda_free_bytes', 't', 0)  # PMdaFree/pv_mda_free
-@utils.dbus_property('ba_start', 't', 0)        # BA start/pv_ba_start
-@utils.dbus_property('ba_size_bytes', 't', 0)   # BA size/pv_ba_size
-@utils.dbus_property('pe_start', 't', 0)        # 1st PE/pe_start
-@utils.dbus_property('pe_count', 't', 0)        # PE/pv_pe_count
-@utils.dbus_property('pe_alloc_count', 't', 0)  # Alloc/pv_pe_alloc_count
+@utils.dbus_property('Uuid', 's')               # PV UUID/pv_uuid
+@utils.dbus_property('Name', 's')               # PV/pv_name
+@utils.dbus_property('Fmt', 's')                # Fmt/pv_fmt
+@utils.dbus_property('SizeBytes', 't', 0)       # PSize/pv_size
+@utils.dbus_property('FreeBytes', 't', 0)       # PFree/pv_free
+@utils.dbus_property('UsedBytes', 't', 0)       # Used/pv_used
+@utils.dbus_property('DevSizeBytes', 't', 0)    # DevSize/dev_size
+@utils.dbus_property('MdaSizeBytes', 't', 0)    # PMdaSize/pv_mda_size
+@utils.dbus_property('MdaFreeBytes', 't', 0)    # PMdaFree/pv_mda_free
+@utils.dbus_property('BaStart', 't', 0)         # BA start/pv_ba_start
+@utils.dbus_property('BaSizeBytes', 't', 0)     # BA size/pv_ba_size
+@utils.dbus_property('PeStart', 't', 0)         # 1st PE/pe_start
+@utils.dbus_property('PeCount', 't', 0)         # PE/pv_pe_count
+@utils.dbus_property('PeAllocCount', 't', 0)    # Alloc/pv_pe_alloc_count
 class Pv(utils.AutomatedProperties):
     DBUS_INTERFACE = PV_INTERFACE
 
     # For properties that we need custom handlers we need these, otherwise
     # we won't get our introspection data
-    _tags_type = "as"
-    _pe_segments_type = "a(tt)"
-    _exportable_type = "b"
-    _allocatable_type = "b"
-    _missing_type = "b"
-    _lv_type = "a(oa(tt))"
-    _vg_type = "o"
+    _Tags_type = "as"
+    _PeSegments_type = "a(tt)"
+    _Exportable_type = "b"
+    _Allocatable_type = "b"
+    _Missing_type = "b"
+    _Lv_type = "a(oa(tt))"
+    _Vg_type = "o"
 
     def _lv_object_list(self, vg_name):
         rc = []
@@ -168,10 +168,10 @@ class Pv(utils.AutomatedProperties):
         return dbus.Array(rc, signature="(oa(tt))")
 
     # noinspection PyUnusedLocal
-    def __init__(self, object_path, lvm_path, uuid, name,
-                 fmt, size_bytes, free_bytes, used_bytes, dev_size_bytes,
-                 mda_size_bytes, mda_free_bytes, ba_start, ba_size_bytes,
-                 pe_start, pe_count, pe_alloc_count, attr, tags, vg_name,
+    def __init__(self, object_path, lvm_path, Uuid, Name,
+                 Fmt, SizeBytes, FreeBytes, UsedBytes, DevSizeBytes,
+                 MdaSizeBytes, MdaFreeBytes, BaStart, BaSizeBytes,
+                 PeStart, PeCount, PeAllocCount, attr, Tags, vg_name,
                  vg_uuid):
         super(Pv, self).__init__(object_path, PV_INTERFACE, load_pvs)
         utils.init_class_from_arguments(self)
@@ -275,29 +275,29 @@ class Pv(utils.AutomatedProperties):
         worker_q.put(r)
 
     @property
-    def tags(self):
-        return utils.parse_tags(self._tags)
+    def Tags(self):
+        return utils.parse_tags(self._Tags)
 
     @property
-    def pe_segments(self):
+    def PeSegments(self):
         if len(self._pe_segments):
             return self._pe_segments
         return dbus.Array([], '(tt)')
 
     @property
-    def exportable(self):
+    def Exportable(self):
         if self._attr[1] == 'x':
             return True
         return False
 
     @property
-    def allocatable(self):
+    def Allocatable(self):
         if self._attr[0] == 'a':
             return True
         return False
 
     @property
-    def missing(self):
+    def Missing(self):
         if self._attr[2] == 'm':
             return True
         return False
@@ -310,54 +310,54 @@ class Pv(utils.AutomatedProperties):
         return self._lvm_path
 
     @property
-    def lv(self):
+    def Lv(self):
         return self._lv
 
     @property
-    def vg(self):
+    def Vg(self):
         return self._vg_path
 
 
-@utils.dbus_property('uuid', 's')
-@utils.dbus_property('name', 's')
-@utils.dbus_property('fmt', 's')
-@utils.dbus_property('size_bytes', 't', 0)
-@utils.dbus_property('free_bytes', 't', 0)
-@utils.dbus_property('sys_id', 's')
-@utils.dbus_property('extent_size_bytes', 't')
-@utils.dbus_property('extent_count', 't')
-@utils.dbus_property('free_count', 't')
-@utils.dbus_property('profile', 's')
-@utils.dbus_property('max_lv', 't')
-@utils.dbus_property('max_pv', 't')
-@utils.dbus_property('pv_count', 't')
-@utils.dbus_property('lv_count', 't')
-@utils.dbus_property('snap_count', 't')
-@utils.dbus_property('seqno', 't')
-@utils.dbus_property('mda_count', 't')
-@utils.dbus_property('mda_free', 't')
-@utils.dbus_property('mda_size_bytes', 't')
-@utils.dbus_property('mda_used_count', 't')
+@utils.dbus_property('Uuid', 's')
+@utils.dbus_property('Name', 's')
+@utils.dbus_property('Fmt', 's')
+@utils.dbus_property('SizeBytes', 't', 0)
+@utils.dbus_property('FreeBytes', 't', 0)
+@utils.dbus_property('SysId', 's')
+@utils.dbus_property('ExtentSizeBytes', 't')
+@utils.dbus_property('ExtentCount', 't')
+@utils.dbus_property('FreeCount', 't')
+@utils.dbus_property('Profile', 's')
+@utils.dbus_property('MaxLv', 't')
+@utils.dbus_property('MaxPv', 't')
+@utils.dbus_property('PvCount', 't')
+@utils.dbus_property('LvCount', 't')
+@utils.dbus_property('SnapCount', 't')
+@utils.dbus_property('Seqno', 't')
+@utils.dbus_property('MdaCount', 't')
+@utils.dbus_property('MdaFree', 't')
+@utils.dbus_property('MdaSizeBytes', 't')
+@utils.dbus_property('MdaUsedCount', 't')
 class Vg(utils.AutomatedProperties):
     DBUS_INTERFACE = VG_INTERFACE
-    _tags_type = "as"
-    _pvs_type = "ao"
-    _lvs_type = "ao"
-    _writeable_type = "b"
-    _readable_type = "b"
-    _exportable_type = 'b'
-    _partial_type = 'b'
-    _alloc_contiguous_type = 'b'
-    _alloc_cling_type = 'b'
-    _alloc_normal_type = 'b'
-    _alloc_anywhere_type = 'b'
-    _clustered_type = 'b'
+    _Tags_type = "as"
+    _Pvs_type = "ao"
+    _Lvs_type = "ao"
+    _Writeable_type = "b"
+    _Readable_type = "b"
+    _Exportable_type = 'b'
+    _Partial_type = 'b'
+    _AllocContiguous_type = 'b'
+    _AllocCling_type = 'b'
+    _AllocNormal_type = 'b'
+    _AllocAnywhere_type = 'b'
+    _Clustered_type = 'b'
 
     def _lv_paths_build(self, name):
         rc = []
         for lv in cmdhandler.lvs_in_vg(name):
             (lv_name, lv_attr, lv_uuid) = lv
-            full_name = "%s/%s" % (self._name, lv_name)
+            full_name = "%s/%s" % (self._Name, lv_name)
 
             gen = lv_obj_path_generate
             if lv_attr[0] == 't':
@@ -378,15 +378,15 @@ class Vg(utils.AutomatedProperties):
         return dbus.Array(rc, signature='o')
 
     # noinspection PyUnusedLocal
-    def __init__(self, object_path, uuid, name, fmt,
-                 size_bytes, free_bytes, sys_id, extent_size_bytes,
-                 extent_count, free_count, profile, max_lv, max_pv, pv_count,
-                 lv_count, snap_count, seqno, mda_count, mda_free,
-                 mda_size_bytes, mda_used_count, attr, tags):
+    def __init__(self, object_path, Uuid, Name, Fmt,
+                 SizeBytes, FreeBytes, SysId, ExtentSizeBytes,
+                 ExtentCount, FreeCount, Profile, MaxLv, MaxPv, PvCount,
+                 LvCount, SnapCount, Seqno, MdaCount, MdaFree,
+                 MdaSizeBytes, MdaUsedCount, attr, tags):
         super(Vg, self).__init__(object_path, VG_INTERFACE, load_vgs)
         utils.init_class_from_arguments(self)
-        self._pv_in_vg = self._pv_paths_build(name)
-        self._lv_in_vg = self._lv_paths_build(name)
+        self._pv_in_vg = self._pv_paths_build(Name)
+        self._lv_in_vg = self._lv_paths_build(Name)
 
     def refresh_pvs(self, pv_list=None):
         """
@@ -660,7 +660,6 @@ class Vg(utils.AutomatedProperties):
                 VG_INTERFACE, 'VG with uuid %s and name %s not present!' %
                 (uuid, vg_name))
 
-        pprint("exiting _lv_create_linear %s" % (created_lv))
         return created_lv
 
     @dbus.service.method(dbus_interface=VG_INTERFACE,
@@ -820,59 +819,59 @@ class Vg(utils.AutomatedProperties):
         return False
 
     @property
-    def tags(self):
+    def Tags(self):
         return utils.parse_tags(self._tags)
 
     @property
-    def pvs(self):
+    def Pvs(self):
         return self._pv_in_vg
 
     @property
-    def lvs(self):
+    def Lvs(self):
         return self._lv_in_vg
 
     @property
     def lvm_id(self):
-        return self._name
+        return self._Name
 
     @property
-    def writeable(self):
+    def Writeable(self):
         return self._attribute(0, 'w')
 
     @property
-    def readable(self):
+    def Readable(self):
         return self._attribute(0, 'r')
 
     @property
-    def resizeable(self):
+    def Resizeable(self):
         return self._attribute(1, 'z')
 
     @property
-    def exportable(self):
+    def Exportable(self):
         return self._attribute(2, 'x')
 
     @property
-    def partial(self):
+    def Partial(self):
         return self._attribute(3, 'p')
 
     @property
-    def alloc_contiguous(self):
+    def AllocContiguous(self):
         return self._attribute(4, 'c')
 
     @property
-    def alloc_cling(self):
+    def AllocCling(self):
         return self._attribute(4, 'c')
 
     @property
-    def alloc_normal(self):
+    def AllocNormal(self):
         return self._attribute(4, 'n')
 
     @property
-    def alloc_anywhere(self):
+    def AllocAnywhere(self):
         return self._attribute(4, 'a')
 
     @property
-    def clustered(self):
+    def Clustered(self):
         return self._attribute(5, 'c')
 
 
@@ -889,22 +888,22 @@ def lv_object_factory(interface_name, *args):
     :param args: Arguments to be passed to object constructor
     :return: Object instance that matches interface wanted.
     """
-    @utils.dbus_property('uuid', 's')
-    @utils.dbus_property('name', 's')
-    @utils.dbus_property('path', 's')
-    @utils.dbus_property('size_bytes', 't')
-    @utils.dbus_property('data_percent', 'u')
-    @utils.dbus_property('segtype', 's')
-    @utils.dbus_property('vg', 'o', '/')
-    @utils.dbus_property('origin_lv', 'o', '/')
-    @utils.dbus_property('pool_lv', 'o', '/')
-    @utils.dbus_property('devices', "a(oa(tt))",
+    @utils.dbus_property('Uuid', 's')
+    @utils.dbus_property('Name', 's')
+    @utils.dbus_property('Path', 's')
+    @utils.dbus_property('SizeBytes', 't')
+    @utils.dbus_property('DataPercent', 'u')
+    @utils.dbus_property('SegType', 's')
+    @utils.dbus_property('Vg', 'o', '/')
+    @utils.dbus_property('OriginLv', 'o', '/')
+    @utils.dbus_property('PoolLv', 'o', '/')
+    @utils.dbus_property('Devices', "a(oa(tt))",
                          dbus.Array([], signature="(oa(tt))"))
-    @utils.dbus_property('attr', 's')
+    @utils.dbus_property('Attr', 's')
     class Lv(utils.AutomatedProperties):
         DBUS_INTERFACE = interface_name
-        _tags_type = "as"
-        _is_thin_volume_type = "b"
+        _Tags_type = "as"
+        _IsThinVolume_type = "b"
 
         @staticmethod
         def _pv_devices(lvm_id):
@@ -912,43 +911,43 @@ def lv_object_factory(interface_name, *args):
             for pv in sorted(cmdhandler.lv_pv_devices(lvm_id)):
                 (pv_name, pv_segs, pv_uuid) = pv
                 pv_obj = cfg.om.get_object_path_by_lvm_id(
-                    pv_name, pv_uuid)
+                    pv_uuid, pv_name, gen_new=False)
                 rc.append((pv_obj, pv_segs))
             return dbus.Array(rc, signature="(oa(tt))")
 
         # noinspection PyUnusedLocal
         def __init__(self, object_path,
-                     uuid, name, path, size_bytes,
-                     vg_name, vg_uuid, pool_lv,
-                     origin_lv, data_percent, attr, tags, segtype):
+                     Uuid, Name, path, SizeBytes,
+                     vg_name, vg_uuid, PoolLv,
+                     OriginLv, DataPercent, Attr, Tags, SegType):
 
             super(Lv, self).__init__(object_path, interface_name, load_lvs)
             utils.init_class_from_arguments(self)
 
-            self._vg = cfg.om.get_object_path_by_lvm_id(
+            self._Vg = cfg.om.get_object_path_by_lvm_id(
                 vg_uuid, vg_name, vg_obj_path_generate)
 
             self._devices = self._pv_devices(self.lvm_id)
 
             # When https://bugzilla.redhat.com/show_bug.cgi?id=1264190 is
             # completed, fix this to pass the pool_lv_uuid too
-            if pool_lv:
-                self._pool_lv = cfg.om.get_object_path_by_lvm_id(
-                    None, '%s/%s' % (vg_name, pool_lv),
+            if PoolLv:
+                self._PoolLv = cfg.om.get_object_path_by_lvm_id(
+                    None, '%s/%s' % (vg_name, PoolLv),
                     thin_pool_obj_path_generate)
 
-            if origin_lv:
-                self._origin_lv = \
+            if OriginLv:
+                self._OriginLv = \
                     cfg.om.get_object_path_by_lvm_id(
-                        None, '%s/%s' % (vg_name, origin_lv),
+                        None, '%s/%s' % (vg_name, OriginLv),
                         vg_obj_path_generate)
 
         def vg_name_lookup(self):
-            return cfg.om.get_by_path(self._vg).name
+            return cfg.om.get_by_path(self._Vg).Name
 
         def signal_vg_pv_changes(self):
             # Signal property changes...
-            vg_obj = cfg.om.get_by_path(self.vg)
+            vg_obj = cfg.om.get_by_path(self.Vg)
             if vg_obj:
                 vg_obj.refresh()
 
@@ -1027,16 +1026,16 @@ def lv_object_factory(interface_name, *args):
             worker_q.put(r)
 
         @property
-        def tags(self):
-            return utils.parse_tags(self._tags)
+        def Tags(self):
+            return utils.parse_tags(self._Tags)
 
         @property
         def lvm_id(self):
-            return "%s/%s" % (self.vg_name_lookup(), self.name)
+            return "%s/%s" % (self.vg_name_lookup(), self.Name)
 
         @property
-        def is_thin_volume(self):
-            return self._attr[0] == 'V'
+        def IsThinVolume(self):
+            return self._Attr[0] == 'V'
 
         @dbus.service.method(dbus_interface=interface_name,
                              in_signature='o(tt)o(tt)a{sv}',

@@ -446,18 +446,25 @@ class ObjectManager(AutomatedProperties):
         """
         assert lvm_id       # TODO: Assert that uuid is present later too
 
+        if gen_new:
+            assert path_create
+
+        path = None
+
         if lvm_id in self._id_to_object_path:
-            return self._id_to_object_path[lvm_id]
+            path = self._id_to_object_path[lvm_id]
         else:
             if uuid and uuid in self._id_to_object_path:
-                return self._id_to_object_path[uuid]
+                path = self._id_to_object_path[uuid]
             else:
                 if gen_new:
                     path = path_create()
                     self._lookup_add(None, path, lvm_id, uuid)
-                    return path
-                else:
-                    return None
+        # print 'get_object_path_by_lvm_id(%s, %s, %s: return %s' % \
+        #        (uuid, lvm_id, str(gen_new), path)
+
+        return path
+
 
     def refresh_all(self):
         for k, v in self._objects.items():
