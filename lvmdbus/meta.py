@@ -48,7 +48,6 @@ def _get_identifier(data, i):
 
 
 def _get_number(data, i):
-    rc = None
     st = i
 
     while data[i] in _NUMBER_CH:

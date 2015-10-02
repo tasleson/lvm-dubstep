@@ -473,7 +473,6 @@ class ObjectManager(AutomatedProperties):
 
         return path
 
-
     def refresh_all(self):
         for k, v in self._objects.items():
             try:

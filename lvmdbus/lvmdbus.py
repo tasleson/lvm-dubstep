@@ -151,7 +151,7 @@ class Pv(utils.AutomatedProperties):
                 rc.append((lv_path, segs))
         return dbus.Array(rc, signature="(oa(tt))")
 
-    # noinspection PyUnusedLocal
+    # noinspection PyUnusedLocal,PyPep8Naming
     def __init__(self, object_path, lvm_path, Uuid, Name,
                  Fmt, SizeBytes, FreeBytes, UsedBytes, DevSizeBytes,
                  MdaSizeBytes, MdaFreeBytes, BaStart, BaSizeBytes,
@@ -361,7 +361,7 @@ class Vg(utils.AutomatedProperties):
                 pv_uuid, pv_name, pv_obj_path_generate))
         return dbus.Array(rc, signature='o')
 
-    # noinspection PyUnusedLocal
+    # noinspection PyUnusedLocal,PyPep8Naming
     def __init__(self, object_path, Uuid, Name, Fmt,
                  SizeBytes, FreeBytes, SysId, ExtentSizeBytes,
                  ExtentCount, FreeCount, Profile, MaxLv, MaxPv, PvCount,
@@ -905,7 +905,7 @@ def lv_object_factory(interface_name, *args):
                 rc.append((pv_obj, pv_segs))
             return dbus.Array(rc, signature="(oa(tt))")
 
-        # noinspection PyUnusedLocal
+        # noinspection PyUnusedLocal,PyPep8Naming
         def __init__(self, object_path,
                      Uuid, Name, Path, SizeBytes,
                      vg_name, vg_uuid, PoolLv,
@@ -1175,7 +1175,7 @@ def load_pvs(device=None, object_path=None, refresh=False):
     rc = []
 
     _pvs = cmdhandler.pv_retrieve(device)
-    pvs = sorted(_pvs, key=lambda k: k['pv_name'])
+    pvs = sorted(_pvs, key=lambda pk: pk['pv_name'])
 
     # If we are doing a refresh we need to know what we have in memory, what's
     # in lvm and add those that are new and remove those that are gone!
@@ -1230,7 +1230,7 @@ def load_vgs(vg_specific=None, object_path=None, refresh=False):
     rc = []
 
     _vgs = cmdhandler.vg_retrieve(vg_specific)
-    vgs = sorted(_vgs, key=lambda k: k['vg_name'])
+    vgs = sorted(_vgs, key=lambda vk: vk['vg_name'])
 
     # If we are doing a refresh we need to know what we have in memory, what's
     # in lvm and add those that are new and remove those that are gone!
@@ -1284,15 +1284,14 @@ def load_lvs(lv_name=None, object_path=None, refresh=False):
     rc = []
 
     _lvs = cmdhandler.lv_retrieve(lv_name)
-    lvs = sorted(_lvs, key=lambda k: k['lv_name'])
+    lvs = sorted(_lvs, key=lambda lk: lk['lv_name'])
 
     # If we are doing a refresh we need to know what we have in memory, what's
     # in lvm and add those that are new and remove those that are gone!
     if refresh:
+        # noinspection PyUnresolvedReferences
         existing_lv_paths = cfg.om.object_paths_by_type(
             (lv_object_factory.lv_t, lv_object_factory.lv_pool_t))
-
-        print 'existing lvs ', str(existing_lv_paths)
 
     for l in lvs:
         ident = "%s/%s" % (l['vg_name'], l['lv_name'])
@@ -1344,7 +1343,6 @@ def load_lvs(lv_name=None, object_path=None, refresh=False):
 
     if refresh:
         for k in existing_lv_paths.keys():
-            print 'Removing lv ', k
             cfg.om.remove_object(cfg.om.get_by_path(k), True)
 
     return rc
@@ -1408,7 +1406,7 @@ class Manager(utils.AutomatedProperties):
         cfg.worker_q.put(r)
 
     @staticmethod
-    def _create_vg( name, pv_object_paths, create_options):
+    def _create_vg(name, pv_object_paths, create_options):
         pv_devices = []
 
         for p in pv_object_paths:
@@ -1777,6 +1775,8 @@ def main():
     gobject.threads_init()
     dbus.mainloop.glib.threads_init()
     cfg.bus = dbus.SystemBus()
+    # The base name variable needs to exist for things to work.
+    # noinspection PyUnusedLocal
     base_name = dbus.service.BusName(BASE_INTERFACE, cfg.bus)
     cfg.om = Lvm(BASE_OBJ_PATH)
     cfg.om.register_object(Manager(MANAGER_OBJ_PATH))
