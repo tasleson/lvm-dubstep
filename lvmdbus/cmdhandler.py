@@ -267,12 +267,12 @@ def vg_lv_create_raid(vg_name, create_options, name, raid_type, size_bytes,
 
                 if rc != 0:
                     # Clean up meta and data
-                    lv_remove(full_meta)
-                    lv_remove(full_data)
+                    lv_remove(full_meta, {})
+                    lv_remove(full_data, {})
 
             else:
                 # Clean up meta
-                lv_remove(full_meta)
+                lv_remove(full_meta, {})
 
         return rc, out, err
     else:
