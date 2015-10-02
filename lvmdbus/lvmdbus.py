@@ -1291,7 +1291,7 @@ class Manager(utils.AutomatedProperties):
         super(Manager, self).__init__(object_path, MANAGER_INTERFACE)
 
     @staticmethod
-    def _pv_create(create_options, device):
+    def _pv_create(device, create_options):
 
         # Check to see if we are already trying to create a PV for an existing
         # PV
@@ -1316,16 +1316,16 @@ class Manager(utils.AutomatedProperties):
         return created_pv
 
     @dbus.service.method(dbus_interface=MANAGER_INTERFACE,
-                         in_signature='a{sv}si',
+                         in_signature='sia{sv}',
                          out_signature='(oo)',
                          async_callbacks=('cb', 'cbe'))
-    def PvCreate(self, create_options, device, tmo, cb, cbe):
+    def PvCreate(self, device, tmo, create_options, cb, cbe):
         r = RequestEntry(tmo, Manager._pv_create,
-                         (create_options, device), cb, cbe)
+                         (device, create_options), cb, cbe)
         cfg.worker_q.put(r)
 
     @staticmethod
-    def _create_vg(create_options, pv_object_paths, name):
+    def _create_vg( name, pv_object_paths, create_options):
         pv_devices = []
 
         for p in pv_object_paths:
@@ -1358,12 +1358,12 @@ class Manager(utils.AutomatedProperties):
         return created_vg
 
     @dbus.service.method(dbus_interface=MANAGER_INTERFACE,
-                         in_signature='a{sv}aosi',
+                         in_signature='saoia{sv}',
                          out_signature='(oo)',
                          async_callbacks=('cb', 'cbe'))
-    def VgCreate(self, create_options, pv_object_paths, name, tmo, cb, cbe):
+    def VgCreate(self, name, pv_object_paths, tmo, create_options, cb, cbe):
         r = RequestEntry(tmo, Manager._create_vg,
-                         (create_options, pv_object_paths, name),
+                         (name, pv_object_paths, create_options,),
                          cb, cbe)
         cfg.worker_q.put(r)
 
