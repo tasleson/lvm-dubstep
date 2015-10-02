@@ -1170,113 +1170,196 @@ def lv_object_factory(interface_name, *args):
         raise Exception("Unsupported interface name %s" % (interface_name))
 
 
-def load_pvs(device=None, object_path=None):
-    _pvs = cmdhandler.pv_retrieve(device)
+def load_pvs(device=None, object_path=None, refresh=False):
+    existing_pv_paths = []
+    rc = []
 
+    _pvs = cmdhandler.pv_retrieve(device)
     pvs = sorted(_pvs, key=lambda k: k['pv_name'])
 
-    rc = []
+    # If we are doing a refresh we need to know what we have in memory, what's
+    # in lvm and add those that are new and remove those that are gone!
+    if refresh:
+        existing_pv_paths = cfg.om.object_paths_by_type((Pv,))
 
     for p in pvs:
+        # Assume we need to add this one to dbus, unless we are refreshing
+        # and it's already present
+        process_pv = True
 
-        if not object_path:
-            object_path = cfg.om.get_object_path_by_lvm_id(
-                p['pv_uuid'], p['pv_name'], pv_obj_path_generate)
+        if refresh:
+            # We are refreshing all the PVs from LVM, if this one exists
+            # we need to refresh our state.
+            pv_dbus_object = cfg.om.get_by_uuid_lvm_id(
+                p['pv_uuid'], p['pv_name'])
 
-        p = Pv(object_path,
-               p["pv_name"], p["pv_uuid"], p["pv_name"], p["pv_fmt"],
-               n(p["pv_size"]),
-               n(p["pv_free"]), n(p["pv_used"]), n(p["dev_size"]),
-               n(p["pv_mda_size"]), n(p["pv_mda_free"]),
-               long(p["pv_ba_start"]), n(p["pv_ba_size"]),
-               n(p["pe_start"]), long(p["pv_pe_count"]),
-               long(p["pv_pe_alloc_count"]),
-               p["pv_attr"], p["pv_tags"], p["vg_name"], p["vg_uuid"])
-        rc.append(p)
+            if pv_dbus_object:
+                del existing_pv_paths[pv_dbus_object.dbus_object_path()]
+
+                pv_dbus_object.refresh()
+                process_pv = False
+
+        if process_pv:
+            # This object is unknown, lets add it to the model
+            if not object_path:
+                object_path = cfg.om.get_object_path_by_lvm_id(
+                    p['pv_uuid'], p['pv_name'], pv_obj_path_generate)
+
+            p = Pv(object_path,
+                   p["pv_name"], p["pv_uuid"], p["pv_name"], p["pv_fmt"],
+                   n(p["pv_size"]),
+                   n(p["pv_free"]), n(p["pv_used"]), n(p["dev_size"]),
+                   n(p["pv_mda_size"]), n(p["pv_mda_free"]),
+                   long(p["pv_ba_start"]), n(p["pv_ba_size"]),
+                   n(p["pe_start"]), long(p["pv_pe_count"]),
+                   long(p["pv_pe_alloc_count"]),
+                   p["pv_attr"], p["pv_tags"], p["vg_name"], p["vg_uuid"])
+            rc.append(p)
 
         object_path = None
+
+    if refresh:
+        for k in existing_pv_paths.keys():
+            cfg.om.remove_object(cfg.om.get_by_path(k), True)
+
     return rc
 
 
-def load_vgs(vg_specific=None, object_path=None):
-    _vgs = cmdhandler.vg_retrieve(vg_specific)
+def load_vgs(vg_specific=None, object_path=None, refresh=False):
+    existing_pv_paths = []
+    rc = []
 
+    _vgs = cmdhandler.vg_retrieve(vg_specific)
     vgs = sorted(_vgs, key=lambda k: k['vg_name'])
 
-    rc = []
+    # If we are doing a refresh we need to know what we have in memory, what's
+    # in lvm and add those that are new and remove those that are gone!
+    if refresh:
+        existing_pv_paths = cfg.om.object_paths_by_type((Vg,))
 
     for v in vgs:
-        if not object_path:
-            object_path = cfg.om.get_object_path_by_lvm_id(
-                v['vg_uuid'], v['vg_name'], vg_obj_path_generate)
+        # Assume we need to add this one to dbus, unless we are refreshing
+        # and it's already present
+        process_vg = True
 
-        vg = Vg(object_path,
-                v['vg_uuid'], v['vg_name'], v['vg_fmt'], n(v['vg_size']),
-                n(v['vg_free']),
-                v['vg_sysid'], n(v['vg_extent_size']), n(v['vg_extent_count']),
-                n(v['vg_free_count']), v['vg_profile'], n(v['max_lv']),
-                n(v['max_pv']), n(v['pv_count']),
-                n(v['lv_count']), n(v['snap_count']),
-                n(v['vg_seqno']), n(v['vg_mda_count']), n(v['vg_mda_free']),
-                n(v['vg_mda_size']),
-                n(v['vg_mda_used_count']), v['vg_attr'], v['vg_tags'])
-        rc.append(vg)
+        if refresh:
+            # We are refreshing all the VGs from LVM, if this one exists
+            # we need to refresh our state.
+            vg_dbus_object = cfg.om.get_by_uuid_lvm_id(
+                v['vg_uuid'], v['vg_name'])
+
+            if vg_dbus_object:
+                del existing_pv_paths[vg_dbus_object.dbus_object_path()]
+
+                vg_dbus_object.refresh()
+                process_vg = False
+
+        if process_vg:
+            if not object_path:
+                object_path = cfg.om.get_object_path_by_lvm_id(
+                    v['vg_uuid'], v['vg_name'], vg_obj_path_generate)
+
+            vg = Vg(object_path,
+                    v['vg_uuid'], v['vg_name'], v['vg_fmt'], n(v['vg_size']),
+                    n(v['vg_free']), v['vg_sysid'], n(v['vg_extent_size']),
+                    n(v['vg_extent_count']), n(v['vg_free_count']),
+                    v['vg_profile'], n(v['max_lv']), n(v['max_pv']),
+                    n(v['pv_count']), n(v['lv_count']), n(v['snap_count']),
+                    n(v['vg_seqno']), n(v['vg_mda_count']),
+                    n(v['vg_mda_free']), n(v['vg_mda_size']),
+                    n(v['vg_mda_used_count']), v['vg_attr'], v['vg_tags'])
+            rc.append(vg)
+
         object_path = None
+
+    if refresh:
+        for k in existing_pv_paths.keys():
+            cfg.om.remove_object(cfg.om.get_by_path(k), True)
 
     return rc
 
 
-def load_lvs(lv_name=None, object_path=None):
-    _lvs = cmdhandler.lv_retrieve(lv_name)
+def load_lvs(lv_name=None, object_path=None, refresh=False):
+    existing_lv_paths = []
+    rc = []
 
+    _lvs = cmdhandler.lv_retrieve(lv_name)
     lvs = sorted(_lvs, key=lambda k: k['lv_name'])
 
-    rc = []
+    # If we are doing a refresh we need to know what we have in memory, what's
+    # in lvm and add those that are new and remove those that are gone!
+    if refresh:
+        existing_lv_paths = cfg.om.object_paths_by_type(
+            (lv_object_factory.lv_t, lv_object_factory.lv_pool_t))
+
+        print 'existing lvs ', str(existing_lv_paths)
 
     for l in lvs:
         ident = "%s/%s" % (l['vg_name'], l['lv_name'])
 
-        # Check to see if this LV is a thinpool!
-        if l['lv_attr'][0] != 't':
+        # Assume we need to add this one to dbus, unless we are refreshing
+        # and it's already present
+        process_lv = True
 
-            if not object_path:
-                object_path = cfg.om.get_object_path_by_lvm_id(
-                    l['lv_uuid'], ident, lv_obj_path_generate)
+        if refresh:
+            # We are refreshing all the VGs from LVM, if this one exists
+            # we need to refresh our state.
+            lv_dbus_object = cfg.om.get_by_uuid_lvm_id(l['lv_uuid'], ident)
 
-            lv = lv_object_factory(LV_INTERFACE, object_path,
-                                   l['lv_uuid'], l['lv_name'],
-                                   l['lv_path'], n(l['lv_size']), l['vg_name'],
-                                   l['vg_uuid'], l['pool_lv'], l['origin'],
-                                   n32(l['data_percent']), l['lv_attr'],
-                                   l['lv_tags'], l['segtype'])
-        else:
+            if lv_dbus_object:
+                del existing_lv_paths[lv_dbus_object.dbus_object_path()]
+                lv_dbus_object.refresh()
+                process_lv = False
 
-            if not object_path:
-                object_path = cfg.om.get_object_path_by_lvm_id(
-                    l['lv_uuid'], ident, thin_pool_obj_path_generate)
+        if process_lv:
+            # Check to see if this LV is a thinpool!
+            if l['lv_attr'][0] != 't':
 
-            lv = lv_object_factory(
-                THIN_POOL_INTERFACE, object_path,
-                l['lv_uuid'], l['lv_name'], l['lv_path'], n(l['lv_size']),
-                l['vg_name'], l['vg_uuid'], l['pool_lv'], l['origin'],
-                n32(l['data_percent']), l['lv_attr'], l['lv_tags'],
-                l['segtype'])
+                if not object_path:
+                    object_path = cfg.om.get_object_path_by_lvm_id(
+                        l['lv_uuid'], ident, lv_obj_path_generate)
 
-        rc.append(lv)
+                lv = lv_object_factory(LV_INTERFACE, object_path,
+                                       l['lv_uuid'], l['lv_name'],
+                                       l['lv_path'], n(l['lv_size']),
+                                       l['vg_name'],
+                                       l['vg_uuid'], l['pool_lv'], l['origin'],
+                                       n32(l['data_percent']), l['lv_attr'],
+                                       l['lv_tags'], l['segtype'])
+            else:
+
+                if not object_path:
+                    object_path = cfg.om.get_object_path_by_lvm_id(
+                        l['lv_uuid'], ident, thin_pool_obj_path_generate)
+
+                lv = lv_object_factory(
+                    THIN_POOL_INTERFACE, object_path,
+                    l['lv_uuid'], l['lv_name'], l['lv_path'], n(l['lv_size']),
+                    l['vg_name'], l['vg_uuid'], l['pool_lv'], l['origin'],
+                    n32(l['data_percent']), l['lv_attr'], l['lv_tags'],
+                    l['segtype'])
+
+            rc.append(lv)
         object_path = None
+
+    if refresh:
+        for k in existing_lv_paths.keys():
+            print 'Removing lv ', k
+            cfg.om.remove_object(cfg.om.get_by_path(k), True)
+
     return rc
 
 
-def load():
+def load(refresh=False):
     # Go through and load all the PVs, VGs and LVs
-    for p in load_pvs():
-        cfg.om.register_object(p)
+    for p in load_pvs(refresh=refresh):
+        cfg.om.register_object(p, refresh)
 
-    for v in load_vgs():
-        cfg.om.register_object(v)
+    for v in load_vgs(refresh=refresh):
+        cfg.om.register_object(v, refresh)
 
-    for l in load_lvs():
-        cfg.om.register_object(l)
+    for l in load_lvs(refresh=refresh):
+        cfg.om.register_object(l, refresh)
 
 
 class Lvm(utils.ObjectManager):
@@ -1374,7 +1457,8 @@ class Manager(utils.AutomatedProperties):
         more of a test method at the moment to make sure we are handling object
         paths correctly.
         """
-        cfg.om.refresh_all()
+        #cfg.om.refresh_all()
+        load(refresh=True)
 
     @dbus.service.method(dbus_interface=MANAGER_INTERFACE,
                          in_signature='s',

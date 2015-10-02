@@ -384,6 +384,14 @@ class ObjectManager(AutomatedProperties):
 
             del self._objects[obj_path]
 
+    def object_paths_by_type(self, o_type):
+        rc = {}
+
+        for k, v in self._objects.items():
+            if isinstance(v[0], o_type):
+                rc[k] = True
+        return rc
+
     def register_object(self, dbus_object, emit_signal=False):
         """
         Given a dbus object add it to the collection
