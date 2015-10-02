@@ -451,9 +451,15 @@ class Vg(utils.AutomatedProperties):
             rc, out, err = cmdhandler.vg_remove(vg_name, remove_options)
 
             if rc == 0:
+                # Remove data for associated LVs as it's gone
+                for lv_path in dbo.Lvs:
+                    lv = cfg.om.get_by_path(lv_path)
+                    cfg.om.remove_object(lv, True)
+
                 cfg.om.remove_object(dbo, True)
                 # The vg is gone from LVM and from the dbus API, signal changes
-                # in all the previously involved PVs
+                # in all the previously involved PVs as the usages have
+                # changed.
                 dbo.refresh_pvs()
             else:
                 # Need to work on error handling, need consistent
