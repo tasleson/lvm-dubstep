@@ -377,7 +377,7 @@ class Vg(utils.AutomatedProperties):
         Refresh the state of the PVs for this vg given a PV object path
         """
         if not pv_list:
-            pv_list = self.pvs
+            pv_list = self.Pvs
 
         for p in pv_list:
             pv = cfg.om.get_by_path(p)
@@ -901,7 +901,7 @@ def lv_object_factory(interface_name, *args):
 
         # noinspection PyUnusedLocal
         def __init__(self, object_path,
-                     Uuid, Name, path, SizeBytes,
+                     Uuid, Name, Path, SizeBytes,
                      vg_name, vg_uuid, PoolLv,
                      OriginLv, DataPercent, Attr, Tags, SegType):
 
@@ -911,7 +911,7 @@ def lv_object_factory(interface_name, *args):
             self._Vg = cfg.om.get_object_path_by_lvm_id(
                 vg_uuid, vg_name, vg_obj_path_generate)
 
-            self._devices = self._pv_devices(self.lvm_id)
+            self._Devices = self._pv_devices(self.lvm_id)
 
             # When https://bugzilla.redhat.com/show_bug.cgi?id=1264190 is
             # completed, fix this to pass the pool_lv_uuid too
@@ -935,7 +935,7 @@ def lv_object_factory(interface_name, *args):
             if vg_obj:
                 vg_obj.refresh()
 
-            for d in self.devices:
+            for d in self.Devices:
                 pv = cfg.om.get_by_path(d[0])
                 if pv:
                     pv.refresh()
@@ -1325,7 +1325,7 @@ class Manager(utils.AutomatedProperties):
         for p in pv_object_paths:
             pv = cfg.om.get_by_path(p)
             if pv:
-                pv_devices.append(pv.name)
+                pv_devices.append(pv.Name)
             else:
                 raise dbus.exceptions.DBusException(
                     MANAGER_INTERFACE, 'object path = %s not found' % p)
