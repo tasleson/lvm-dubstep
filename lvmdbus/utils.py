@@ -20,6 +20,7 @@ import traceback
 import sys
 import inspect
 import cfg
+import threading
 
 
 def md5(t):
@@ -269,34 +270,50 @@ class AutomatedProperties(dbus.service.Object):
         Take this object, go out and fetch the latest LVM copy and replace the
         one registered with dbus.  Not sure if there is a better way to do
         this, instead of resorting to removing the existing object and
-        inserting a new one.
+        inserting a new one... One possible way to handle this is to separate
+        the state of lvm from the dbus object representation.  Thus the
+        dbus object would contain an object which represents lvm state, one
+        that we could swap out whenever it was needed.
 
         WARNING: Once you call into this method, "self" is removed
         from the dbus API and thus you cannot call any dbus methods upon it.
 
         """
 
-        # If we can't do a lookup, bail now!
+        # If we can't do a lookup, bail now, this happens if we blindly walk
+        # through all dbus objects as some don't have a search method, like
+        # 'Manager' object.
         if not self._ap_search_method:
             return
 
-        search = self.lvm_id
-        if search_key:
-            search = search_key
+        with cfg.om.locked():
+            # We want the remove & subsequent add to be atomic, would be better
+            # if we could move this into the object manager class itself...
+            # The bigger question is we typically refresh a number of different
+            # objects together, as part of a change.  As lvm does locking at
+            # the VG layer one would think that these related changes would not
+            # need locking in the object manager.  We may find that we need
+            # to be able to refresh a sequence of changes atomically, esp. when
+            # we start supporting nested LVM (LVs that are PVs).
 
-        cfg.om.remove_object(self)
+            search = self.lvm_id
+            if search_key:
+                search = search_key
 
-        # Go out and fetch the latest version of this object, eg. pvs, vgs, lvs
-        found = self._ap_search_method([search], self.dbus_object_path())
-        for i in found:
-            cfg.om.register_object(i)
-            changed = get_object_property_diff(self, i)
+            cfg.om.remove_object(self)
 
-            if changed:
-                # Use the instance that is registered with dbus API as self
-                # has been removed, calls to it will make no difference
-                # with regards to the dbus API.
-                i.PropertiesChanged(self._ap_interface, changed, [])
+            # Go out and fetch the latest version of this object, eg.
+            # pvs, vgs, lvs
+            found = self._ap_search_method([search], self.dbus_object_path())
+            for i in found:
+                cfg.om.register_object(i)
+                changed = get_object_property_diff(self, i)
+
+                if changed:
+                    # Use the instance that is registered with dbus API as self
+                    # has been removed, calls to it will make no difference
+                    # with regards to the dbus API.
+                    i.PropertiesChanged(self._ap_interface, changed, [])
 
     @property
     def lvm_id(self):
@@ -314,6 +331,31 @@ class AutomatedProperties(dbus.service.Object):
         return uuid.uuid1()
 
 
+class ObjectManagerLock(object):
+    """
+    The sole purpose of this class is to allow other code the ability to
+    lock the object manager using a `with` statement, eg.
+
+    with cfg.om.locked():
+        # Do stuff with object manager
+
+    This will ensure that the lock is always released (assuming this is done
+    correctly)
+    """
+
+    def __init__(self, recursive_lock):
+        self._lock = recursive_lock
+
+    def __enter__(self):
+        # Acquire lock
+        self._lock.acquire()
+
+    def __exit__(self, e_type, e_value, e_traceback):
+        # Release lock
+        self._lock.release()
+        self._lock = None
+
+
 class ObjectManager(AutomatedProperties):
     """
     Implements the org.freedesktop.DBus.ObjectManager interface
@@ -325,21 +367,30 @@ class ObjectManager(AutomatedProperties):
         self._ap_o_path = object_path
         self._objects = {}
         self._id_to_object_path = {}
+        self.rlock = threading.RLock()
 
     @dbus.service.method(dbus_interface="org.freedesktop.DBus.ObjectManager",
                          out_signature='a{oa{sa{sv}}}')
     def GetManagedObjects(self):
-        rc = {}
+        with self.rlock:
+            rc = {}
+            try:
+                for k, v in self._objects.items():
+                    path, props = v[0].emit_data()
+                    rc[path] = props
+            except Exception:
+                traceback.print_exc(file=sys.stdout)
+                sys.exit(1)
+            return rc
 
-        try:
-            for k, v in self._objects.items():
-                path, props = v[0].emit_data()
-                rc[path] = props
-        except Exception:
-            traceback.print_exc(file=sys.stdout)
-            sys.exit(1)
-
-        return rc
+    def locked(self):
+        """
+        If some external code need to run across a number of different
+        calls into ObjectManager while blocking others they can use this method
+        to lock others out.
+        :return:
+        """
+        return ObjectManagerLock(self.rlock)
 
     @dbus.service.signal(dbus_interface="org.freedesktop.DBus.ObjectManager",
                          signature='oa{sa{sv}}')
@@ -363,6 +414,8 @@ class ObjectManager(AutomatedProperties):
         :param uuid:    The uuid for the asset
         :return:
         """
+        # Note: Only called internally, lock implied
+
         # We could have a temp entry from the forward creation of a path
         self._lookup_remove(path)
 
@@ -374,6 +427,7 @@ class ObjectManager(AutomatedProperties):
 
     def _lookup_remove(self, obj_path):
 
+        # Note: Only called internally, lock implied
         if obj_path in self._objects:
             (obj, lvm_id, uuid) = self._objects[obj_path]
             del self._id_to_object_path[lvm_id]
@@ -385,101 +439,110 @@ class ObjectManager(AutomatedProperties):
             del self._objects[obj_path]
 
     def object_paths_by_type(self, o_type):
-        rc = {}
+        with self.rlock:
+            rc = {}
 
-        for k, v in self._objects.items():
-            if isinstance(v[0], o_type):
-                rc[k] = True
-        return rc
+            for k, v in self._objects.items():
+                if isinstance(v[0], o_type):
+                    rc[k] = True
+            return rc
 
     def register_object(self, dbus_object, emit_signal=False):
         """
         Given a dbus object add it to the collection
         """
-        path, props = dbus_object.emit_data()
+        with self.rlock:
+            path, props = dbus_object.emit_data()
 
-        #print 'Registering object path %s for %s' % (path, dbus_object.lvm_id)
+            #print 'Registering object path %s for %s' %
+            # (path, dbus_object.lvm_id)
 
-        # We want fast access to the object by a number of different ways
-        # so we use multiple hashs with different keys
-        self._lookup_add(dbus_object, path, dbus_object.lvm_id,
-                         dbus_object.uuid)
+            # We want fast access to the object by a number of different ways
+            # so we use multiple hashs with different keys
+            self._lookup_add(dbus_object, path, dbus_object.lvm_id,
+                             dbus_object.uuid)
 
-        if emit_signal:
-            self.InterfacesAdded(path, props)
+            if emit_signal:
+                self.InterfacesAdded(path, props)
 
     def remove_object(self, dbus_object, emit_signal=False):
         """
         Given a dbus object, remove it from the collection and remove it
         from the dbus framework as well
         """
-        # Store off the object path and the interface first
-        path = dbus_object.dbus_object_path()
-        interfaces = dbus_object.interface(True)
+        with self.rlock:
+            # Store off the object path and the interface first
+            path = dbus_object.dbus_object_path()
+            interfaces = dbus_object.interface(True)
 
-        #print 'UN-Registering object path %s for %s' % \
-        #      (path, dbus_object.lvm_id)
+            #print 'UN-Registering object path %s for %s' % \
+            #      (path, dbus_object.lvm_id)
 
-        self._lookup_remove(path)
+            self._lookup_remove(path)
 
-        # Remove from dbus library
-        dbus_object.remove_from_connection(cfg.bus, path)
+            # Remove from dbus library
+            dbus_object.remove_from_connection(cfg.bus, path)
 
-        # Optionally emit a signal
-        if emit_signal:
-            self.InterfacesRemoved(path, interfaces)
+            # Optionally emit a signal
+            if emit_signal:
+                self.InterfacesRemoved(path, interfaces)
 
     def get_by_path(self, path):
         """
         Given a dbus path return the object registered for it
         """
-        if path in self._objects:
-            return self._objects[path][0]
-        return None
+        with self.rlock:
+            if path in self._objects:
+                return self._objects[path][0]
+            return None
 
     def get_by_uuid_lvm_id(self, uuid, lvm_id):
-        return self.get_by_path(
-            self.get_object_path_by_lvm_id(uuid, lvm_id, None, False))
+        with self.rlock:
+            return self.get_by_path(
+                self.get_object_path_by_lvm_id(uuid, lvm_id, None, False))
 
     def get_by_lvm_id(self, lvm_id):
         """
         Given an lvm identifier, return the object registered for it
         """
-        return self.get_by_path(self._id_to_object_path[lvm_id])
+        with self.rlock:
+            return self.get_by_path(self._id_to_object_path[lvm_id])
 
     def get_object_path_by_lvm_id(self, uuid, lvm_id, path_create=None,
                                   gen_new=True):
         """
         For a given lvm asset return the dbus object registered to it
         """
-        assert lvm_id       # TODO: Assert that uuid is present later too
+        with self.rlock:
+            assert lvm_id       # TODO: Assert that uuid is present later too
 
-        if gen_new:
-            assert path_create
+            if gen_new:
+                assert path_create
 
-        path = None
+            path = None
 
-        if lvm_id in self._id_to_object_path:
-            path = self._id_to_object_path[lvm_id]
-        else:
-            if uuid and uuid in self._id_to_object_path:
-                path = self._id_to_object_path[uuid]
+            if lvm_id in self._id_to_object_path:
+                path = self._id_to_object_path[lvm_id]
             else:
-                if gen_new:
-                    path = path_create()
-                    self._lookup_add(None, path, lvm_id, uuid)
-        # print 'get_object_path_by_lvm_id(%s, %s, %s: return %s' % \
-        #        (uuid, lvm_id, str(gen_new), path)
+                if uuid and uuid in self._id_to_object_path:
+                    path = self._id_to_object_path[uuid]
+                else:
+                    if gen_new:
+                        path = path_create()
+                        self._lookup_add(None, path, lvm_id, uuid)
+            # print 'get_object_path_by_lvm_id(%s, %s, %s: return %s' % \
+            #        (uuid, lvm_id, str(gen_new), path)
 
-        return path
+            return path
 
     def refresh_all(self):
-        for k, v in self._objects.items():
-            try:
-                v[0].refresh()
-            except Exception:
-                print 'Object path= ', k
-                traceback.print_exc(file=sys.stdout)
+        with self.rlock:
+            for k, v in self._objects.items():
+                try:
+                    v[0].refresh()
+                except Exception:
+                    print 'Object path= ', k
+                    traceback.print_exc(file=sys.stdout)
 
 
 def attribute_type_name(name):

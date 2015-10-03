@@ -1349,15 +1349,19 @@ def load_lvs(lv_name=None, object_path=None, refresh=False):
 
 
 def load(refresh=False):
-    # Go through and load all the PVs, VGs and LVs
-    for p in load_pvs(refresh=refresh):
-        cfg.om.register_object(p, refresh)
 
-    for v in load_vgs(refresh=refresh):
-        cfg.om.register_object(v, refresh)
+    # When we are loading or reloading (refresh) don't let any other threads
+    # make changes to the object manager, we want consistent view.
+    with cfg.om.locked():
+        # Go through and load all the PVs, VGs and LVs
+        for p in load_pvs(refresh=refresh):
+            cfg.om.register_object(p, refresh)
 
-    for l in load_lvs(refresh=refresh):
-        cfg.om.register_object(l, refresh)
+        for v in load_vgs(refresh=refresh):
+            cfg.om.register_object(v, refresh)
+
+        for l in load_lvs(refresh=refresh):
+            cfg.om.register_object(l, refresh)
 
 
 class Lvm(utils.ObjectManager):
