@@ -13,4 +13,4 @@ LVM D-Bus proof of concept
 
 #### Documentation
 * The service supports introspection, this will be the most up to date
-* More human digestable API format, generated from the introspection data: https://github.com/tasleson/lvm-dubstep/blob/master/api.md
+* More human digestible API format, generated from the introspection data: https://github.com/tasleson/lvm-dubstep/blob/master/api.md
