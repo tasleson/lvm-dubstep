@@ -1579,10 +1579,6 @@ class AsyncJob(utils.AutomatedProperties):
         return self._request.result()
 
 
-def _request_timeout(r):
-    r.timer_expired()
-
-
 class RequestEntry(object):
     def __init__(self, tmo, method, arguments, cb, cb_error,
                  return_tuple=True):
@@ -1608,7 +1604,16 @@ class RequestEntry(object):
             self._return_job()
         else:
             self.timer_id = gobject.timeout_add_seconds(
-                tmo, _request_timeout, self)
+                tmo, RequestEntry._request_timeout, self)
+
+    @staticmethod
+    def _request_timeout(r):
+        """
+        Method which gets called when the timer runs out!
+        :param r:  RequestEntry which timed out
+        :return: Nothing
+        """
+        r.timer_expired()
 
     def _return_job(self):
         self._job = True
