@@ -1,5 +1,5 @@
 #!/bin/env python
-import xml.etree.ElementTree as ET
+import xml.etree.ElementTree as Et
 import dbus
 from dbus.mainloop.glib import DBusGMainLoop
 import pprint
@@ -169,7 +169,7 @@ def get_introspect_data(bus, object_p, interface):
 
     intf_data = intf.Introspect()
 
-    tree = ET.fromstring(intf_data)
+    tree = Et.fromstring(intf_data)
     interfaces = collections.OrderedDict()
     for i in tree.iter('interface'):
 
