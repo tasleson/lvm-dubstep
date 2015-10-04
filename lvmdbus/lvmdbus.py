@@ -13,97 +13,26 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright 2014, Tony Asleson <tasleson@redhat.com>
+# Copyright 2014-2015, Tony Asleson <tasleson@redhat.com>
 
 import Queue
 import dbus
 import dbus.service
 import dbus.mainloop.glib
 import gobject
-import os
 import signal
 import sys
 import cmdhandler
 import utils
-from utils import n, n32
-import itertools
+from utils import n, n32, thin_pool_obj_path_generate, lv_obj_path_generate, \
+    vg_obj_path_generate, pv_obj_path_generate, job_obj_path_generate
 import threading
 import time
-import ctypes
 import traceback
 import cfg
-
-BASE_INTERFACE = 'com.redhat.lvm1'
-PV_INTERFACE = BASE_INTERFACE + '.pv'
-VG_INTERFACE = BASE_INTERFACE + '.vg'
-LV_INTERFACE = BASE_INTERFACE + '.lv'
-THIN_POOL_INTERFACE = BASE_INTERFACE + '.thinpool'
-MANAGER_INTERFACE = BASE_INTERFACE + '.Manager'
-JOB_INTERFACE = BASE_INTERFACE + '.Job'
-
-BASE_OBJ_PATH = '/com/redhat/lvm1'
-PV_OBJ_PATH = BASE_OBJ_PATH + '/pv'
-VG_OBJ_PATH = BASE_OBJ_PATH + '/vg'
-LV_OBJ_PATH = BASE_OBJ_PATH + '/lv'
-THIN_POOL_PATH = BASE_OBJ_PATH + "/thinpool"
-MANAGER_OBJ_PATH = BASE_OBJ_PATH + '/Manager'
-JOB_OBJ_PATH = BASE_OBJ_PATH + '/Job'
-
-
-# Serializes access to stdout to prevent interleaved output
-# @param msg    Message to output to stdout
-# @return None
-def pprint(msg):
-    if cfg.DEBUG:
-        cfg.stdout_lock.acquire()
-        tid = ctypes.CDLL('libc.so.6').syscall(186)
-        print "%d:%d - %s" % (os.getpid(), tid, msg)
-        cfg.stdout_lock.release()
-
-
-# noinspection PyUnusedLocal
-def handler(signum, frame):
-    cfg.run.value = 0
-    pprint('Signal handler called with signal %d' % signum)
-    if cfg.loop is not None:
-        cfg.loop.quit()
-
-
-pv_id = itertools.count()
-vg_id = itertools.count()
-lv_id = itertools.count()
-thin_id = itertools.count()
-job_id = itertools.count()
-
-
-def pv_obj_path_generate(object_path=None):
-    if object_path:
-        return object_path
-    return PV_OBJ_PATH + "/%d" % pv_id.next()
-
-
-def vg_obj_path_generate(object_path=None):
-    if object_path:
-        return object_path
-    return VG_OBJ_PATH + "/%d" % vg_id.next()
-
-
-def lv_obj_path_generate(object_path=None):
-    if object_path:
-        return object_path
-    return LV_OBJ_PATH + "/%d" % lv_id.next()
-
-
-def thin_pool_obj_path_generate(object_path=None):
-    if object_path:
-        return object_path
-    return THIN_POOL_PATH + "/%d" % thin_id.next()
-
-
-def job_obj_path_generate(object_path=None):
-    if object_path:
-        return object_path
-    return JOB_OBJ_PATH + "/%d" % job_id.next()
+from cfg import PV_INTERFACE, VG_INTERFACE, LV_INTERFACE, MANAGER_INTERFACE, \
+    THIN_POOL_INTERFACE, BASE_INTERFACE, JOB_INTERFACE, BASE_OBJ_PATH, \
+    MANAGER_OBJ_PATH
 
 
 @utils.dbus_property('Uuid', 's')               # PV UUID/pv_uuid
@@ -1776,7 +1705,7 @@ def main():
     # Install signal handlers
     for s in [signal.SIGHUP, signal.SIGINT]:
         try:
-            signal.signal(s, handler)
+            signal.signal(s, utils.handler)
         except RuntimeError:
             pass
 

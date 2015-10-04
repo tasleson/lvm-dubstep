@@ -15,6 +15,7 @@
 
 import multiprocessing
 import Queue
+import itertools
 
 # This is the global object manager
 om = None
@@ -36,3 +37,28 @@ worker_q = Queue.Queue()
 
 # Main event loop
 loop = None
+
+
+BASE_INTERFACE = 'com.redhat.lvm1'
+PV_INTERFACE = BASE_INTERFACE + '.pv'
+VG_INTERFACE = BASE_INTERFACE + '.vg'
+LV_INTERFACE = BASE_INTERFACE + '.lv'
+THIN_POOL_INTERFACE = BASE_INTERFACE + '.thinpool'
+MANAGER_INTERFACE = BASE_INTERFACE + '.Manager'
+JOB_INTERFACE = BASE_INTERFACE + '.Job'
+
+BASE_OBJ_PATH = '/com/redhat/lvm1'
+PV_OBJ_PATH = BASE_OBJ_PATH + '/pv'
+VG_OBJ_PATH = BASE_OBJ_PATH + '/vg'
+LV_OBJ_PATH = BASE_OBJ_PATH + '/lv'
+THIN_POOL_PATH = BASE_OBJ_PATH + "/thinpool"
+MANAGER_OBJ_PATH = BASE_OBJ_PATH + '/Manager'
+JOB_OBJ_PATH = BASE_OBJ_PATH + '/Job'
+
+
+# Counters for object path generation
+pv_id = itertools.count()
+vg_id = itertools.count()
+lv_id = itertools.count()
+thin_id = itertools.count()
+job_id = itertools.count()

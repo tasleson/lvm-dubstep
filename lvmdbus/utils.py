@@ -21,6 +21,8 @@ import sys
 import inspect
 import cfg
 import threading
+import ctypes
+import os
 
 
 def md5(t):
@@ -638,3 +640,52 @@ def parse_tags(tags):
             return tags.split(',')
         return [tags]
     return dbus.Array([], signature='s')
+
+
+# Serializes access to stdout to prevent interleaved output
+# @param msg    Message to output to stdout
+# @return None
+def pprint(msg):
+    if cfg.DEBUG:
+        cfg.stdout_lock.acquire()
+        tid = ctypes.CDLL('libc.so.6').syscall(186)
+        print "%d:%d - %s" % (os.getpid(), tid, msg)
+        cfg.stdout_lock.release()
+
+
+# noinspection PyUnusedLocal
+def handler(signum, frame):
+    cfg.run.value = 0
+    pprint('Signal handler called with signal %d' % signum)
+    if cfg.loop is not None:
+        cfg.loop.quit()
+
+
+def pv_obj_path_generate(object_path=None):
+    if object_path:
+        return object_path
+    return cfg.PV_OBJ_PATH + "/%d" % cfg.pv_id.next()
+
+
+def vg_obj_path_generate(object_path=None):
+    if object_path:
+        return object_path
+    return cfg.VG_OBJ_PATH + "/%d" % cfg.vg_id.next()
+
+
+def lv_obj_path_generate(object_path=None):
+    if object_path:
+        return object_path
+    return cfg.LV_OBJ_PATH + "/%d" % cfg.lv_id.next()
+
+
+def thin_pool_obj_path_generate(object_path=None):
+    if object_path:
+        return object_path
+    return cfg.THIN_POOL_PATH + "/%d" % cfg.thin_id.next()
+
+
+def job_obj_path_generate(object_path=None):
+    if object_path:
+        return object_path
+    return cfg.JOB_OBJ_PATH + "/%d" % cfg.job_id.next()
