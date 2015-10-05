@@ -281,6 +281,7 @@ class AutomatedProperties(dbus.service.Object):
         from the dbus API and thus you cannot call any dbus methods upon it.
 
         """
+        num_changed = 0
 
         # If we can't do a lookup, bail now, this happens if we blindly walk
         # through all dbus objects as some don't have a search method, like
@@ -306,7 +307,8 @@ class AutomatedProperties(dbus.service.Object):
 
             # Go out and fetch the latest version of this object, eg.
             # pvs, vgs, lvs
-            found = self._ap_search_method([search], self.dbus_object_path())
+            found = self._ap_search_method(
+                [search], self.dbus_object_path())[0]
             for i in found:
                 cfg.om.register_object(i)
                 changed = get_object_property_diff(self, i)
@@ -316,6 +318,8 @@ class AutomatedProperties(dbus.service.Object):
                     # has been removed, calls to it will make no difference
                     # with regards to the dbus API.
                     i.PropertiesChanged(self._ap_interface, changed, [])
+                    num_changed += 1
+        return num_changed
 
     @property
     def lvm_id(self):

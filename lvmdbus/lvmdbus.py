@@ -562,7 +562,7 @@ class Vg(utils.AutomatedProperties):
             if rc == 0:
                 created_lv = "/"
                 full_name = "%s/%s" % (vg_name, name)
-                lvs = load_lvs([full_name])
+                lvs = load_lvs([full_name])[0]
                 for l in lvs:
                     cfg.om.register_object(l, True)
                     created_lv = l.dbus_object_path()
@@ -609,7 +609,7 @@ class Vg(utils.AutomatedProperties):
             if rc == 0:
                 created_lv = "/"
                 full_name = "%s/%s" % (vg_name, name)
-                lvs = load_lvs([full_name])
+                lvs = load_lvs([full_name])[0]
                 for l in lvs:
                     cfg.om.register_object(l, True)
                     created_lv = l.dbus_object_path()
@@ -654,7 +654,7 @@ class Vg(utils.AutomatedProperties):
             if rc == 0:
                 created_lv = "/"
                 full_name = "%s/%s" % (vg_name, name)
-                lvs = load_lvs([full_name])
+                lvs = load_lvs([full_name])[0]
                 for l in lvs:
                     cfg.om.register_object(l, True)
                     created_lv = l.dbus_object_path()
@@ -699,7 +699,7 @@ class Vg(utils.AutomatedProperties):
             if rc == 0:
                 created_lv = "/"
                 full_name = "%s/%s" % (vg_name, name)
-                lvs = load_lvs([full_name])
+                lvs = load_lvs([full_name])[0]
                 for l in lvs:
                     cfg.om.register_object(l, True)
                     created_lv = l.dbus_object_path()
@@ -1018,7 +1018,7 @@ def lv_object_factory(interface_name, *args):
                 if rc == 0:
                     snapshot_path = "/"
                     full_name = "%s/%s" % (dbo.vg_name_lookup(), name)
-                    lvs = load_lvs([full_name])
+                    lvs = load_lvs([full_name])[0]
                     for l in lvs:
                         cfg.om.register_object(l, True)
                         snapshot_path = l.dbus_object_path()
@@ -1061,7 +1061,7 @@ def lv_object_factory(interface_name, *args):
                     lv_name, create_options, name, size_bytes)
                 if rc == 0:
                     full_name = "%s/%s" % (dbo.vg_name_lookup(), name)
-                    lvs = load_lvs([full_name])
+                    lvs = load_lvs([full_name])[0]
                     for l in lvs:
                         cfg.om.register_object(l, True)
                         lv_created = l.dbus_object_path()
@@ -1100,6 +1100,7 @@ def lv_object_factory(interface_name, *args):
 
 
 def load_pvs(device=None, object_path=None, refresh=False):
+    num_changes = 0
     existing_pv_paths = []
     rc = []
 
@@ -1125,7 +1126,7 @@ def load_pvs(device=None, object_path=None, refresh=False):
             if pv_dbus_object:
                 del existing_pv_paths[pv_dbus_object.dbus_object_path()]
 
-                pv_dbus_object.refresh()
+                num_changes += pv_dbus_object.refresh()
                 process_pv = False
 
         if process_pv:
@@ -1150,11 +1151,15 @@ def load_pvs(device=None, object_path=None, refresh=False):
     if refresh:
         for k in existing_pv_paths.keys():
             cfg.om.remove_object(cfg.om.get_by_path(k), True)
+            num_changes += 1
 
-    return rc
+    num_changes += len(rc)
+
+    return rc, num_changes
 
 
 def load_vgs(vg_specific=None, object_path=None, refresh=False):
+    num_changes = 0
     existing_pv_paths = []
     rc = []
 
@@ -1180,7 +1185,7 @@ def load_vgs(vg_specific=None, object_path=None, refresh=False):
             if vg_dbus_object:
                 del existing_pv_paths[vg_dbus_object.dbus_object_path()]
 
-                vg_dbus_object.refresh()
+                num_changes += vg_dbus_object.refresh()
                 process_vg = False
 
         if process_vg:
@@ -1204,11 +1209,15 @@ def load_vgs(vg_specific=None, object_path=None, refresh=False):
     if refresh:
         for k in existing_pv_paths.keys():
             cfg.om.remove_object(cfg.om.get_by_path(k), True)
+            num_changes += 1
 
-    return rc
+    num_changes += len(rc)
+
+    return rc, num_changes
 
 
 def load_lvs(lv_name=None, object_path=None, refresh=False):
+    num_changes = 0
     existing_lv_paths = []
     rc = []
 
@@ -1236,7 +1245,7 @@ def load_lvs(lv_name=None, object_path=None, refresh=False):
 
             if lv_dbus_object:
                 del existing_lv_paths[lv_dbus_object.dbus_object_path()]
-                lv_dbus_object.refresh()
+                num_changes += lv_dbus_object.refresh()
                 process_lv = False
 
         if process_lv:
@@ -1273,24 +1282,41 @@ def load_lvs(lv_name=None, object_path=None, refresh=False):
     if refresh:
         for k in existing_lv_paths.keys():
             cfg.om.remove_object(cfg.om.get_by_path(k), True)
+            num_changes += 1
 
-    return rc
+    num_changes += len(rc)
+
+    return rc, num_changes
 
 
 def load(refresh=False):
+
+    num_total_changes = 0
 
     # When we are loading or reloading (refresh) don't let any other threads
     # make changes to the object manager, we want consistent view.
     with cfg.om.locked():
         # Go through and load all the PVs, VGs and LVs
-        for p in load_pvs(refresh=refresh):
+
+        pvs, num_changes = load_pvs(refresh=refresh)
+        num_total_changes += num_changes
+
+        for p in pvs:
             cfg.om.register_object(p, refresh)
 
-        for v in load_vgs(refresh=refresh):
+        vgs, num_changes = load_vgs(refresh=refresh)
+        num_total_changes += num_changes
+
+        for v in vgs:
             cfg.om.register_object(v, refresh)
 
-        for l in load_lvs(refresh=refresh):
+        lvs, num_changes = load_lvs(refresh=refresh)
+        num_total_changes += num_changes
+
+        for l in lvs:
             cfg.om.register_object(l, refresh)
+
+    return num_total_changes
 
 
 class Lvm(utils.ObjectManager):
@@ -1318,7 +1344,7 @@ class Manager(utils.AutomatedProperties):
         created_pv = []
         rc, out, err = cmdhandler.pv_create(create_options, [device])
         if rc == 0:
-            pvs = load_pvs([device])
+            pvs = load_pvs([device])[0]
             for p in pvs:
                 cfg.om.register_object(p, True)
                 created_pv = p.dbus_object_path()
@@ -1354,7 +1380,7 @@ class Manager(utils.AutomatedProperties):
         created_vg = "/"
 
         if rc == 0:
-            vgs = load_vgs([name])
+            vgs = load_vgs([name])[0]
             for v in vgs:
                 cfg.om.register_object(v, True)
                 created_vg = v.dbus_object_path()
@@ -1381,15 +1407,18 @@ class Manager(utils.AutomatedProperties):
                          cb, cbe)
         cfg.worker_q.put(r)
 
-    @dbus.service.method(dbus_interface=MANAGER_INTERFACE)
+    @dbus.service.method(dbus_interface=MANAGER_INTERFACE,
+                         out_signature='t')
     def Refresh(self):
         """
         Take all the objects we know about and go out and grab the latest
         more of a test method at the moment to make sure we are handling object
         paths correctly.
+
+        Returns the number of changes, object add/remove/properties changed
         """
         #cfg.om.refresh_all()
-        load(refresh=True)
+        return load(refresh=True)
 
     @dbus.service.method(dbus_interface=MANAGER_INTERFACE,
                          in_signature='s',
