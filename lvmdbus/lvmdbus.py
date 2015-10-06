@@ -1442,11 +1442,18 @@ class Manager(utils.AutomatedProperties):
             return p
         return '/'
 
+    @staticmethod
+    def _process_external_event(event, lvm_id, lvm_uuid, seq_no):
+        utils.pprint("External event: %s: %s: %s %s" %
+                     (event, lvm_id, lvm_uuid, str(seq_no)))
+        pass
+
     @dbus.service.method(dbus_interface=MANAGER_INTERFACE,
-                         in_signature='sss', out_signature='i')
-    def ExternalEvent(self, lvm_uuid, lvm_id, event):
-        print 'External event %s:%s:%s' % (lvm_uuid, lvm_id, event)
-        # TODO Add this to a work queue and return
+                         in_signature='sssu', out_signature='i')
+    def ExternalEvent(self, event, lvm_id, lvm_uuid, seqno):
+        r = RequestEntry(-1, Manager._process_external_event,
+                         (event, lvm_id, lvm_uuid, seqno), None, None, False)
+        cfg.worker_q.put(r)
         return dbus.Int32(0)
 
 
@@ -1624,13 +1631,18 @@ class RequestEntry(object):
             if not self._job:
                 # We finished and there is no job, so return result or error
                 # now!
+                # Note: If we don't have a valid cb or cbe, this indicates a
+                # request that doesn't need a response as we already returned
+                # one before the request was processed.
                 if error_rc == 0:
-                    if self._return_tuple:
-                        self.cb((result, '/'))
-                    else:
-                        self.cb(result)
+                    if self.cb:
+                        if self._return_tuple:
+                            self.cb((result, '/'))
+                        else:
+                            self.cb(result)
                 else:
-                    self.cb_error(self._rc_error)
+                    if self.cb_error:
+                        self.cb_error(self._rc_error)
 
     def register_error(self, error_rc, error):
         self._reg_ending(None, error_rc, error)
