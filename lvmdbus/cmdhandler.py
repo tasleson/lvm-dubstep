@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright 2014, Tony Asleson <tasleson@redhat.com>
+# Copyright 2014-2015, Tony Asleson <tasleson@redhat.com>
 
 from subprocess import Popen, PIPE
 import traceback
