@@ -1126,6 +1126,9 @@ def load_pvs(device=None, object_path=None, refresh=False):
             if pv_dbus_object:
                 del existing_pv_paths[pv_dbus_object.dbus_object_path()]
 
+                # TODO: Pass the state we have just fetched into the refresh
+                # so that it doesn't have to turn around and fetch it from
+                # lvm yet again
                 num_changes += pv_dbus_object.refresh()
                 process_pv = False
 
@@ -1444,9 +1447,16 @@ class Manager(utils.AutomatedProperties):
 
     @staticmethod
     def _process_external_event(event, lvm_id, lvm_uuid, seq_no):
-        utils.pprint("External event: %s: %s: %s %s" %
+        utils.pprint("External event: '%s', '%s', '%s', '%s'" %
                      (event, lvm_id, lvm_uuid, str(seq_no)))
-        pass
+        # Let's see if we have the VG and if the sequence numbers match, if
+        # they do we have nothing to process (in theory)
+        # We can try to be selective about what we re-fresh, but in reality
+        # it takes just as long to selectively re-fresh as it does to grab
+        # everything and let stuff sort itself out.
+        vg = cfg.om.get_by_uuid_lvm_id(lvm_uuid, lvm_id)
+        if not (vg and vg.SeqNo == seq_no):
+            load(refresh=True)
 
     @dbus.service.method(dbus_interface=MANAGER_INTERFACE,
                          in_signature='sssu', out_signature='i')
