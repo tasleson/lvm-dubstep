@@ -1225,11 +1225,8 @@ def load_common(retrieve, id_retrieve, obj_create, o_type, search_keys,
 
             if dbus_object:
                 del existing_paths[dbus_object.dbus_object_path()]
-
-                # TODO: Pass the state we have just fetched into the refresh
-                # so that it doesn't have to turn around and fetch it from
-                # lvm yet again
-                num_changes += dbus_object.refresh()
+                num_changes += dbus_object.refresh(object_ctor=obj_create,
+                                                   object_state=o)
                 return_object = False
 
         if return_object:

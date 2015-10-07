@@ -267,7 +267,7 @@ class AutomatedProperties(dbus.service.Object):
               (str(interface_name), str(changed_properties),
                str(invalidated_properties)))
 
-    def refresh(self, search_key=None):
+    def refresh(self, search_key=None, object_ctor=None, object_state=None):
         """
         Take this object, go out and fetch the latest LVM copy and replace the
         one registered with dbus.  Not sure if there is a better way to do
@@ -305,10 +305,15 @@ class AutomatedProperties(dbus.service.Object):
 
             cfg.om.remove_object(self)
 
-            # Go out and fetch the latest version of this object, eg.
-            # pvs, vgs, lvs
-            found = self._ap_search_method(
-                [search], self.dbus_object_path())[0]
+            if object_ctor and object_state:
+                # We were passed the new state so we will just create the
+                # object here
+                found = [object_ctor(self.dbus_object_path(), object_state)]
+            else:
+                # Go out and fetch the latest version of this object, eg.
+                # pvs, vgs, lvs
+                found = self._ap_search_method(
+                    [search], self.dbus_object_path())[0]
             for i in found:
                 cfg.om.register_object(i)
                 changed = get_object_property_diff(self, i)
