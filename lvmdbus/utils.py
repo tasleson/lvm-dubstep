@@ -356,6 +356,7 @@ class ObjectManagerLock(object):
         # Acquire lock
         self._lock.acquire()
 
+    # noinspection PyUnusedLocal
     def __exit__(self, e_type, e_value, e_traceback):
         # Release lock
         self._lock.release()

@@ -210,6 +210,7 @@ class Lvmetad(object):
             self.s.connect(Lvmetad.SOCKET)
         return self
 
+    # noinspection PyUnusedLocal
     def __exit__(self, *ignore):
         self.close()
 
