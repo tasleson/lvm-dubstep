@@ -77,10 +77,14 @@ def n32(v):
 
 
 # noinspection PyProtectedMember
-def init_class_from_arguments(obj_instance):
+def init_class_from_arguments(obj_instance, prefix='_'):
     for k, v in sys._getframe(1).f_locals.items():
         if k != 'self':
-            nt = '_' + k
+
+            if prefix:
+                nt = '_' + k
+            else:
+                nt = k
 
             # If the current attribute has a value, but the incoming does
             # not, don't overwrite it.  Otherwise the default values on the
@@ -264,6 +268,34 @@ def dbus_property(name, dbus_type, default_value=None, writeable=False,
 
     def decorator(cls):
         setattr(cls, attribute_name, default_value)
+        setattr(cls, attribute_name + '_type', dbus_type)
+        setattr(cls, name, prop)
+        return cls
+
+    return decorator
+
+
+def dbus_property2(name, dbus_type, doc=None):
+    """
+    Creates the get/set properties for the given name.  It assumes that the
+    actual attribute is '_' + name and the attribute metadata is stuffed in
+    _name_type.
+
+    There is probably a better way todo this.
+    :param name:            Name of property
+    :param dbus_type:       dbus string type eg. s,t,i,x
+    :param doc:             Python __doc__ for the property
+    :return:
+    """
+    attribute_name = '_' + name
+
+    def getter(self):
+        t = getattr(self, attribute_name + '_type')
+        return _dbus_type(t, getattr(self.state, attribute_name[1:]))
+
+    prop = property(getter, None, None, doc)
+
+    def decorator(cls):
         setattr(cls, attribute_name + '_type', dbus_type)
         setattr(cls, name, prop)
         return cls

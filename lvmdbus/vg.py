@@ -25,6 +25,7 @@ import cmdhandler
 from request import RequestEntry
 from loader import common
 from lv import load_lvs
+from state import State
 
 
 def vgs_hash_to_object(path, v):
@@ -32,15 +33,16 @@ def vgs_hash_to_object(path, v):
         path = cfg.om.get_object_path_by_lvm_id(
             v['vg_uuid'], v['vg_name'], vg_obj_path_generate)
 
-    return Vg(path,
-              v['vg_uuid'], v['vg_name'], v['vg_fmt'], n(v['vg_size']),
-              n(v['vg_free']), v['vg_sysid'], n(v['vg_extent_size']),
-              n(v['vg_extent_count']), n(v['vg_free_count']),
-              v['vg_profile'], n(v['max_lv']), n(v['max_pv']),
-              n(v['pv_count']), n(v['lv_count']), n(v['snap_count']),
-              n(v['vg_seqno']), n(v['vg_mda_count']),
-              n(v['vg_mda_free']), n(v['vg_mda_size']),
-              n(v['vg_mda_used_count']), v['vg_attr'], v['vg_tags'])
+    v = VgState(v['vg_uuid'], v['vg_name'], v['vg_fmt'], n(v['vg_size']),
+                n(v['vg_free']), v['vg_sysid'], n(v['vg_extent_size']),
+                n(v['vg_extent_count']), n(v['vg_free_count']),
+                v['vg_profile'], n(v['max_lv']), n(v['max_pv']),
+                n(v['pv_count']), n(v['lv_count']), n(v['snap_count']),
+                n(v['vg_seqno']), n(v['vg_mda_count']),
+                n(v['vg_mda_free']), n(v['vg_mda_size']),
+                n(v['vg_mda_used_count']), v['vg_attr'], v['vg_tags'])
+
+    return Vg(path, v)
 
 
 def vgs_hash_to_ids(v):
@@ -57,47 +59,21 @@ def load_vgs(vg_specific=None, object_path=None, refresh=False):
                        (Vg,), vg_specific, object_path, refresh)
 
 
-# noinspection PyPep8Naming
-@utils.dbus_property('Uuid', 's')
-@utils.dbus_property('Name', 's')
-@utils.dbus_property('Fmt', 's')
-@utils.dbus_property('SizeBytes', 't', 0)
-@utils.dbus_property('FreeBytes', 't', 0)
-@utils.dbus_property('SysId', 's')
-@utils.dbus_property('ExtentSizeBytes', 't')
-@utils.dbus_property('ExtentCount', 't')
-@utils.dbus_property('FreeCount', 't')
-@utils.dbus_property('Profile', 's')
-@utils.dbus_property('MaxLv', 't')
-@utils.dbus_property('MaxPv', 't')
-@utils.dbus_property('PvCount', 't')
-@utils.dbus_property('LvCount', 't')
-@utils.dbus_property('SnapCount', 't')
-@utils.dbus_property('Seqno', 't')
-@utils.dbus_property('MdaCount', 't')
-@utils.dbus_property('MdaFree', 't')
-@utils.dbus_property('MdaSizeBytes', 't')
-@utils.dbus_property('MdaUsedCount', 't')
-class Vg(AutomatedProperties):
-    DBUS_INTERFACE = VG_INTERFACE
-    _Tags_type = "as"
-    _Pvs_type = "ao"
-    _Lvs_type = "ao"
-    _Writeable_type = "b"
-    _Readable_type = "b"
-    _Exportable_type = 'b'
-    _Partial_type = 'b'
-    _AllocContiguous_type = 'b'
-    _AllocCling_type = 'b'
-    _AllocNormal_type = 'b'
-    _AllocAnywhere_type = 'b'
-    _Clustered_type = 'b'
+# noinspection PyPep8Naming,PyUnresolvedReferences,PyUnusedLocal
+class VgState(State):
+
+    @property
+    def lvm_id(self):
+        return self.Name
+
+    def identifiers(self):
+        return (self.Uuid, self.Name)
 
     def _lv_paths_build(self, name):
         rc = []
         for lv in cmdhandler.lvs_in_vg(name):
             (lv_name, lv_attr, lv_uuid) = lv
-            full_name = "%s/%s" % (self._Name, lv_name)
+            full_name = "%s/%s" % (self.Name, lv_name)
 
             gen = lv_obj_path_generate
             if lv_attr[0] == 't':
@@ -117,23 +93,64 @@ class Vg(AutomatedProperties):
                 pv_uuid, pv_name, pv_obj_path_generate))
         return dbus.Array(rc, signature='o')
 
-    # noinspection PyUnusedLocal,PyPep8Naming
-    def __init__(self, object_path, Uuid, Name, Fmt,
+    def __init__(self, Uuid, Name, Fmt,
                  SizeBytes, FreeBytes, SysId, ExtentSizeBytes,
                  ExtentCount, FreeCount, Profile, MaxLv, MaxPv, PvCount,
                  LvCount, SnapCount, Seqno, MdaCount, MdaFree,
                  MdaSizeBytes, MdaUsedCount, attr, tags):
+        utils.init_class_from_arguments(self, None)
+        self.Pvs = self._pv_paths_build(Name)
+        self.Lvs = self._lv_paths_build(Name)
+
+
+# noinspection PyPep8Naming
+@utils.dbus_property2('Uuid', 's')
+@utils.dbus_property2('Name', 's')
+@utils.dbus_property2('Fmt', 's')
+@utils.dbus_property2('SizeBytes', 't', 0)
+@utils.dbus_property2('FreeBytes', 't', 0)
+@utils.dbus_property2('SysId', 's')
+@utils.dbus_property2('ExtentSizeBytes', 't')
+@utils.dbus_property2('ExtentCount', 't')
+@utils.dbus_property2('FreeCount', 't')
+@utils.dbus_property2('Profile', 's')
+@utils.dbus_property2('MaxLv', 't')
+@utils.dbus_property2('MaxPv', 't')
+@utils.dbus_property2('PvCount', 't')
+@utils.dbus_property2('LvCount', 't')
+@utils.dbus_property2('SnapCount', 't')
+@utils.dbus_property2('Seqno', 't')
+@utils.dbus_property2('MdaCount', 't')
+@utils.dbus_property2('MdaFree', 't')
+@utils.dbus_property2('MdaSizeBytes', 't')
+@utils.dbus_property2('MdaUsedCount', 't')
+class Vg(AutomatedProperties):
+    DBUS_INTERFACE = VG_INTERFACE
+    _Tags_type = "as"
+    _Pvs_type = "ao"
+    _Lvs_type = "ao"
+    _Writeable_type = "b"
+    _Readable_type = "b"
+    _Exportable_type = 'b'
+    _Partial_type = 'b'
+    _AllocContiguous_type = 'b'
+    _AllocCling_type = 'b'
+    _AllocNormal_type = 'b'
+    _AllocAnywhere_type = 'b'
+    _Clustered_type = 'b'
+
+    # noinspection PyUnusedLocal,PyPep8Naming
+    def __init__(self, object_path, object_state):
         super(Vg, self).__init__(object_path, VG_INTERFACE, load_vgs)
-        utils.init_class_from_arguments(self)
-        self._pv_in_vg = self._pv_paths_build(Name)
-        self._lv_in_vg = self._lv_paths_build(Name)
+        self._object_path = object_path
+        self.state = object_state
 
     def refresh_pvs(self, pv_list=None):
         """
         Refresh the state of the PVs for this vg given a PV object path
         """
         if not pv_list:
-            pv_list = self.Pvs
+            pv_list = self.state.Pvs
 
         for p in pv_list:
             pv = cfg.om.get_by_path(p)
@@ -144,7 +161,7 @@ class Vg(AutomatedProperties):
         Refresh the state of the PVs for this vg given a PV object path
         """
         if not lv_list:
-            lv_list = self.lvs
+            lv_list = self.state.Lvs
 
         for i in lv_list:
             obj = cfg.om.get_by_path(i)
@@ -193,7 +210,8 @@ class Vg(AutomatedProperties):
                          async_callbacks=('cb', 'cbe'))
     def Rename(self, name, tmo, rename_options, cb, cbe):
         r = RequestEntry(tmo, Vg._rename,
-                         (self.uuid, self.lvm_id, name, rename_options),
+                         (self.state.Uuid, self.state.lvm_id, name,
+                          rename_options),
                          cb, cbe, False)
         cfg.worker_q.put(r)
 
@@ -233,7 +251,7 @@ class Vg(AutomatedProperties):
                          async_callbacks=('cb', 'cbe'))
     def Remove(self, tmo, remove_options, cb, cbe):
         r = RequestEntry(tmo, Vg._remove,
-                         (self.uuid, self.lvm_id, remove_options),
+                         (self.state.Uuid, self.state.lvm_id, remove_options),
                          cb, cbe, False)
         cfg.worker_q.put(r)
 
@@ -275,7 +293,7 @@ class Vg(AutomatedProperties):
                          async_callbacks=('cb', 'cbe'))
     def Change(self, tmo, change_options, cb, cbe):
         r = RequestEntry(tmo, Vg._change,
-                         (self.uuid, self.lvm_id, change_options),
+                         (self.state.Uuid, self.state.lvm_id, change_options),
                          cb, cbe, False)
         cfg.worker_q.put(r)
 
@@ -318,9 +336,8 @@ class Vg(AutomatedProperties):
                          async_callbacks=('cb', 'cbe'))
     def Reduce(self, missing, pv_object_paths, tmo, reduce_options, cb, cbe):
         r = RequestEntry(tmo, Vg._reduce,
-                         (self.uuid, self.lvm_id, missing, pv_object_paths,
-                          reduce_options),
-                         cb, cbe, False)
+                         (self.state.Uuid, self.state.lvm_id, missing,
+                          pv_object_paths, reduce_options), cb, cbe, False)
         cfg.worker_q.put(r)
 
     @staticmethod
@@ -371,7 +388,7 @@ class Vg(AutomatedProperties):
                          async_callbacks=('cb', 'cbe'))
     def Extend(self, pv_object_paths, tmo, extend_options, cb, cbe):
         r = RequestEntry(tmo, Vg._extend,
-                         (self.uuid, self.lvm_id, pv_object_paths,
+                         (self.state.Uuid, self.state.lvm_id, pv_object_paths,
                           extend_options),
                          cb, cbe, False)
         cfg.worker_q.put(r)
@@ -415,7 +432,7 @@ class Vg(AutomatedProperties):
     def LvCreateLinear(self, name, size_bytes,
                        thin_pool, tmo, create_options, cb, cbe):
         r = RequestEntry(tmo, Vg._lv_create_linear,
-                         (self.uuid, self.lvm_id,
+                         (self.state.Uuid, self.state.lvm_id,
                           name, size_bytes, thin_pool, create_options),
                          cb, cbe)
         cfg.worker_q.put(r)
@@ -463,7 +480,7 @@ class Vg(AutomatedProperties):
                         stripe_size_kb, thin_pool, tmo, create_options,
                         cb, cbe):
         r = RequestEntry(tmo, Vg._lv_create_striped,
-                         (self.uuid, self.lvm_id, name,
+                         (self.state.Uuid, self.state.lvm_id, name,
                           size_bytes, num_stripes, stripe_size_kb, thin_pool,
                           create_options),
                          cb, cbe)
@@ -508,7 +525,8 @@ class Vg(AutomatedProperties):
     def LvCreateMirror(self, name, size_bytes, num_copies,
                        tmo, create_options, cb, cbe):
         r = RequestEntry(tmo, Vg._lv_create_mirror,
-                         (self.uuid, self.lvm_id, name, size_bytes, num_copies,
+                         (self.state.Uuid, self.state.lvm_id, name,
+                          size_bytes, num_copies,
                           create_options), cb, cbe)
         cfg.worker_q.put(r)
 
@@ -554,31 +572,31 @@ class Vg(AutomatedProperties):
                      num_stripes, stripe_size_kb, thin_pool, tmo,
                      create_options, cb, cbe):
         r = RequestEntry(tmo, Vg._lv_create_raid,
-                         (self.uuid, self.lvm_id, name,
+                         (self.state.Uuid, self.state.lvm_id, name,
                           raid_type, size_bytes, num_stripes, stripe_size_kb,
                           thin_pool, create_options), cb, cbe)
         cfg.worker_q.put(r)
 
     def _attribute(self, pos, ch):
-        if self._attr[pos] == ch:
+        if self.state.attr[pos] == ch:
             return True
         return False
 
     @property
     def Tags(self):
-        return utils.parse_tags(self._tags)
+        return utils.parse_tags(self.state.tags)
 
     @property
     def Pvs(self):
-        return self._pv_in_vg
+        return self.state.Pvs
 
     @property
     def Lvs(self):
-        return self._lv_in_vg
+        return self.state.Lvs
 
     @property
     def lvm_id(self):
-        return self._Name
+        return self.state.lvm_id
 
     @property
     def Writeable(self):

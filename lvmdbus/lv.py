@@ -24,11 +24,19 @@ from request import RequestEntry
 from job import Job
 from utils import lv_obj_path_generate, n, n32
 from loader import common
+from state import State
 
 
 def lvs_hash_to_object(path, l):
     # Check to see if this LV is a thinpool!
     ident = "%s/%s" % (l['vg_name'], l['lv_name'])
+
+    state = LvState(l['lv_uuid'], l['lv_name'],
+                               l['lv_path'], n(l['lv_size']),
+                               l['vg_name'],
+                               l['vg_uuid'], l['pool_lv'], l['origin'],
+                               n32(l['data_percent']), l['lv_attr'],
+                               l['lv_tags'], l['segtype'])
 
     if l['lv_attr'][0] != 't':
 
@@ -36,13 +44,7 @@ def lvs_hash_to_object(path, l):
             path = cfg.om.get_object_path_by_lvm_id(
                 l['lv_uuid'], ident, lv_obj_path_generate)
 
-        lv = lv_object_factory(LV_INTERFACE, path,
-                               l['lv_uuid'], l['lv_name'],
-                               l['lv_path'], n(l['lv_size']),
-                               l['vg_name'],
-                               l['vg_uuid'], l['pool_lv'], l['origin'],
-                               n32(l['data_percent']), l['lv_attr'],
-                               l['lv_tags'], l['segtype'])
+        lv = lv_object_factory(LV_INTERFACE, path, state)
     else:
 
         if not path:
@@ -50,11 +52,7 @@ def lvs_hash_to_object(path, l):
                 l['lv_uuid'], ident, thin_pool_obj_path_generate)
 
         lv = lv_object_factory(
-            THIN_POOL_INTERFACE, path,
-            l['lv_uuid'], l['lv_name'], l['lv_path'], n(l['lv_size']),
-            l['vg_name'], l['vg_uuid'], l['pool_lv'], l['origin'],
-            n32(l['data_percent']), l['lv_attr'], l['lv_tags'],
-            l['segtype'])
+            THIN_POOL_INTERFACE, path, state)
     return lv
 
 
@@ -75,6 +73,56 @@ def load_lvs(lv_name=None, object_path=None, refresh=False):
                        lv_name, object_path, refresh)
 
 
+# noinspection PyPep8Naming,PyUnresolvedReferences,PyUnusedLocal
+class LvState(State):
+
+    @staticmethod
+    def _pv_devices(lvm_id):
+        rc = []
+        for pv in sorted(cmdhandler.lv_pv_devices(lvm_id)):
+            (pv_name, pv_segs, pv_uuid) = pv
+            pv_obj = cfg.om.get_object_path_by_lvm_id(
+                pv_uuid, pv_name, gen_new=False)
+            rc.append((pv_obj, pv_segs))
+        return dbus.Array(rc, signature="(oa(tt))")
+
+    def vg_name_lookup(self):
+        return cfg.om.get_by_path(self.Vg).Name
+
+    @property
+    def lvm_id(self):
+        return "%s/%s" % (self.vg_name_lookup(), self.Name)
+
+    def identifiers(self):
+        return (self.Uuid, self.Name)
+
+    def __init__(self, Uuid, Name, Path, SizeBytes,
+                     vg_name, vg_uuid, PoolLv,
+                     OriginLv, DataPercent, Attr, Tags, SegType):
+        utils.init_class_from_arguments(self, None)
+
+        self.Vg = cfg.om.get_object_path_by_lvm_id(
+            Uuid, vg_name, vg_obj_path_generate)
+        self.Devices = LvState._pv_devices(self.lvm_id)
+
+        # When https://bugzilla.redhat.com/show_bug.cgi?id=1264190 is
+        # completed, fix this to pass the pool_lv_uuid too
+        if PoolLv:
+            self.PoolLv = cfg.om.get_object_path_by_lvm_id(
+                None, '%s/%s' % (vg_name, PoolLv),
+                thin_pool_obj_path_generate)
+        else:
+            self.PoolLv = '/'
+
+        if OriginLv:
+            self.OriginLv = \
+                cfg.om.get_object_path_by_lvm_id(
+                    None, '%s/%s' % (vg_name, OriginLv),
+                    vg_obj_path_generate)
+        else:
+            self.OriginLv = '/'
+
+
 def lv_object_factory(interface_name, *args):
     """
     We want to be able to inherit from a class to minimize code.  When you
@@ -89,62 +137,28 @@ def lv_object_factory(interface_name, *args):
     :return: Object instance that matches interface wanted.
     """
     # noinspection PyPep8Naming
-    @utils.dbus_property('Uuid', 's')
-    @utils.dbus_property('Name', 's')
-    @utils.dbus_property('Path', 's')
-    @utils.dbus_property('SizeBytes', 't')
-    @utils.dbus_property('DataPercent', 'u')
-    @utils.dbus_property('SegType', 's')
-    @utils.dbus_property('Vg', 'o', '/')
-    @utils.dbus_property('OriginLv', 'o', '/')
-    @utils.dbus_property('PoolLv', 'o', '/')
-    @utils.dbus_property('Devices', "a(oa(tt))",
-                         dbus.Array([], signature="(oa(tt))"))
-    @utils.dbus_property('Attr', 's')
+    @utils.dbus_property2('Uuid', 's')
+    @utils.dbus_property2('Name', 's')
+    @utils.dbus_property2('Path', 's')
+    @utils.dbus_property2('SizeBytes', 't')
+    @utils.dbus_property2('DataPercent', 'u')
+    @utils.dbus_property2('SegType', 's')
+    @utils.dbus_property2('Vg', 'o')
+    @utils.dbus_property2('OriginLv', 'o')
+    @utils.dbus_property2('PoolLv', 'o')
+    @utils.dbus_property2('Devices', "a(oa(tt))")
+    @utils.dbus_property2('Attr', 's')
     class Lv(AutomatedProperties):
         DBUS_INTERFACE = interface_name
         _Tags_type = "as"
         _IsThinVolume_type = "b"
 
-        @staticmethod
-        def _pv_devices(lvm_id):
-            rc = []
-            for pv in sorted(cmdhandler.lv_pv_devices(lvm_id)):
-                (pv_name, pv_segs, pv_uuid) = pv
-                pv_obj = cfg.om.get_object_path_by_lvm_id(
-                    pv_uuid, pv_name, gen_new=False)
-                rc.append((pv_obj, pv_segs))
-            return dbus.Array(rc, signature="(oa(tt))")
-
         # noinspection PyUnusedLocal,PyPep8Naming
-        def __init__(self, object_path,
-                     Uuid, Name, Path, SizeBytes,
-                     vg_name, vg_uuid, PoolLv,
-                     OriginLv, DataPercent, Attr, Tags, SegType):
+        def __init__(self, object_path, object_state):
 
             super(Lv, self).__init__(object_path, interface_name, load_lvs)
             utils.init_class_from_arguments(self)
-
-            self._Vg = cfg.om.get_object_path_by_lvm_id(
-                vg_uuid, vg_name, vg_obj_path_generate)
-
-            self._Devices = self._pv_devices(self.lvm_id)
-
-            # When https://bugzilla.redhat.com/show_bug.cgi?id=1264190 is
-            # completed, fix this to pass the pool_lv_uuid too
-            if PoolLv:
-                self._PoolLv = cfg.om.get_object_path_by_lvm_id(
-                    None, '%s/%s' % (vg_name, PoolLv),
-                    thin_pool_obj_path_generate)
-
-            if OriginLv:
-                self._OriginLv = \
-                    cfg.om.get_object_path_by_lvm_id(
-                        None, '%s/%s' % (vg_name, OriginLv),
-                        vg_obj_path_generate)
-
-        def vg_name_lookup(self):
-            return cfg.om.get_by_path(self._Vg).Name
+            self.state = object_state
 
         def signal_vg_pv_changes(self):
             # Signal property changes...
@@ -228,15 +242,15 @@ def lv_object_factory(interface_name, *args):
 
         @property
         def Tags(self):
-            return utils.parse_tags(self._Tags)
+            return utils.parse_tags(self.state.Tags)
 
         @property
         def lvm_id(self):
-            return "%s/%s" % (self.vg_name_lookup(), self.Name)
+            return self.state.lvm_id
 
         @property
         def IsThinVolume(self):
-            return self._Attr[0] == 'V'
+            return self.state.Attr[0] == 'V'
 
         @dbus.service.method(dbus_interface=interface_name,
                              in_signature='o(tt)o(tt)a{sv}',

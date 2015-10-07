@@ -23,6 +23,7 @@ from utils import thin_pool_obj_path_generate, lv_obj_path_generate, \
     vg_obj_path_generate, pv_obj_path_generate, n
 from loader import common
 from request import RequestEntry
+from state import State
 
 
 def pvs_hash_to_object(path, p):
@@ -31,15 +32,16 @@ def pvs_hash_to_object(path, p):
         path = cfg.om.get_object_path_by_lvm_id(
             p['pv_uuid'], p['pv_name'], pv_obj_path_generate)
 
-    return Pv(path,
-              p["pv_name"], p["pv_uuid"], p["pv_name"], p["pv_fmt"],
-              n(p["pv_size"]),
-              n(p["pv_free"]), n(p["pv_used"]), n(p["dev_size"]),
-              n(p["pv_mda_size"]), n(p["pv_mda_free"]),
-              long(p["pv_ba_start"]), n(p["pv_ba_size"]),
-              n(p["pe_start"]), long(p["pv_pe_count"]),
-              long(p["pv_pe_alloc_count"]),
-              p["pv_attr"], p["pv_tags"], p["vg_name"], p["vg_uuid"])
+    s = PvState(p["pv_name"], p["pv_uuid"], p["pv_name"], p["pv_fmt"],
+                n(p["pv_size"]),
+                n(p["pv_free"]), n(p["pv_used"]), n(p["dev_size"]),
+                n(p["pv_mda_size"]), n(p["pv_mda_free"]),
+                long(p["pv_ba_start"]), n(p["pv_ba_size"]),
+                n(p["pe_start"]), long(p["pv_pe_count"]),
+                long(p["pv_pe_alloc_count"]),
+                p["pv_attr"], p["pv_tags"], p["vg_name"], p["vg_uuid"])
+
+    return Pv(path, s)
 
 
 def pvs_hash_to_ids(p):
@@ -56,33 +58,12 @@ def load_pvs(device=None, object_path=None, refresh=False):
                        (Pv,), device, object_path, refresh)
 
 
-# noinspection PyPep8Naming
-@utils.dbus_property('Uuid', 's')               # PV UUID/pv_uuid
-@utils.dbus_property('Name', 's')               # PV/pv_name
-@utils.dbus_property('Fmt', 's')                # Fmt/pv_fmt
-@utils.dbus_property('SizeBytes', 't', 0)       # PSize/pv_size
-@utils.dbus_property('FreeBytes', 't', 0)       # PFree/pv_free
-@utils.dbus_property('UsedBytes', 't', 0)       # Used/pv_used
-@utils.dbus_property('DevSizeBytes', 't', 0)    # DevSize/dev_size
-@utils.dbus_property('MdaSizeBytes', 't', 0)    # PMdaSize/pv_mda_size
-@utils.dbus_property('MdaFreeBytes', 't', 0)    # PMdaFree/pv_mda_free
-@utils.dbus_property('BaStart', 't', 0)         # BA start/pv_ba_start
-@utils.dbus_property('BaSizeBytes', 't', 0)     # BA size/pv_ba_size
-@utils.dbus_property('PeStart', 't', 0)         # 1st PE/pe_start
-@utils.dbus_property('PeCount', 't', 0)         # PE/pv_pe_count
-@utils.dbus_property('PeAllocCount', 't', 0)    # Alloc/pv_pe_alloc_count
-class Pv(AutomatedProperties):
-    DBUS_INTERFACE = PV_INTERFACE
+# noinspection PyUnresolvedReferences
+class PvState(State):
 
-    # For properties that we need custom handlers we need these, otherwise
-    # we won't get our introspection data
-    _Tags_type = "as"
-    _PeSegments_type = "a(tt)"
-    _Exportable_type = "b"
-    _Allocatable_type = "b"
-    _Missing_type = "b"
-    _Lv_type = "a(oa(tt))"
-    _Vg_type = "o"
+    @property
+    def lvm_id(self):
+        return self.lvm_path
 
     def _lv_object_list(self, vg_name):
         rc = []
@@ -103,21 +84,57 @@ class Pv(AutomatedProperties):
         return dbus.Array(rc, signature="(oa(tt))")
 
     # noinspection PyUnusedLocal,PyPep8Naming
-    def __init__(self, object_path, lvm_path, Uuid, Name,
+    def __init__(self, lvm_path, Uuid, Name,
                  Fmt, SizeBytes, FreeBytes, UsedBytes, DevSizeBytes,
                  MdaSizeBytes, MdaFreeBytes, BaStart, BaSizeBytes,
                  PeStart, PeCount, PeAllocCount, attr, Tags, vg_name,
                  vg_uuid):
-        super(Pv, self).__init__(object_path, PV_INTERFACE, load_pvs)
-        utils.init_class_from_arguments(self)
-        self._pe_segments = cmdhandler.pv_segments(lvm_path)
-        self._lv = self._lv_object_list(vg_name)
+        utils.init_class_from_arguments(self, None)
+        self.pe_segments = cmdhandler.pv_segments(lvm_path)
+        self.lv = self._lv_object_list(vg_name)
 
         if vg_name:
-            self._vg_path = cfg.om.get_object_path_by_lvm_id(
+            self.vg_path = cfg.om.get_object_path_by_lvm_id(
                 vg_uuid, vg_name, vg_obj_path_generate)
         else:
-            self._vg_path = '/'
+            self.vg_path = '/'
+
+    def identifiers(self):
+        return (self.Uuid, self.lvm_path)
+
+
+# noinspection PyPep8Naming
+@utils.dbus_property2('Uuid', 's')               # PV UUID/pv_uuid
+@utils.dbus_property2('Name', 's')               # PV/pv_name
+@utils.dbus_property2('Fmt', 's')                # Fmt/pv_fmt
+@utils.dbus_property2('SizeBytes', 't')          # PSize/pv_size
+@utils.dbus_property2('FreeBytes', 't')          # PFree/pv_free
+@utils.dbus_property2('UsedBytes', 't')          # Used/pv_used
+@utils.dbus_property2('DevSizeBytes', 't')       # DevSize/dev_size
+@utils.dbus_property2('MdaSizeBytes', 't')       # PMdaSize/pv_mda_size
+@utils.dbus_property2('MdaFreeBytes', 't')       # PMdaFree/pv_mda_free
+@utils.dbus_property2('BaStart', 't')            # BA start/pv_ba_start
+@utils.dbus_property2('BaSizeBytes', 't')        # BA size/pv_ba_size
+@utils.dbus_property2('PeStart', 't')            # 1st PE/pe_start
+@utils.dbus_property2('PeCount', 't')            # PE/pv_pe_count
+@utils.dbus_property2('PeAllocCount', 't')       # Alloc/pv_pe_alloc_count
+class Pv(AutomatedProperties):
+    DBUS_INTERFACE = PV_INTERFACE
+
+    # For properties that we need custom handlers we need these, otherwise
+    # we won't get our introspection data
+    _Tags_type = "as"
+    _PeSegments_type = "a(tt)"
+    _Exportable_type = "b"
+    _Allocatable_type = "b"
+    _Missing_type = "b"
+    _Lv_type = "a(oa(tt))"
+    _Vg_type = "o"
+
+    # noinspection PyUnusedLocal,PyPep8Naming
+    def __init__(self, object_path, state_obj):
+        super(Pv, self).__init__(object_path, PV_INTERFACE, load_pvs)
+        self.state = state_obj
 
     @staticmethod
     def _remove(pv_uuid, pv_name, remove_options):
@@ -146,7 +163,7 @@ class Pv(AutomatedProperties):
                          async_callbacks=('cb', 'cbe'))
     def Remove(self, tmo, remove_options, cb, cbe):
         r = RequestEntry(tmo, Pv._remove,
-                         (self.uuid, self.lvm_id, remove_options),
+                         (self.uuid, self.state.lvm_id, remove_options),
                          cb, cbe, return_tuple=False)
         cfg.worker_q.put(r)
 
@@ -205,35 +222,36 @@ class Pv(AutomatedProperties):
                          async_callbacks=('cb', 'cbe'))
     def AllocationEnabled(self, yes, tmo, allocation_options, cb, cbe):
         r = RequestEntry(tmo, Pv._allocation_enabled,
-                         (self.uuid, self.lvm_id, yes, allocation_options),
+                         (self.state.uuid, self.state.lvm_id,
+                          yes, allocation_options),
                          cb, cbe, False)
         cfg.worker_q.put(r)
 
     @property
     def Tags(self):
-        return utils.parse_tags(self._Tags)
+        return utils.parse_tags(self.state.Tags)
 
     @property
     def PeSegments(self):
-        if len(self._pe_segments):
-            return self._pe_segments
+        if len(self.state.pe_segments):
+            return self.state.pe_segments
         return dbus.Array([], '(tt)')
 
     @property
     def Exportable(self):
-        if self._attr[1] == 'x':
+        if self.state.attr[1] == 'x':
             return True
         return False
 
     @property
     def Allocatable(self):
-        if self._attr[0] == 'a':
+        if self.state.attr[0] == 'a':
             return True
         return False
 
     @property
     def Missing(self):
-        if self._attr[2] == 'm':
+        if self.state.attr[2] == 'm':
             return True
         return False
 
@@ -242,12 +260,16 @@ class Pv(AutomatedProperties):
 
     @property
     def lvm_id(self):
-        return self._lvm_path
+        return self.state.lvm_id
+
+    @property
+    def identifiers(self):
+        return self.state.identifiers()
 
     @property
     def Lv(self):
-        return self._lv
+        return self.state.lv
 
     @property
     def Vg(self):
-        return self._vg_path
+        return self.state.vg_path
