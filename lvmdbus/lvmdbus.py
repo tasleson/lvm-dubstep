@@ -1091,7 +1091,9 @@ def lv_object_factory(interface_name, *args):
         lv_object_factory.lv_t = Lv
         lv_object_factory.lv_pool_t = LvPoolInherit
 
-    if interface_name == LV_INTERFACE:
+    if len(args) == 1 and args[0] is None:
+        return
+    elif interface_name == LV_INTERFACE:
         return lv_object_factory.lv_t(*args)
     elif interface_name == THIN_POOL_INTERFACE:
         return lv_object_factory.lv_pool_t(*args)
@@ -1099,197 +1101,167 @@ def lv_object_factory(interface_name, *args):
         raise Exception("Unsupported interface name %s" % (interface_name))
 
 
-def load_pvs(device=None, object_path=None, refresh=False):
+# Initialize the factory, yes this is a hack.  Still looking for something
+# better for reducing code duplication and supporting inheritance when using
+# method decorators.
+lv_object_factory(LV_INTERFACE, None)
+
+
+def pvs_hash_to_object(path, p):
+    # This object is unknown, lets add it to the model
+    if not path:
+        path = cfg.om.get_object_path_by_lvm_id(
+            p['pv_uuid'], p['pv_name'], pv_obj_path_generate)
+
+    return Pv(path,
+              p["pv_name"], p["pv_uuid"], p["pv_name"], p["pv_fmt"],
+              n(p["pv_size"]),
+              n(p["pv_free"]), n(p["pv_used"]), n(p["dev_size"]),
+              n(p["pv_mda_size"]), n(p["pv_mda_free"]),
+              long(p["pv_ba_start"]), n(p["pv_ba_size"]),
+              n(p["pe_start"]), long(p["pv_pe_count"]),
+              long(p["pv_pe_alloc_count"]),
+              p["pv_attr"], p["pv_tags"], p["vg_name"], p["vg_uuid"])
+
+
+def pvs_hash_to_ids(p):
+    return p['pv_uuid'], p['pv_name']
+
+
+def pvs_hash_retrieve(selection):
+    _pvs = cmdhandler.pv_retrieve(selection)
+    return sorted(_pvs, key=lambda pk: pk['pv_name'])
+
+
+def vgs_hash_to_object(path, v):
+    if not path:
+        path = cfg.om.get_object_path_by_lvm_id(
+            v['vg_uuid'], v['vg_name'], vg_obj_path_generate)
+
+    return Vg(path,
+              v['vg_uuid'], v['vg_name'], v['vg_fmt'], n(v['vg_size']),
+              n(v['vg_free']), v['vg_sysid'], n(v['vg_extent_size']),
+              n(v['vg_extent_count']), n(v['vg_free_count']),
+              v['vg_profile'], n(v['max_lv']), n(v['max_pv']),
+              n(v['pv_count']), n(v['lv_count']), n(v['snap_count']),
+              n(v['vg_seqno']), n(v['vg_mda_count']),
+              n(v['vg_mda_free']), n(v['vg_mda_size']),
+              n(v['vg_mda_used_count']), v['vg_attr'], v['vg_tags'])
+
+
+def vgs_hash_to_ids(v):
+    return v['vg_uuid'], v['vg_name']
+
+
+def vgs_hash_retrieve(selection):
+    _vgs = cmdhandler.vg_retrieve(selection)
+    return sorted(_vgs, key=lambda vk: vk['vg_name'])
+
+
+def lvs_hash_to_object(path, l):
+    # Check to see if this LV is a thinpool!
+    ident = "%s/%s" % (l['vg_name'], l['lv_name'])
+
+    if l['lv_attr'][0] != 't':
+
+        if not path:
+            path = cfg.om.get_object_path_by_lvm_id(
+                l['lv_uuid'], ident, lv_obj_path_generate)
+
+        lv = lv_object_factory(LV_INTERFACE, path,
+                               l['lv_uuid'], l['lv_name'],
+                               l['lv_path'], n(l['lv_size']),
+                               l['vg_name'],
+                               l['vg_uuid'], l['pool_lv'], l['origin'],
+                               n32(l['data_percent']), l['lv_attr'],
+                               l['lv_tags'], l['segtype'])
+    else:
+
+        if not path:
+            path = cfg.om.get_object_path_by_lvm_id(
+                l['lv_uuid'], ident, thin_pool_obj_path_generate)
+
+        lv = lv_object_factory(
+            THIN_POOL_INTERFACE, path,
+            l['lv_uuid'], l['lv_name'], l['lv_path'], n(l['lv_size']),
+            l['vg_name'], l['vg_uuid'], l['pool_lv'], l['origin'],
+            n32(l['data_percent']), l['lv_attr'], l['lv_tags'],
+            l['segtype'])
+    return lv
+
+
+def lvs_hash_to_ids(l):
+    ident = "%s/%s" % (l['vg_name'], l['lv_name'])
+    return l['lv_uuid'], ident
+
+
+def lvs_hash_retrieve(selection):
+    _lvs = cmdhandler.lv_retrieve(selection)
+    return sorted(_lvs, key=lambda lk: lk['lv_name'])
+
+
+def load_common(retrieve, id_retrieve, obj_create, o_type, search_keys,
+                object_path, refresh):
     num_changes = 0
-    existing_pv_paths = []
+    existing_paths = []
     rc = []
 
-    _pvs = cmdhandler.pv_retrieve(device)
-    pvs = sorted(_pvs, key=lambda pk: pk['pv_name'])
+    objects = retrieve(search_keys)
 
     # If we are doing a refresh we need to know what we have in memory, what's
     # in lvm and add those that are new and remove those that are gone!
     if refresh:
-        existing_pv_paths = cfg.om.object_paths_by_type((Pv,))
+        existing_paths = cfg.om.object_paths_by_type(o_type)
 
-    for p in pvs:
+    for o in objects:
         # Assume we need to add this one to dbus, unless we are refreshing
         # and it's already present
-        process_pv = True
+        return_object = True
 
         if refresh:
             # We are refreshing all the PVs from LVM, if this one exists
             # we need to refresh our state.
-            pv_dbus_object = cfg.om.get_by_uuid_lvm_id(
-                p['pv_uuid'], p['pv_name'])
+            dbus_object = cfg.om.get_by_uuid_lvm_id(*id_retrieve(o))
 
-            if pv_dbus_object:
-                del existing_pv_paths[pv_dbus_object.dbus_object_path()]
+            if dbus_object:
+                del existing_paths[dbus_object.dbus_object_path()]
 
                 # TODO: Pass the state we have just fetched into the refresh
                 # so that it doesn't have to turn around and fetch it from
                 # lvm yet again
-                num_changes += pv_dbus_object.refresh()
-                process_pv = False
+                num_changes += dbus_object.refresh()
+                return_object = False
 
-        if process_pv:
-            # This object is unknown, lets add it to the model
-            if not object_path:
-                object_path = cfg.om.get_object_path_by_lvm_id(
-                    p['pv_uuid'], p['pv_name'], pv_obj_path_generate)
-
-            p = Pv(object_path,
-                   p["pv_name"], p["pv_uuid"], p["pv_name"], p["pv_fmt"],
-                   n(p["pv_size"]),
-                   n(p["pv_free"]), n(p["pv_used"]), n(p["dev_size"]),
-                   n(p["pv_mda_size"]), n(p["pv_mda_free"]),
-                   long(p["pv_ba_start"]), n(p["pv_ba_size"]),
-                   n(p["pe_start"]), long(p["pv_pe_count"]),
-                   long(p["pv_pe_alloc_count"]),
-                   p["pv_attr"], p["pv_tags"], p["vg_name"], p["vg_uuid"])
-            rc.append(p)
+        if return_object:
+            rc.append(obj_create(object_path, o))
 
         object_path = None
 
     if refresh:
-        for k in existing_pv_paths.keys():
+        for k in existing_paths.keys():
             cfg.om.remove_object(cfg.om.get_by_path(k), True)
             num_changes += 1
 
     num_changes += len(rc)
 
     return rc, num_changes
+
+
+def load_pvs(device=None, object_path=None, refresh=False):
+    return load_common(pvs_hash_retrieve, pvs_hash_to_ids, pvs_hash_to_object,
+                       (Pv,), device, object_path, refresh)
 
 
 def load_vgs(vg_specific=None, object_path=None, refresh=False):
-    num_changes = 0
-    existing_pv_paths = []
-    rc = []
-
-    _vgs = cmdhandler.vg_retrieve(vg_specific)
-    vgs = sorted(_vgs, key=lambda vk: vk['vg_name'])
-
-    # If we are doing a refresh we need to know what we have in memory, what's
-    # in lvm and add those that are new and remove those that are gone!
-    if refresh:
-        existing_pv_paths = cfg.om.object_paths_by_type((Vg,))
-
-    for v in vgs:
-        # Assume we need to add this one to dbus, unless we are refreshing
-        # and it's already present
-        process_vg = True
-
-        if refresh:
-            # We are refreshing all the VGs from LVM, if this one exists
-            # we need to refresh our state.
-            vg_dbus_object = cfg.om.get_by_uuid_lvm_id(
-                v['vg_uuid'], v['vg_name'])
-
-            if vg_dbus_object:
-                del existing_pv_paths[vg_dbus_object.dbus_object_path()]
-
-                num_changes += vg_dbus_object.refresh()
-                process_vg = False
-
-        if process_vg:
-            if not object_path:
-                object_path = cfg.om.get_object_path_by_lvm_id(
-                    v['vg_uuid'], v['vg_name'], vg_obj_path_generate)
-
-            vg = Vg(object_path,
-                    v['vg_uuid'], v['vg_name'], v['vg_fmt'], n(v['vg_size']),
-                    n(v['vg_free']), v['vg_sysid'], n(v['vg_extent_size']),
-                    n(v['vg_extent_count']), n(v['vg_free_count']),
-                    v['vg_profile'], n(v['max_lv']), n(v['max_pv']),
-                    n(v['pv_count']), n(v['lv_count']), n(v['snap_count']),
-                    n(v['vg_seqno']), n(v['vg_mda_count']),
-                    n(v['vg_mda_free']), n(v['vg_mda_size']),
-                    n(v['vg_mda_used_count']), v['vg_attr'], v['vg_tags'])
-            rc.append(vg)
-
-        object_path = None
-
-    if refresh:
-        for k in existing_pv_paths.keys():
-            cfg.om.remove_object(cfg.om.get_by_path(k), True)
-            num_changes += 1
-
-    num_changes += len(rc)
-
-    return rc, num_changes
+    return load_common(vgs_hash_retrieve, vgs_hash_to_ids, vgs_hash_to_object,
+                       (Vg,), vg_specific, object_path, refresh)
 
 
 def load_lvs(lv_name=None, object_path=None, refresh=False):
-    num_changes = 0
-    existing_lv_paths = []
-    rc = []
-
-    _lvs = cmdhandler.lv_retrieve(lv_name)
-    lvs = sorted(_lvs, key=lambda lk: lk['lv_name'])
-
-    # If we are doing a refresh we need to know what we have in memory, what's
-    # in lvm and add those that are new and remove those that are gone!
-    if refresh:
-        # noinspection PyUnresolvedReferences
-        existing_lv_paths = cfg.om.object_paths_by_type(
-            (lv_object_factory.lv_t, lv_object_factory.lv_pool_t))
-
-    for l in lvs:
-        ident = "%s/%s" % (l['vg_name'], l['lv_name'])
-
-        # Assume we need to add this one to dbus, unless we are refreshing
-        # and it's already present
-        process_lv = True
-
-        if refresh:
-            # We are refreshing all the VGs from LVM, if this one exists
-            # we need to refresh our state.
-            lv_dbus_object = cfg.om.get_by_uuid_lvm_id(l['lv_uuid'], ident)
-
-            if lv_dbus_object:
-                del existing_lv_paths[lv_dbus_object.dbus_object_path()]
-                num_changes += lv_dbus_object.refresh()
-                process_lv = False
-
-        if process_lv:
-            # Check to see if this LV is a thinpool!
-            if l['lv_attr'][0] != 't':
-
-                if not object_path:
-                    object_path = cfg.om.get_object_path_by_lvm_id(
-                        l['lv_uuid'], ident, lv_obj_path_generate)
-
-                lv = lv_object_factory(LV_INTERFACE, object_path,
-                                       l['lv_uuid'], l['lv_name'],
-                                       l['lv_path'], n(l['lv_size']),
-                                       l['vg_name'],
-                                       l['vg_uuid'], l['pool_lv'], l['origin'],
-                                       n32(l['data_percent']), l['lv_attr'],
-                                       l['lv_tags'], l['segtype'])
-            else:
-
-                if not object_path:
-                    object_path = cfg.om.get_object_path_by_lvm_id(
-                        l['lv_uuid'], ident, thin_pool_obj_path_generate)
-
-                lv = lv_object_factory(
-                    THIN_POOL_INTERFACE, object_path,
-                    l['lv_uuid'], l['lv_name'], l['lv_path'], n(l['lv_size']),
-                    l['vg_name'], l['vg_uuid'], l['pool_lv'], l['origin'],
-                    n32(l['data_percent']), l['lv_attr'], l['lv_tags'],
-                    l['segtype'])
-
-            rc.append(lv)
-        object_path = None
-
-    if refresh:
-        for k in existing_lv_paths.keys():
-            cfg.om.remove_object(cfg.om.get_by_path(k), True)
-            num_changes += 1
-
-    num_changes += len(rc)
-
-    return rc, num_changes
+    # noinspection PyUnresolvedReferences
+    return load_common(lvs_hash_retrieve, lvs_hash_to_ids, lvs_hash_to_object,
+                       (lv_object_factory.lv_t, lv_object_factory.lv_pool_t),
+                       lv_name, object_path, refresh)
 
 
 def load(refresh=False):
