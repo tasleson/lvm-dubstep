@@ -532,6 +532,10 @@ def vg_extend(vg_name, extend_devices, extend_options):
 
 
 def vg_retrieve(vg_specific):
+
+    if vg_specific:
+        assert isinstance(vg_specific, list)
+
     columns = ['vg_name', 'vg_uuid', 'vg_fmt', 'vg_size', 'vg_free',
                'vg_sysid', 'vg_extent_size', 'vg_extent_count',
                'vg_free_count', 'vg_profile', 'max_lv', 'max_pv',
@@ -553,8 +557,12 @@ def vg_retrieve(vg_specific):
 
 
 def lv_retrieve(lv_name):
+
+    if lv_name:
+        assert isinstance(lv_name, list)
+
     columns = ['lv_uuid', 'lv_name', 'lv_path', 'lv_size',
-                'vg_name', 'pool_lv',
+                'vg_name', 'pool_lv_uuid', 'pool_lv', 'origin_uuid',
                 'origin', 'data_percent',
                'lv_attr', 'lv_tags', 'segtype', 'vg_uuid']
 

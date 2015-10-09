@@ -27,50 +27,26 @@ from loader import common
 from state import State
 
 
-def lvs_hash_to_object(path, l):
-    # Check to see if this LV is a thinpool!
-    ident = "%s/%s" % (l['vg_name'], l['lv_name'])
-
-    state = LvState(l['lv_uuid'], l['lv_name'],
+def lvs_state_retrieve(selection):
+    rc = []
+    _lvs = cmdhandler.lv_retrieve(selection)
+    lvs = sorted(_lvs, key=lambda lk: lk['lv_name'])
+    for l in lvs:
+        rc.append(LvState(l['lv_uuid'], l['lv_name'],
                                l['lv_path'], n(l['lv_size']),
                                l['vg_name'],
-                               l['vg_uuid'], l['pool_lv'], l['origin'],
+                               l['vg_uuid'], l['pool_lv_uuid'],
+                                l['pool_lv'], l['origin_uuid'], l['origin'],
                                n32(l['data_percent']), l['lv_attr'],
-                               l['lv_tags'], l['segtype'])
-
-    if l['lv_attr'][0] != 't':
-
-        if not path:
-            path = cfg.om.get_object_path_by_lvm_id(
-                l['lv_uuid'], ident, lv_obj_path_generate)
-
-        lv = lv_object_factory(LV_INTERFACE, path, state)
-    else:
-
-        if not path:
-            path = cfg.om.get_object_path_by_lvm_id(
-                l['lv_uuid'], ident, thin_pool_obj_path_generate)
-
-        lv = lv_object_factory(
-            THIN_POOL_INTERFACE, path, state)
-    return lv
-
-
-def lvs_hash_to_ids(l):
-    ident = "%s/%s" % (l['vg_name'], l['lv_name'])
-    return l['lv_uuid'], ident
-
-
-def lvs_hash_retrieve(selection):
-    _lvs = cmdhandler.lv_retrieve(selection)
-    return sorted(_lvs, key=lambda lk: lk['lv_name'])
+                               l['lv_tags'], l['segtype']))
+    return rc
 
 
 def load_lvs(lv_name=None, object_path=None, refresh=False):
     # noinspection PyUnresolvedReferences
-    return common(lvs_hash_retrieve, lvs_hash_to_ids, lvs_hash_to_object,
-                       (lv_object_factory.lv_t, lv_object_factory.lv_pool_t),
-                       lv_name, object_path, refresh)
+    return common(lvs_state_retrieve,
+                  (lv_object_factory.lv_t, lv_object_factory.lv_pool_t),
+                  lv_name, object_path, refresh)
 
 
 # noinspection PyPep8Naming,PyUnresolvedReferences,PyUnusedLocal
@@ -94,11 +70,11 @@ class LvState(State):
         return "%s/%s" % (self.vg_name_lookup(), self.Name)
 
     def identifiers(self):
-        return (self.Uuid, self.Name)
+        return (self.Uuid, self.lvm_id)
 
     def __init__(self, Uuid, Name, Path, SizeBytes,
-                     vg_name, vg_uuid, PoolLv,
-                     OriginLv, DataPercent, Attr, Tags, SegType):
+                     vg_name, vg_uuid, pool_lv_uuid, PoolLv,
+                     origin_uuid, OriginLv, DataPercent, Attr, Tags, SegType):
         utils.init_class_from_arguments(self, None)
 
         self.Vg = cfg.om.get_object_path_by_lvm_id(
@@ -109,7 +85,7 @@ class LvState(State):
         # completed, fix this to pass the pool_lv_uuid too
         if PoolLv:
             self.PoolLv = cfg.om.get_object_path_by_lvm_id(
-                None, '%s/%s' % (vg_name, PoolLv),
+                pool_lv_uuid, '%s/%s' % (vg_name, PoolLv),
                 thin_pool_obj_path_generate)
         else:
             self.PoolLv = '/'
@@ -117,10 +93,20 @@ class LvState(State):
         if OriginLv:
             self.OriginLv = \
                 cfg.om.get_object_path_by_lvm_id(
-                    None, '%s/%s' % (vg_name, OriginLv),
+                    origin_uuid, '%s/%s' % (vg_name, OriginLv),
                     vg_obj_path_generate)
         else:
             self.OriginLv = '/'
+
+    def create_dbus_object(self, path):
+        if not path:
+            path = cfg.om.get_object_path_by_lvm_id(
+                self.Uuid, self.lvm_id, lv_obj_path_generate)
+
+        if self.Attr[0] != 't':
+            return lv_object_factory(LV_INTERFACE, path, self)
+        else:
+            return lv_object_factory(THIN_POOL_INTERFACE, path, self)
 
 
 def lv_object_factory(interface_name, *args):
@@ -156,7 +142,8 @@ def lv_object_factory(interface_name, *args):
         # noinspection PyUnusedLocal,PyPep8Naming
         def __init__(self, object_path, object_state):
 
-            super(Lv, self).__init__(object_path, interface_name, load_lvs)
+            super(Lv, self).__init__(object_path, interface_name,
+                                     lvs_state_retrieve)
             utils.init_class_from_arguments(self)
             self.state = object_state
 
@@ -170,6 +157,9 @@ def lv_object_factory(interface_name, *args):
                 pv = cfg.om.get_by_path(d[0])
                 if pv:
                     pv.refresh()
+
+        def vg_name_lookup(self):
+            return self.state.vg_name_lookup()
 
         @staticmethod
         def _remove(lv_uuid, lv_name, remove_options):

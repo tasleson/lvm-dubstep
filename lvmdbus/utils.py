@@ -136,22 +136,15 @@ def get_properties(f, interface=None):
     return result, h_rc
 
 
-def get_object_property_diff(o_obj, n_obj):
+def get_object_property_diff(o_prop, n_prop):
     """
     Walk through each object properties and report what has changed and with
     the new values
-    :param o_obj:   Old object
-    :param n_obj:   New object
+    :param o_prop:   Old keys/values
+    :param n_prop:   New keys/values
     :return: hash of properties that have changed and their new value
     """
     rc = {}
-
-    if type(o_obj) != type(n_obj):
-        raise Exception("Objects of different types! %s %s" %
-                        (str(type(o_obj)), str(type(n_obj))))
-
-    o_prop = get_properties(o_obj)[1]
-    n_prop = get_properties(n_obj)[1]
 
     for k, v in o_prop.items():
         #print('Comparing %s:%s to %s:%s' %

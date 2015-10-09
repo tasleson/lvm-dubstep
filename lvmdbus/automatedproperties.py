@@ -16,6 +16,7 @@
 import dbus
 import cfg
 from utils import get_properties, add_properties, get_object_property_diff
+from state import State
 
 
 # noinspection PyPep8Naming
@@ -34,6 +35,7 @@ class AutomatedProperties(dbus.service.Object):
         self._ap_interface = interface
         self._ap_o_path = object_path
         self._ap_search_method = search_method
+        self.state = None
 
     def dbus_object_path(self):
         return self._ap_o_path
@@ -103,19 +105,11 @@ class AutomatedProperties(dbus.service.Object):
               (str(interface_name), str(changed_properties),
                str(invalidated_properties)))
 
-    def refresh(self, search_key=None, object_ctor=None, object_state=None):
+    def refresh(self, search_key=None, object_state=None):
         """
-        Take this object, go out and fetch the latest LVM copy and replace the
-        one registered with dbus.  Not sure if there is a better way to do
-        this, instead of resorting to removing the existing object and
-        inserting a new one... One possible way to handle this is to separate
-        the state of lvm from the dbus object representation.  Thus the
-        dbus object would contain an object which represents lvm state, one
-        that we could swap out whenever it was needed.
-
-        WARNING: Once you call into this method, "self" is removed
-        from the dbus API and thus you cannot call any dbus methods upon it.
-
+        Take the values (properties) of an object and update them with what
+        lvm currently has.  You can either fetch the new ones or supply the
+        new state to be updated with
         """
         num_changed = 0
 
@@ -125,54 +119,46 @@ class AutomatedProperties(dbus.service.Object):
         if not self._ap_search_method:
             return
 
-        with cfg.om.locked():
-            # We want the remove & subsequent add to be atomic, would be better
-            # if we could move this into the object manager class itself...
-            # The bigger question is we typically refresh a number of different
-            # objects together, as part of a change.  As lvm does locking at
-            # the VG layer one would think that these related changes would not
-            # need locking in the object manager.  We may find that we need
-            # to be able to refresh a sequence of changes atomically, esp. when
-            # we start supporting nested LVM (LVs that are PVs).
+        search = self.lvm_id
+        if search_key:
+            search = search_key
 
-            search = self.lvm_id
-            if search_key:
-                search = search_key
+        # Either we have the new object state or we need to go fetch it
+        if object_state:
+            new_state = object_state
+        else:
+            new_state = self._ap_search_method([search])[0]
+            print new_state.__class__
+            assert isinstance(new_state, State)
 
-            cfg.om.remove_object(self)
+        assert new_state
 
-            if object_ctor and object_state:
-                # We were passed the new state so we will just create the
-                # object here
-                found = [object_ctor(self.dbus_object_path(), object_state)]
-            else:
-                # Go out and fetch the latest version of this object, eg.
-                # pvs, vgs, lvs
-                found = self._ap_search_method(
-                    [search], self.dbus_object_path())[0]
-            for i in found:
-                cfg.om.register_object(i)
-                changed = get_object_property_diff(self, i)
+        # When we refresh an object the object identifiers might have changed
+        # because LVM allows the user to change them (name & uuid), thus if
+        # they have changed we need to update the object manager so that
+        # look-ups will happen correctly
+        old_id = self.state.identifiers()
+        new_id = new_state.identifiers()
+        if old_id[0] != new_id[0] or old_id[1] != new_id[1]:
+            print 'Updating the lookups! ', \
+                old_id[0], old_id[1], new_id[0], new_id[1]
+            cfg.om.lookup_update(self)
 
-                if changed:
-                    # Use the instance that is registered with dbus API as self
-                    # has been removed, calls to it will make no difference
-                    # with regards to the dbus API.
-                    i.PropertiesChanged(self._ap_interface, changed, [])
-                    num_changed += 1
+        # Grab the properties values, then replace the state of the object
+        # and retrieve the new values
+        # TODO: We need to add locking to prevent concurrent access to the
+        # properties so that a client is not accessing while we are
+        # replacing.
+        o_prop = get_properties(self)[1]
+        self.state = new_state
+        n_prop = get_properties(self)[1]
+
+        changed = get_object_property_diff(o_prop, n_prop)
+
+        if changed:
+            # Use the instance that is registered with dbus API as self
+            # has been removed, calls to it will make no difference
+            # with regards to the dbus API.
+            self.PropertiesChanged(self._ap_interface, changed, [])
+            num_changed += 1
         return num_changed
-
-    @property
-    def lvm_id(self):
-        """
-        Intended to be overridden by classes that inherit
-        """
-        return str(id(self))
-
-    @property
-    def uuid(self):
-        """
-        Intended to be overridden by classes that inherit
-        """
-        import uuid
-        return uuid.uuid1()

@@ -14,13 +14,17 @@
 # Copyright 2015, Tony Asleson <tasleson@redhat.com>
 
 import cfg
+import utils
 
 
-def common(retrieve, id_retrieve, obj_create, o_type, search_keys,
+def common(retrieve, o_type, search_keys,
                 object_path, refresh):
     num_changes = 0
     existing_paths = []
     rc = []
+
+    if search_keys:
+        assert isinstance(search_keys, list)
 
     objects = retrieve(search_keys)
 
@@ -37,16 +41,15 @@ def common(retrieve, id_retrieve, obj_create, o_type, search_keys,
         if refresh:
             # We are refreshing all the PVs from LVM, if this one exists
             # we need to refresh our state.
-            dbus_object = cfg.om.get_by_uuid_lvm_id(*id_retrieve(o))
+            dbus_object = cfg.om.get_by_uuid_lvm_id(*o.identifiers())
 
             if dbus_object:
                 del existing_paths[dbus_object.dbus_object_path()]
-                num_changes += dbus_object.refresh(object_ctor=obj_create,
-                                                   object_state=o)
+                num_changes += dbus_object.refresh(object_state=o)
                 return_object = False
 
         if return_object:
-            rc.append(obj_create(object_path, o))
+            rc.append(o.create_dbus_object(object_path))
 
         object_path = None
 

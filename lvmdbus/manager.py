@@ -163,3 +163,18 @@ class Manager(AutomatedProperties):
                          (event, lvm_id, lvm_uuid, seqno), None, None, False)
         cfg.worker_q.put(r)
         return dbus.Int32(0)
+
+    @property
+    def lvm_id(self):
+        """
+        Intended to be overridden by classes that inherit
+        """
+        return str(id(self))
+
+    @property
+    def Uuid(self):
+        """
+        Intended to be overridden by classes that inherit
+        """
+        import uuid
+        return uuid.uuid1()

@@ -75,7 +75,6 @@ class ObjectManager(AutomatedProperties):
         Store information about what we added to the caches so that we
         can remove it cleanly
         :param obj:     The dbus object we are storing
-        :param path:    The dbus object path
         :param lvm_id:  The user name for the asset
         :param uuid:    The uuid for the asset
         :return:
@@ -92,17 +91,19 @@ class ObjectManager(AutomatedProperties):
             self._id_to_object_path[uuid] = path
 
     def _lookup_remove(self, obj_path):
-
         # Note: Only called internally, lock implied
         if obj_path in self._objects:
             (obj, lvm_id, uuid) = self._objects[obj_path]
             del self._id_to_object_path[lvm_id]
-
-            # uuid isn't always available at the moment
-            if uuid:
-                del self._id_to_object_path[uuid]
-
+            del self._id_to_object_path[uuid]
             del self._objects[obj_path]
+
+    def lookup_update(self, dbus_obj):
+        with self.rlock:
+            obj_path = dbus_obj.dbus_object_path()
+            self._lookup_remove(obj_path)
+            self._lookup_add(dbus_obj, obj_path,
+                             dbus_obj.lvm_id, dbus_obj.Uuid)
 
     def object_paths_by_type(self, o_type):
         with self.rlock:
@@ -126,7 +127,7 @@ class ObjectManager(AutomatedProperties):
             # We want fast access to the object by a number of different ways
             # so we use multiple hashs with different keys
             self._lookup_add(dbus_object, path, dbus_object.lvm_id,
-                             dbus_object.uuid)
+                             dbus_object.Uuid)
 
             if emit_signal:
                 self.InterfacesAdded(path, props)
@@ -180,7 +181,8 @@ class ObjectManager(AutomatedProperties):
         For a given lvm asset return the dbus object registered to it
         """
         with self.rlock:
-            assert lvm_id       # TODO: Assert that uuid is present later too
+            assert lvm_id
+            assert uuid
 
             if gen_new:
                 assert path_create

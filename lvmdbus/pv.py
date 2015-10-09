@@ -20,42 +20,30 @@ import dbus
 from cfg import PV_INTERFACE
 import cmdhandler
 from utils import thin_pool_obj_path_generate, lv_obj_path_generate, \
-    vg_obj_path_generate, pv_obj_path_generate, n
+    vg_obj_path_generate, n, pv_obj_path_generate
 from loader import common
 from request import RequestEntry
 from state import State
 
 
-def pvs_hash_to_object(path, p):
-    # This object is unknown, lets add it to the model
-    if not path:
-        path = cfg.om.get_object_path_by_lvm_id(
-            p['pv_uuid'], p['pv_name'], pv_obj_path_generate)
-
-    s = PvState(p["pv_name"], p["pv_uuid"], p["pv_name"], p["pv_fmt"],
-                n(p["pv_size"]),
-                n(p["pv_free"]), n(p["pv_used"]), n(p["dev_size"]),
-                n(p["pv_mda_size"]), n(p["pv_mda_free"]),
-                long(p["pv_ba_start"]), n(p["pv_ba_size"]),
-                n(p["pe_start"]), long(p["pv_pe_count"]),
-                long(p["pv_pe_alloc_count"]),
-                p["pv_attr"], p["pv_tags"], p["vg_name"], p["vg_uuid"])
-
-    return Pv(path, s)
-
-
-def pvs_hash_to_ids(p):
-    return p['pv_uuid'], p['pv_name']
-
-
-def pvs_hash_retrieve(selection):
+def pvs_state_retrieve(selection):
+    rc = []
     _pvs = cmdhandler.pv_retrieve(selection)
-    return sorted(_pvs, key=lambda pk: pk['pv_name'])
+    pvs = sorted(_pvs, key=lambda pk: pk['pv_name'])
+    for p in pvs:
+        rc.append(
+            PvState(p["pv_name"], p["pv_uuid"], p["pv_name"],
+                    p["pv_fmt"], n(p["pv_size"]), n(p["pv_free"]),
+                    n(p["pv_used"]), n(p["dev_size"]), n(p["pv_mda_size"]),
+                    n(p["pv_mda_free"]), long(p["pv_ba_start"]),
+                    n(p["pv_ba_size"]), n(p["pe_start"]),
+                    long(p["pv_pe_count"]), long(p["pv_pe_alloc_count"]),
+                    p["pv_attr"], p["pv_tags"], p["vg_name"], p["vg_uuid"]))
+    return rc
 
 
 def load_pvs(device=None, object_path=None, refresh=False):
-    return common(pvs_hash_retrieve, pvs_hash_to_ids, pvs_hash_to_object,
-                       (Pv,), device, object_path, refresh)
+    return common(pvs_state_retrieve, (Pv,), device, object_path, refresh)
 
 
 # noinspection PyUnresolvedReferences
@@ -102,6 +90,12 @@ class PvState(State):
     def identifiers(self):
         return (self.Uuid, self.lvm_path)
 
+    def create_dbus_object(self, path):
+        if not path:
+            path = cfg.om.get_object_path_by_lvm_id(self.Uuid, self.Name,
+                                                    pv_obj_path_generate)
+        return Pv(path, self)
+
 
 # noinspection PyPep8Naming
 @utils.dbus_property2('Uuid', 's')               # PV UUID/pv_uuid
@@ -133,7 +127,7 @@ class Pv(AutomatedProperties):
 
     # noinspection PyUnusedLocal,PyPep8Naming
     def __init__(self, object_path, state_obj):
-        super(Pv, self).__init__(object_path, PV_INTERFACE, load_pvs)
+        super(Pv, self).__init__(object_path, PV_INTERFACE, pvs_state_retrieve)
         self.state = state_obj
 
     @staticmethod

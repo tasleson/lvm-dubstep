@@ -28,35 +28,25 @@ from lv import load_lvs
 from state import State
 
 
-def vgs_hash_to_object(path, v):
-    if not path:
-        path = cfg.om.get_object_path_by_lvm_id(
-            v['vg_uuid'], v['vg_name'], vg_obj_path_generate)
-
-    v = VgState(v['vg_uuid'], v['vg_name'], v['vg_fmt'], n(v['vg_size']),
-                n(v['vg_free']), v['vg_sysid'], n(v['vg_extent_size']),
-                n(v['vg_extent_count']), n(v['vg_free_count']),
-                v['vg_profile'], n(v['max_lv']), n(v['max_pv']),
-                n(v['pv_count']), n(v['lv_count']), n(v['snap_count']),
-                n(v['vg_seqno']), n(v['vg_mda_count']),
-                n(v['vg_mda_free']), n(v['vg_mda_size']),
-                n(v['vg_mda_used_count']), v['vg_attr'], v['vg_tags'])
-
-    return Vg(path, v)
-
-
-def vgs_hash_to_ids(v):
-    return v['vg_uuid'], v['vg_name']
-
-
-def vgs_hash_retrieve(selection):
+def vgs_state_retrieve(selection):
+    rc = []
     _vgs = cmdhandler.vg_retrieve(selection)
-    return sorted(_vgs, key=lambda vk: vk['vg_name'])
+    vgs = sorted(_vgs, key=lambda vk: vk['vg_name'])
+    for v in vgs:
+        rc.append(
+            VgState(v['vg_uuid'], v['vg_name'], v['vg_fmt'], n(v['vg_size']),
+                    n(v['vg_free']), v['vg_sysid'], n(v['vg_extent_size']),
+                    n(v['vg_extent_count']), n(v['vg_free_count']),
+                    v['vg_profile'], n(v['max_lv']), n(v['max_pv']),
+                    n(v['pv_count']), n(v['lv_count']), n(v['snap_count']),
+                    n(v['vg_seqno']), n(v['vg_mda_count']),
+                    n(v['vg_mda_free']), n(v['vg_mda_size']),
+                    n(v['vg_mda_used_count']), v['vg_attr'], v['vg_tags']))
+    return rc
 
 
 def load_vgs(vg_specific=None, object_path=None, refresh=False):
-    return common(vgs_hash_retrieve, vgs_hash_to_ids, vgs_hash_to_object,
-                       (Vg,), vg_specific, object_path, refresh)
+    return common(vgs_state_retrieve, (Vg,), vg_specific, object_path, refresh)
 
 
 # noinspection PyPep8Naming,PyUnresolvedReferences,PyUnusedLocal
@@ -102,6 +92,12 @@ class VgState(State):
         self.Pvs = self._pv_paths_build(Name)
         self.Lvs = self._lv_paths_build(Name)
 
+    def create_dbus_object(self, path):
+        if not path:
+            path = cfg.om.get_object_path_by_lvm_id(
+                self.Uuid, self.Name, vg_obj_path_generate)
+        return Vg(path, self)
+
 
 # noinspection PyPep8Naming
 @utils.dbus_property2('Uuid', 's')
@@ -141,7 +137,7 @@ class Vg(AutomatedProperties):
 
     # noinspection PyUnusedLocal,PyPep8Naming
     def __init__(self, object_path, object_state):
-        super(Vg, self).__init__(object_path, VG_INTERFACE, load_vgs)
+        super(Vg, self).__init__(object_path, VG_INTERFACE, vgs_state_retrieve)
         self._object_path = object_path
         self.state = object_state
 
