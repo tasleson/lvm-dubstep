@@ -4,7 +4,7 @@ lvm-dubstep
 LVM D-Bus proof of concept
 
 
-#### Trying it out
+#### Trying it out (lvm 2.02.132 or later is required)
 1. Copy the configuration file to allow the service to run on the system bus
   * `# cp com.redhat.lvm1.conf /etc/dbus-1/system.d/`
 2. Run as root
