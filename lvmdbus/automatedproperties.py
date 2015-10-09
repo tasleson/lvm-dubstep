@@ -153,9 +153,6 @@ class AutomatedProperties(dbus.service.Object):
         changed = get_object_property_diff(o_prop, n_prop)
 
         if changed:
-            # Use the instance that is registered with dbus API as self
-            # has been removed, calls to it will make no difference
-            # with regards to the dbus API.
             self.PropertiesChanged(self._ap_interface, changed, [])
             num_changed += 1
         return num_changed
