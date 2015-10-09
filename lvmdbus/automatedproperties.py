@@ -128,7 +128,6 @@ class AutomatedProperties(dbus.service.Object):
             new_state = object_state
         else:
             new_state = self._ap_search_method([search])[0]
-            print new_state.__class__
             assert isinstance(new_state, State)
 
         assert new_state
@@ -140,8 +139,6 @@ class AutomatedProperties(dbus.service.Object):
         old_id = self.state.identifiers()
         new_id = new_state.identifiers()
         if old_id[0] != new_id[0] or old_id[1] != new_id[1]:
-            print 'Updating the lookups! ', \
-                old_id[0], old_id[1], new_id[0], new_id[1]
             cfg.om.lookup_update(self)
 
         # Grab the properties values, then replace the state of the object
