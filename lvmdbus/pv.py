@@ -98,20 +98,20 @@ class PvState(State):
 
 
 # noinspection PyPep8Naming
-@utils.dbus_property2('Uuid', 's')               # PV UUID/pv_uuid
-@utils.dbus_property2('Name', 's')               # PV/pv_name
-@utils.dbus_property2('Fmt', 's')                # Fmt/pv_fmt
-@utils.dbus_property2('SizeBytes', 't')          # PSize/pv_size
-@utils.dbus_property2('FreeBytes', 't')          # PFree/pv_free
-@utils.dbus_property2('UsedBytes', 't')          # Used/pv_used
-@utils.dbus_property2('DevSizeBytes', 't')       # DevSize/dev_size
-@utils.dbus_property2('MdaSizeBytes', 't')       # PMdaSize/pv_mda_size
-@utils.dbus_property2('MdaFreeBytes', 't')       # PMdaFree/pv_mda_free
-@utils.dbus_property2('BaStart', 't')            # BA start/pv_ba_start
-@utils.dbus_property2('BaSizeBytes', 't')        # BA size/pv_ba_size
-@utils.dbus_property2('PeStart', 't')            # 1st PE/pe_start
-@utils.dbus_property2('PeCount', 't')            # PE/pv_pe_count
-@utils.dbus_property2('PeAllocCount', 't')       # Alloc/pv_pe_alloc_count
+@utils.dbus_property('Uuid', 's')               # PV UUID/pv_uuid
+@utils.dbus_property('Name', 's')               # PV/pv_name
+@utils.dbus_property('Fmt', 's')                # Fmt/pv_fmt
+@utils.dbus_property('SizeBytes', 't')          # PSize/pv_size
+@utils.dbus_property('FreeBytes', 't')          # PFree/pv_free
+@utils.dbus_property('UsedBytes', 't')          # Used/pv_used
+@utils.dbus_property('DevSizeBytes', 't')       # DevSize/dev_size
+@utils.dbus_property('MdaSizeBytes', 't')       # PMdaSize/pv_mda_size
+@utils.dbus_property('MdaFreeBytes', 't')       # PMdaFree/pv_mda_free
+@utils.dbus_property('BaStart', 't')            # BA start/pv_ba_start
+@utils.dbus_property('BaSizeBytes', 't')        # BA size/pv_ba_size
+@utils.dbus_property('PeStart', 't')            # 1st PE/pe_start
+@utils.dbus_property('PeCount', 't')            # PE/pv_pe_count
+@utils.dbus_property('PeAllocCount', 't')       # Alloc/pv_pe_alloc_count
 class Pv(AutomatedProperties):
     DBUS_INTERFACE = PV_INTERFACE
 

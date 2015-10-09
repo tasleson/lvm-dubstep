@@ -123,17 +123,17 @@ def lv_object_factory(interface_name, *args):
     :return: Object instance that matches interface wanted.
     """
     # noinspection PyPep8Naming
-    @utils.dbus_property2('Uuid', 's')
-    @utils.dbus_property2('Name', 's')
-    @utils.dbus_property2('Path', 's')
-    @utils.dbus_property2('SizeBytes', 't')
-    @utils.dbus_property2('DataPercent', 'u')
-    @utils.dbus_property2('SegType', 's')
-    @utils.dbus_property2('Vg', 'o')
-    @utils.dbus_property2('OriginLv', 'o')
-    @utils.dbus_property2('PoolLv', 'o')
-    @utils.dbus_property2('Devices', "a(oa(tt))")
-    @utils.dbus_property2('Attr', 's')
+    @utils.dbus_property('Uuid', 's')
+    @utils.dbus_property('Name', 's')
+    @utils.dbus_property('Path', 's')
+    @utils.dbus_property('SizeBytes', 't')
+    @utils.dbus_property('DataPercent', 'u')
+    @utils.dbus_property('SegType', 's')
+    @utils.dbus_property('Vg', 'o')
+    @utils.dbus_property('OriginLv', 'o')
+    @utils.dbus_property('PoolLv', 'o')
+    @utils.dbus_property('Devices', "a(oa(tt))")
+    @utils.dbus_property('Attr', 's')
     class Lv(AutomatedProperties):
         DBUS_INTERFACE = interface_name
         _Tags_type = "as"

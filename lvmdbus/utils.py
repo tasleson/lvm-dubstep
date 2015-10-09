@@ -218,57 +218,7 @@ def _dbus_type(t, value):
     return _type_map.get(t, _pass_through)(value)
 
 
-##
-# This decorator creates a property to be used for dbus introspection
-#
-def dbus_property(name, dbus_type, default_value=None, writeable=False,
-                  doc=None, custom_getter=None, custom_setter=None):
-    """
-    Creates the get/set properties for the given name.  It assumes that the
-    actual attribute is '_' + name and the attribute metadata is stuffed in
-    _name_type.
-
-    There is probably a better way todo this.
-    :param name:            Name of property
-    :param dbus_type:       dbus string type eg. s,t,i,x
-    :param default_value:   The default value of the property
-    :param writeable:       True == the value can be set
-    :param doc:             Python __doc__ for the property
-    :return:
-    """
-    attribute_name = '_' + name
-
-    def getter(self):
-        t = getattr(self, attribute_name + '_type')
-        return _dbus_type(t, getattr(self, attribute_name))
-
-    def setter(self, value):
-        setattr(self, attribute_name, value)
-
-    if custom_getter or custom_setter:
-        s = setter
-        g = getter
-
-        if custom_getter:
-            g = custom_getter
-        if custom_setter:
-            s = custom_setter
-
-        prop = property(g, s if writeable else None, None, doc)
-
-    else:
-        prop = property(getter, setter if writeable else None, None, doc)
-
-    def decorator(cls):
-        setattr(cls, attribute_name, default_value)
-        setattr(cls, attribute_name + '_type', dbus_type)
-        setattr(cls, name, prop)
-        return cls
-
-    return decorator
-
-
-def dbus_property2(name, dbus_type, doc=None):
+def dbus_property(name, dbus_type, doc=None):
     """
     Creates the get/set properties for the given name.  It assumes that the
     actual attribute is '_' + name and the attribute metadata is stuffed in
