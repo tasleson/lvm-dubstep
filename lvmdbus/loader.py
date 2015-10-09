@@ -14,7 +14,6 @@
 # Copyright 2015, Tony Asleson <tasleson@redhat.com>
 
 import cfg
-import utils
 
 
 def common(retrieve, o_type, search_keys,
