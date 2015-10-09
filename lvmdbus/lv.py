@@ -372,18 +372,22 @@ def lv_object_factory(interface_name, *args):
                               size_bytes, create_options), cb, cbe)
             cfg.worker_q.put(r)
 
-    # Without this we each object has a new 'type' when constructed, so
-    # we save off the object and construct instances of it.
-    if not hasattr(lv_object_factory, "lv_t"):
-        lv_object_factory.lv_t = Lv
-        lv_object_factory.lv_pool_t = LvPoolInherit
-
+    skip_create = False
     if len(args) == 1 and args[0] is None:
-        return
-    elif interface_name == LV_INTERFACE:
-        return lv_object_factory.lv_t(*args)
+        skip_create = True
+
+    if interface_name == LV_INTERFACE:
+        if not hasattr(lv_object_factory, "lv_t"):
+            lv_object_factory.lv_t = Lv
+
+        if not skip_create:
+            return lv_object_factory.lv_t(*args)
     elif interface_name == THIN_POOL_INTERFACE:
-        return lv_object_factory.lv_pool_t(*args)
+        if not hasattr(lv_object_factory, "lv_pool_t"):
+            lv_object_factory.lv_pool_t = LvPoolInherit
+
+        if not skip_create:
+            return lv_object_factory.lv_pool_t(*args)
     else:
         raise Exception("Unsupported interface name %s" % (interface_name))
 
@@ -392,3 +396,4 @@ def lv_object_factory(interface_name, *args):
 # better for reducing code duplication and supporting inheritance when using
 # method decorators.
 lv_object_factory(LV_INTERFACE, None)
+lv_object_factory(THIN_POOL_INTERFACE, None)
