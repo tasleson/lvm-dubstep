@@ -106,15 +106,16 @@ def type_to_human(t):
 
 def ouput_interfaces(interfaces):
 
-    for interface_name, md in interfaces.items():
+    for interface_name, md in sorted(interfaces.items()):
         print '\n## Interface %s ##' % (interface_name)
         print '\n#### Methods ####'
-        for k, v in md['methods'].items():
+        for k, v in sorted(md['methods'].items()):
             print '* %s ' % k
 
             if len(v['args'].keys()) == 0:
                 print '  * Arguments (None)'
             else:
+                # These need to be in the order supplied
                 print '  * Arguments'
                 for arg_name, arg_type in v['args'].items():
                     print '      * %s (%s)' % \
@@ -122,14 +123,14 @@ def ouput_interfaces(interfaces):
             print '  * Returns'
             print '      *', type_to_human(v['return_val'])
         print '\n#### Properties ####'
-        for p, t in md['properties'].items():
+        for p, t in sorted(md['properties'].items()):
             print '* %s (%s)' % (p, type_to_human(t['prop_type']))
 
 
 def get_methods(et_methods):
     methods = collections.OrderedDict()
 
-    for m in et_methods.iter('method'):
+    for m in sorted(et_methods.iter('method')):
         method_name = m.attrib['name']
         arguments_in = collections.OrderedDict()
         return_val = ""
@@ -152,7 +153,7 @@ def get_methods(et_methods):
 def get_properties(et_props):
     props = collections.OrderedDict()
 
-    for p in et_props.iter('property'):
+    for p in sorted(et_props.iter('property')):
         #print p.tag, p.attrib
         name = p.attrib['name']
         prop_type = p.attrib['type']
@@ -171,7 +172,7 @@ def get_introspect_data(bus, object_p, interface):
 
     tree = Et.fromstring(intf_data)
     interfaces = collections.OrderedDict()
-    for i in tree.iter('interface'):
+    for i in sorted(tree.iter('interface')):
 
         if i.attrib['name'] == interface:
             interfaces[interface] = dict(methods=None, properties=None)
@@ -196,7 +197,7 @@ def _get_doc():
         for k in keys:
             unique_interfaces[str(k)] = dict(object_path=object_path)
 
-    for k, v in unique_interfaces.items():
+    for k, v in sorted(unique_interfaces.items()):
         get_introspect_data(bus, v['object_path'], k)
 
 if __name__ == "__main__":
