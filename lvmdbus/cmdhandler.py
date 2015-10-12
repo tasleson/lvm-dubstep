@@ -139,7 +139,7 @@ def lvs_in_vg(vg_name):
 def pv_remove(device, remove_options):
     cmd = ['pvremove']
     cmd.extend(options_to_cli_args(remove_options))
-    cmd.extend(device)
+    cmd.append(device)
     return call(cmd)
 
 
