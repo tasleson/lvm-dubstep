@@ -157,7 +157,7 @@ class Pv(AutomatedProperties):
                          async_callbacks=('cb', 'cbe'))
     def Remove(self, tmo, remove_options, cb, cbe):
         r = RequestEntry(tmo, Pv._remove,
-                         (self.uuid, self.state.lvm_id, remove_options),
+                         (self.Uuid, self.state.lvm_id, remove_options),
                          cb, cbe, return_tuple=False)
         cfg.worker_q.put(r)
 
