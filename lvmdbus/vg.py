@@ -362,7 +362,7 @@ class Vg(AutomatedProperties):
                     # be the updated object so we need to manually append the
                     # object path of PVS and go see refresh method for more
                     # details.
-                    current_pvs = list(dbo.pvs)
+                    current_pvs = list(dbo.Pvs)
                     dbo.refresh()
                     current_pvs.extend(pv_object_paths)
                     dbo.refresh_pvs(current_pvs)
