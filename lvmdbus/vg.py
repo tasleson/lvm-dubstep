@@ -315,8 +315,9 @@ class Vg(AutomatedProperties):
             rc, out, err = cmdhandler.vg_reduce(vg_name, missing, pv_devices,
                                                 reduce_options)
             if rc == 0:
+                original_pvs = dbo.state.Pvs
                 dbo.refresh()
-                dbo.refresh_pvs()
+                dbo.refresh_pvs(original_pvs)
             else:
                 raise dbus.exceptions.DBusException(
                     VG_INTERFACE, 'Exit code %s, stderr = %s' % (str(rc), err))
