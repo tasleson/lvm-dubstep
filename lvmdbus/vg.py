@@ -181,7 +181,7 @@ class Vg(AutomatedProperties):
                 # however the LVs will still have the wrong lookup entries.
                 dbo.refresh(new_name)
 
-                for lv in dbo.lvs:
+                for lv in dbo.Lvs:
                     # This will fix the lookups, and the object state actually
                     # has an update as the path property is changing, but it's
                     # unfortunate that we need to go out and fetch all of these
