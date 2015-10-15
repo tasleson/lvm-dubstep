@@ -81,8 +81,6 @@ class LvState(State):
             Uuid, vg_name, vg_obj_path_generate)
         self.Devices = LvState._pv_devices(self.lvm_id)
 
-        # When https://bugzilla.redhat.com/show_bug.cgi?id=1264190 is
-        # completed, fix this to pass the pool_lv_uuid too
         if PoolLv:
             self.PoolLv = cfg.om.get_object_path_by_lvm_id(
                 pool_lv_uuid, '%s/%s' % (vg_name, PoolLv),
