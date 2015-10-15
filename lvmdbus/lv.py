@@ -190,7 +190,7 @@ def lv_object_factory(interface_name, *args):
                              async_callbacks=('cb', 'cbe'))
         def Remove(self, tmo, remove_options, cb, cbe):
             r = RequestEntry(tmo, Lv._remove,
-                             (self.uuid, self.lvm_id, remove_options),
+                             (self.Uuid, self.lvm_id, remove_options),
                              cb, cbe, False)
             cfg.worker_q.put(r)
 
