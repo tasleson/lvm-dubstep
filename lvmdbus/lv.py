@@ -372,7 +372,7 @@ def lv_object_factory(interface_name, *args):
                              async_callbacks=('cb', 'cbe'))
         def LvCreate(self, name, size_bytes, tmo, create_options, cb, cbe):
             r = RequestEntry(tmo, LvPoolInherit._lv_create,
-                             (self.uuid, self.lvm_id, name,
+                             (self.Uuid, self.lvm_id, name,
                               size_bytes, create_options), cb, cbe)
             cfg.worker_q.put(r)
 
