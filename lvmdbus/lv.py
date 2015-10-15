@@ -208,7 +208,7 @@ def lv_object_factory(interface_name, *args):
                     vg_name = dbo.vg_name_lookup()
 
                     dbo.refresh("%s/%s" % (vg_name, new_name))
-                    cfg.om.get_by_path(dbo.vg).refresh()
+                    cfg.om.get_by_path(dbo.Vg).refresh()
                 else:
                     # Need to work on error handling, need consistent
                     raise dbus.exceptions.DBusException(
@@ -226,7 +226,7 @@ def lv_object_factory(interface_name, *args):
                              async_callbacks=('cb', 'cbe'))
         def Rename(self, name, tmo, rename_options, cb, cbe):
             r = RequestEntry(tmo, Lv._rename,
-                             (self.uuid, self.lvm_id, name, rename_options),
+                             (self.Uuid, self.lvm_id, name, rename_options),
                              cb, cbe, False)
             cfg.worker_q.put(r)
 
