@@ -293,23 +293,22 @@ def lv_object_factory(interface_name, *args):
             if dbo:
                 # If you specify a size you get a 'thick' snapshot even if
                 # it is a thin lv
-                if not dbo.is_thin_volume:
+                if not dbo.IsThinVolume:
                     if optional_size == 0:
                         # TODO: Should we pick a sane default or force user to
                         # make a decision?
-                        space = dbo.size_bytes / 80
+                        space = dbo.SizeBytes / 80
                         remainder = space % 512
                         optional_size = space + 512 - remainder
 
                 rc, out, err = cmdhandler.vg_lv_snapshot(
                     lv_name, snapshot_options, name, optional_size)
                 if rc == 0:
-                    snapshot_path = "/"
                     full_name = "%s/%s" % (dbo.vg_name_lookup(), name)
                     lvs = load_lvs([full_name])[0]
                     for l in lvs:
                         cfg.om.register_object(l, True)
-                        snapshot_path = l.dbus_object_path()
+                        l.dbus_object_path()
 
                     # Refresh self and all included PVs
                     dbo.refresh()
@@ -322,7 +321,7 @@ def lv_object_factory(interface_name, *args):
                 raise dbus.exceptions.DBusException(
                     LV_INTERFACE, 'LV with uuid %s and name %s not present!' %
                     (lv_uuid, lv_name))
-            return snapshot_path
+            return '/'
 
         @dbus.service.method(dbus_interface=interface_name,
                              in_signature='sita{sv}',
@@ -331,7 +330,7 @@ def lv_object_factory(interface_name, *args):
         def Snapshot(self, name, tmo, optional_size, snapshot_options,
                      cb, cbe):
             r = RequestEntry(tmo, Lv._snap_shot,
-                             (self.uuid, self.lvm_id, name,
+                             (self.Uuid, self.lvm_id, name,
                               optional_size, snapshot_options), cb, cbe)
             cfg.worker_q.put(r)
 
