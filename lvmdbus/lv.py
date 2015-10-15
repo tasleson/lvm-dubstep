@@ -133,11 +133,11 @@ def lv_object_factory(interface_name, *args):
     @utils.dbus_property('OriginLv', 'o')
     @utils.dbus_property('PoolLv', 'o')
     @utils.dbus_property('Devices', "a(oa(tt))")
-    @utils.dbus_property('Attr', 's')
     class Lv(AutomatedProperties):
         DBUS_INTERFACE = interface_name
         _Tags_type = "as"
         _IsThinVolume_type = "b"
+        _IsThinPool_type = "b"
 
         # noinspection PyUnusedLocal,PyPep8Naming
         def __init__(self, object_path, object_state):
@@ -241,6 +241,10 @@ def lv_object_factory(interface_name, *args):
         @property
         def IsThinVolume(self):
             return self.state.Attr[0] == 'V'
+
+        @property
+        def IsThinPool(self):
+            return self.state.Attr[0] == 't'
 
         @dbus.service.method(dbus_interface=interface_name,
                              in_signature='o(tt)o(tt)a{sv}',
