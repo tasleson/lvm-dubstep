@@ -67,14 +67,23 @@ def signal_move_changes(obj_mgr):
                     del c[prev_k]
                 else:
                     state = p[prev_k]
-
                     del p[prev_k]
 
-                    # Best guess is that the lv and the source & dest.
-                    # PV state needs to be updated, need to verify.
-                    obj_mgr.get_by_lvm_id(prev_k).refresh()
-                    obj_mgr.get_by_lvm_id(state['src_dev']).refresh()
-                    obj_mgr.get_by_lvm_id(state['dest_dev']).refresh()
+                    with cfg.om.locked():
+                        # Best guess is that the lv and the source & dest.
+                        # PV state needs to be updated, need to verify.
+                        utils.pprint('gen_signals %s' % (str(state)))
+
+                        vg = obj_mgr.get_by_lvm_id(prev_k)
+                        if vg:
+                            vg.refresh()
+
+                        pv = obj_mgr.get_by_lvm_id(state['src_dev'])
+                        if pv:
+                            pv.refresh()
+                        pv = obj_mgr.get_by_lvm_id(state['dest_dev'])
+                        if pv:
+                            pv.refresh()
 
             # Update previous to current
             p.update(c)
