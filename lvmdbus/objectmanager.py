@@ -173,7 +173,9 @@ class ObjectManager(AutomatedProperties):
         Given an lvm identifier, return the object registered for it
         """
         with self.rlock:
-            return self.get_by_path(self._id_to_object_path[lvm_id])
+            if lvm_id in self._id_to_object_path:
+                return self.get_by_path(self._id_to_object_path[lvm_id])
+            return None
 
     def get_object_path_by_lvm_id(self, uuid, lvm_id, path_create=None,
                                   gen_new=True):
