@@ -19,6 +19,9 @@ import dbus
 from dbus.mainloop.glib import DBusGMainLoop
 import unittest
 import sys
+import random
+import string
+
 
 BUSNAME = "com.redhat.lvmdbus1"
 MANAGER_INT = BUSNAME + '.Manager'
@@ -27,6 +30,12 @@ PV_INT = BUSNAME + ".Pv"
 VG_INT = BUSNAME + ".Vg"
 LV_INT = BUSNAME + ".Lv"
 THINPOOL_INT = BUSNAME + ".Thinpool"
+JOB_INT = BUSNAME + ".Job"
+
+
+def rs(length, suffix):
+    return ''.join(random.choice(string.ascii_lowercase)
+                   for _ in range(length)) + suffix
 
 
 class RemoteObject(object):
@@ -52,7 +61,7 @@ class RemoteObject(object):
 
 def get_objects():
     rc = {MANAGER_INT: [], PV_INT: [], VG_INT: [], LV_INT: [],
-          THINPOOL_INT: []}
+          THINPOOL_INT: [], JOB_INT: []}
 
     bus = dbus.SystemBus(mainloop=DBusGMainLoop())
     manager = dbus.Interface(bus.get_object(
@@ -129,25 +138,27 @@ class TestDbusService(unittest.TestCase):
         self.assertTrue(rc is not None and len(rc) > 0)
         self.assertEqual(self._refresh(), 0)
 
-    def _vg_create(self):
-        some_pv = self.objs[PV_INT][0]
-        vg_name = 'test_vg_create'
+    def _vg_create(self, pv_paths=None):
+
+        if not pv_paths:
+            pv_paths = [self.objs[PV_INT][0].object_path]
+
+        vg_name = rs(8, '_vg')
 
         vg_path = self.objs[MANAGER_INT][0].method.VgCreate(
             vg_name,
-            [some_pv.object_path],
+            pv_paths,
             -1,
-            {})
+            {})[0]
         self.assertTrue(vg_path is not None and len(vg_path) > 0)
-        return vg_path[0], vg_name
+        return RemoteObject(self.bus, vg_path, VG_INT)
 
     def test_vg_create(self):
         self._vg_create()
         self.assertEqual(self._refresh(), 0)
 
     def test_vg_delete(self):
-        vg_path, vg_name = self._vg_create()
-        vg = RemoteObject(self.bus, vg_path, VG_INT)
+        vg = self._vg_create()
         vg.method.Remove(-1, {})
         self.assertEqual(self._refresh(), 0)
 
@@ -183,6 +194,165 @@ class TestDbusService(unittest.TestCase):
         rc = self._lookup('/dev/null')
         self.assertTrue(rc == '/')
 
+    def test_vg_extend(self):
+        # Create a VG
+        self.assertTrue(len(self.objs[PV_INT]) >= 2)
+
+        if len(self.objs[PV_INT]) >= 2:
+            pv_initial = self.objs[PV_INT][0]
+            pv_next = self.objs[PV_INT][1]
+
+            vg = self._vg_create([pv_initial.object_path])
+            path = vg.method.Extend([pv_next.object_path], -1, {})
+            self.assertTrue(path == '/')
+            self.assertEqual(self._refresh(), 0)
+
+    # noinspection PyUnresolvedReferences
+    def test_vg_reduce(self):
+        self.assertTrue(len(self.objs[PV_INT]) >= 2)
+
+        if len(self.objs[PV_INT]) >= 2:
+            vg = self._vg_create(
+                [self.objs[PV_INT][0].object_path,
+                 self.objs[PV_INT][1].object_path])
+
+            path = vg.method.Reduce(False, [vg.Pvs[0]], -1, {})
+            self.assertTrue(path == '/')
+            self.assertEqual(self._refresh(), 0)
+
+    # noinspection PyUnresolvedReferences
+    def test_vg_rename(self):
+        vg = self._vg_create()
+        path = vg.method.Rename('renamed_' + vg.Name, -1, {})
+        self.assertTrue(path == '/')
+        self.assertEqual(self._refresh(), 0)
+
+    def _test_lv_create(self, method, params, vg, thinpool=False):
+        lv = None
+        path = method(*params)[0]
+
+        self.assertTrue(vg)
+
+        if path:
+            if thinpool:
+                lv = RemoteObject(self.bus, path, THINPOOL_INT)
+            else:
+                lv = RemoteObject(self.bus, path, LV_INT)
+            # TODO verify object properties
+
+        self.assertEqual(self._refresh(), 0)
+        return lv
+
+    def test_lv_create_linear(self):
+
+        vg = self._vg_create()
+        self._test_lv_create(vg.method.LvCreateLinear,
+                             (rs(8, '_lv'), 1024 * 1024 * 4, False, -1, {}),
+                             vg)
+
+    def test_lv_create_striped(self):
+        pv_paths = []
+        for pp in self.objs[PV_INT]:
+            pv_paths.append(pp.object_path)
+
+        vg = self._vg_create(pv_paths)
+        self._test_lv_create(vg.method.LvCreateStriped,
+                             (rs(8, '_lv'), 1024 * 1024 * 4, 2, 8, False,
+                              -1, {}), vg)
+
+    def test_lv_create_mirror(self):
+        pv_paths = []
+        for pp in self.objs[PV_INT]:
+            pv_paths.append(pp.object_path)
+
+        vg = self._vg_create(pv_paths)
+        self._test_lv_create(vg.method.LvCreateMirror,
+                             (rs(8, '_lv'), 1024 * 1024 * 4, 2, -1, {}), vg)
+
+    def test_lv_create_raid(self):
+        pv_paths = []
+        for pp in self.objs[PV_INT]:
+            pv_paths.append(pp.object_path)
+
+        vg = self._vg_create(pv_paths)
+        self._test_lv_create(vg.method.LvCreateRaid,
+                             (rs(8, '_lv'), 'raid4',
+                              1024 * 1024 * 16, 2, 8, False, -1, {}), vg)
+
+    def _create_lv(self, thinpool=False):
+        pv_paths = []
+        for pp in self.objs[PV_INT]:
+            pv_paths.append(pp.object_path)
+
+        vg = self._vg_create(pv_paths)
+        return self._test_lv_create(
+            vg.method.LvCreateLinear,
+            (rs(8, '_lv'), 1024 * 1024 * 128, thinpool, -1, {}), vg, thinpool)
+
+    def test_lv_create_thin_pool(self):
+        self._create_lv(True)
+
+    def test_lv_rename(self):
+        # Rename a regular LV
+        lv = self._create_lv()
+        lv.method.Rename('renamed_' + lv.Name, -1, {})
+        self.assertEqual(self._refresh(), 0)
+
+    def test_lv_thinpool_rename(self):
+        # Rename a thin pool
+        thin_pool = self._create_lv(True)
+        thin_pool.method.Rename('renamed_' + thin_pool.Name, -1, {})
+        self.assertEqual(self._refresh(), 0)
+
+    # noinspection PyUnresolvedReferences
+    def test_lv_on_thin_pool_rename(self):
+        # Rename a LV on a thin Pool
+        thin_pool = self._create_lv(True)
+
+        thin_path = thin_pool.method.LvCreate(
+            rs(10, '_thin_lv'), 1024 * 1024 * 10, -1, {})[0]
+
+        lv = RemoteObject(self.bus, thin_path, LV_INT)
+
+        rc = lv.method.Rename('rename_test' + lv.Name, -1, {})
+        self.assertTrue(rc == '/')
+        self.assertEqual(self._refresh(), 0)
+
+    def test_lv_remove(self):
+        lv = self._create_lv()
+        rc = lv.method.Remove(-1, {})
+        self.assertTrue(rc == '/')
+        self.assertEqual(self._refresh(), 0)
+
+    def test_lv_snapshot(self):
+        lv = self._create_lv()
+        rc = lv.method.Snapshot('ss_' + lv.Name, -1, 0, {})[0]
+        self.assertTrue(rc == '/')
+        self.assertEqual(self._refresh(), 0)
+
+    # noinspection PyUnresolvedReferences
+    def _wait_for_job(self, j_path):
+        import time
+        while True:
+            j = RemoteObject(self.bus, j_path, JOB_INT)
+            if j.is_complete:
+                print 'Done!'
+                j.method.Remove()
+                break
+
+            print 'Percentage = ', j.percent
+            time.sleep(1)
+
+    def test_lv_move(self):
+        lv = self._create_lv()
+
+        pv_path_move = str(lv.Devices[0][0])
+
+        print pv_path_move
+
+        job = lv.method.Move(pv_path_move, (0, 0), '/', (0, 0), {})
+        self._wait_for_job(job)
+        self.assertEqual(self._refresh(), 0)
 
 if __name__ == '__main__':
     unittest.main()
