@@ -263,6 +263,7 @@ def pprint(msg):
         tid = ctypes.CDLL('libc.so.6').syscall(186)
         print "%d:%d - %s" % (os.getpid(), tid, msg)
         cfg.stdout_lock.release()
+        sys.stdout.flush()
 
 
 # noinspection PyUnusedLocal
