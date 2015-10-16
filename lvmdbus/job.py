@@ -66,6 +66,15 @@ class Job(AutomatedProperties):
     def result(self):
         return '/'
 
+    @property
+    def lvm_id(self):
+        return str(id(self))
+
+    @property
+    def Uuid(self):
+        import uuid
+        return uuid.uuid1()
+
 
 # noinspection PyPep8Naming
 class AsyncJob(AutomatedProperties):
@@ -112,3 +121,12 @@ class AsyncJob(AutomatedProperties):
     @property
     def result(self):
         return self._request.result()
+
+    @property
+    def lvm_id(self):
+        return str(id(self))
+
+    @property
+    def Uuid(self):
+        import uuid
+        return uuid.uuid1()
