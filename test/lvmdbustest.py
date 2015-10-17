@@ -21,6 +21,7 @@ import unittest
 import sys
 import random
 import string
+import functools
 
 
 BUSNAME = "com.redhat.lvmdbus1"
@@ -44,7 +45,7 @@ class RemoteObject(object):
         self.object_path = object_path
         self.interface = interface
 
-        self.method = dbus.Interface(bus.get_object(
+        self.dbus_method = dbus.Interface(bus.get_object(
             BUSNAME, self.object_path), self.interface)
 
         if not properties:
@@ -57,6 +58,15 @@ class RemoteObject(object):
         if properties:
             for kl, vl in properties.items():
                 setattr(self, kl, vl)
+
+    def __getattr__(self, item):
+        if hasattr(self.dbus_method, item):
+            return functools.partial(self._wrapper, item)
+        else:
+            return functools.partial(self, item)
+
+    def _wrapper(self, _method_name, *args, **kwargs):
+        return getattr(self.dbus_method, _method_name)(*args, **kwargs)
 
 
 def get_objects():
@@ -105,7 +115,7 @@ class TestDbusService(unittest.TestCase):
         self.objs, self.bus = get_objects()
         for v in self.objs[VG_INT]:
             #print "DEBUG: Removing VG= ", v.Uuid, v.Name
-            v.method.Remove(-1, {})
+            v.Remove(-1, {})
 
         # Check to make sure the PVs we had to start exist, else re-create
         # them
@@ -122,12 +132,12 @@ class TestDbusService(unittest.TestCase):
                     self._pv_create(p)
 
     def _pv_create(self, device):
-        pv_path = self.objs[MANAGER_INT][0].method.PvCreate(device, -1, {})[0]
+        pv_path = self.objs[MANAGER_INT][0].PvCreate(device, -1, {})[0]
         self.assertTrue(pv_path is not None and len(pv_path) > 0)
         return pv_path
 
     def _refresh(self):
-        return self.objs[MANAGER_INT][0].method.Refresh()
+        return self.objs[MANAGER_INT][0].Refresh()
 
     def test_refresh(self):
         rc = self._refresh()
@@ -145,7 +155,7 @@ class TestDbusService(unittest.TestCase):
 
         vg_name = rs(8, '_vg')
 
-        vg_path = self.objs[MANAGER_INT][0].method.VgCreate(
+        vg_path = self.objs[MANAGER_INT][0].VgCreate(
             vg_name,
             pv_paths,
             -1,
@@ -159,11 +169,11 @@ class TestDbusService(unittest.TestCase):
 
     def test_vg_delete(self):
         vg = self._vg_create()
-        vg.method.Remove(-1, {})
+        vg.Remove(-1, {})
         self.assertEqual(self._refresh(), 0)
 
     def _pv_remove(self, pv):
-        rc = pv.method.Remove(-1, {})
+        rc = pv.Remove(-1, {})
         return rc
 
     def test_pv_remove_add(self):
@@ -180,7 +190,7 @@ class TestDbusService(unittest.TestCase):
         self.assertEqual(self._refresh(), 0)
 
     def _lookup(self, lvm_id):
-        return self.objs[MANAGER_INT][0].method.LookUpByLvmId(lvm_id)
+        return self.objs[MANAGER_INT][0].LookUpByLvmId(lvm_id)
 
     def test_lookup_by_lvm_id(self):
         # For the moment lets just lookup what we know about which is PVs
@@ -203,7 +213,7 @@ class TestDbusService(unittest.TestCase):
             pv_next = self.objs[PV_INT][1]
 
             vg = self._vg_create([pv_initial.object_path])
-            path = vg.method.Extend([pv_next.object_path], -1, {})
+            path = vg.Extend([pv_next.object_path], -1, {})
             self.assertTrue(path == '/')
             self.assertEqual(self._refresh(), 0)
 
@@ -216,14 +226,14 @@ class TestDbusService(unittest.TestCase):
                 [self.objs[PV_INT][0].object_path,
                  self.objs[PV_INT][1].object_path])
 
-            path = vg.method.Reduce(False, [vg.Pvs[0]], -1, {})
+            path = vg.Reduce(False, [vg.Pvs[0]], -1, {})
             self.assertTrue(path == '/')
             self.assertEqual(self._refresh(), 0)
 
     # noinspection PyUnresolvedReferences
     def test_vg_rename(self):
         vg = self._vg_create()
-        path = vg.method.Rename('renamed_' + vg.Name, -1, {})
+        path = vg.Rename('renamed_' + vg.Name, -1, {})
         self.assertTrue(path == '/')
         self.assertEqual(self._refresh(), 0)
 
@@ -246,7 +256,7 @@ class TestDbusService(unittest.TestCase):
     def test_lv_create_linear(self):
 
         vg = self._vg_create()
-        self._test_lv_create(vg.method.LvCreateLinear,
+        self._test_lv_create(vg.LvCreateLinear,
                              (rs(8, '_lv'), 1024 * 1024 * 4, False, -1, {}),
                              vg)
 
@@ -256,7 +266,7 @@ class TestDbusService(unittest.TestCase):
             pv_paths.append(pp.object_path)
 
         vg = self._vg_create(pv_paths)
-        self._test_lv_create(vg.method.LvCreateStriped,
+        self._test_lv_create(vg.LvCreateStriped,
                              (rs(8, '_lv'), 1024 * 1024 * 4, 2, 8, False,
                               -1, {}), vg)
 
@@ -266,7 +276,7 @@ class TestDbusService(unittest.TestCase):
             pv_paths.append(pp.object_path)
 
         vg = self._vg_create(pv_paths)
-        self._test_lv_create(vg.method.LvCreateMirror,
+        self._test_lv_create(vg.LvCreateMirror,
                              (rs(8, '_lv'), 1024 * 1024 * 4, 2, -1, {}), vg)
 
     def test_lv_create_raid(self):
@@ -275,7 +285,7 @@ class TestDbusService(unittest.TestCase):
             pv_paths.append(pp.object_path)
 
         vg = self._vg_create(pv_paths)
-        self._test_lv_create(vg.method.LvCreateRaid,
+        self._test_lv_create(vg.LvCreateRaid,
                              (rs(8, '_lv'), 'raid4',
                               1024 * 1024 * 16, 2, 8, False, -1, {}), vg)
 
@@ -286,7 +296,7 @@ class TestDbusService(unittest.TestCase):
 
         vg = self._vg_create(pv_paths)
         return self._test_lv_create(
-            vg.method.LvCreateLinear,
+            vg.LvCreateLinear,
             (rs(8, '_lv'), 1024 * 1024 * 128, thinpool, -1, {}), vg, thinpool)
 
     def test_lv_create_thin_pool(self):
@@ -295,13 +305,13 @@ class TestDbusService(unittest.TestCase):
     def test_lv_rename(self):
         # Rename a regular LV
         lv = self._create_lv()
-        lv.method.Rename('renamed_' + lv.Name, -1, {})
+        lv.Rename('renamed_' + lv.Name, -1, {})
         self.assertEqual(self._refresh(), 0)
 
     def test_lv_thinpool_rename(self):
         # Rename a thin pool
         thin_pool = self._create_lv(True)
-        thin_pool.method.Rename('renamed_' + thin_pool.Name, -1, {})
+        thin_pool.Rename('renamed_' + thin_pool.Name, -1, {})
         self.assertEqual(self._refresh(), 0)
 
     # noinspection PyUnresolvedReferences
@@ -309,24 +319,24 @@ class TestDbusService(unittest.TestCase):
         # Rename a LV on a thin Pool
         thin_pool = self._create_lv(True)
 
-        thin_path = thin_pool.method.LvCreate(
+        thin_path = thin_pool.LvCreate(
             rs(10, '_thin_lv'), 1024 * 1024 * 10, -1, {})[0]
 
         lv = RemoteObject(self.bus, thin_path, LV_INT)
 
-        rc = lv.method.Rename('rename_test' + lv.Name, -1, {})
+        rc = lv.Rename('rename_test' + lv.Name, -1, {})
         self.assertTrue(rc == '/')
         self.assertEqual(self._refresh(), 0)
 
     def test_lv_remove(self):
         lv = self._create_lv()
-        rc = lv.method.Remove(-1, {})
+        rc = lv.Remove(-1, {})
         self.assertTrue(rc == '/')
         self.assertEqual(self._refresh(), 0)
 
     def test_lv_snapshot(self):
         lv = self._create_lv()
-        rc = lv.method.Snapshot('ss_' + lv.Name, -1, 0, {})[0]
+        rc = lv.Snapshot('ss_' + lv.Name, -1, 0, {})[0]
         self.assertTrue(rc == '/')
         self.assertEqual(self._refresh(), 0)
 
@@ -337,7 +347,7 @@ class TestDbusService(unittest.TestCase):
             j = RemoteObject(self.bus, j_path, JOB_INT)
             if j.is_complete:
                 print 'Done!'
-                j.method.Remove()
+                j.Remove()
                 break
 
             print 'Percentage = ', j.percent
@@ -350,7 +360,7 @@ class TestDbusService(unittest.TestCase):
 
         print pv_path_move
 
-        job = lv.method.Move(pv_path_move, (0, 0), '/', (0, 0), {})
+        job = lv.Move(pv_path_move, (0, 0), '/', (0, 0), {})
         self._wait_for_job(job)
         self.assertEqual(self._refresh(), 0)
 
