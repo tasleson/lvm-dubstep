@@ -347,10 +347,11 @@ class TestDbusService(unittest.TestCase):
             j = RemoteObject(self.bus, j_path, JOB_INT)
             if j.Complete:
                 print 'Done!'
+                self.assertTrue(j.Percent == 100)
                 j.Remove()
                 break
-
-            print 'Percentage = ', j.Percent
+            else:
+                print 'Percentage = ', j.Percent
             time.sleep(1)
 
     def test_lv_move(self):
@@ -363,6 +364,24 @@ class TestDbusService(unittest.TestCase):
         job = lv.Move(pv_path_move, (0, 0), '/', (0, 0), {})
         self._wait_for_job(job)
         self.assertEqual(self._refresh(), 0)
+
+    def test_job_handling(self):
+        pv_paths = []
+        for pp in self.objs[PV_INT]:
+            pv_paths.append(pp.object_path)
+
+        vg_name = rs(8, '_vg')
+
+        # Test getting a job right away
+        vg_path, vg_job = self.objs[MANAGER_INT][0].VgCreate(
+            vg_name, pv_paths,
+            0, {})
+
+        self.assertTrue(vg_path == '/')
+        self.assertTrue(vg_job and len(vg_job) > 0)
+
+        self._wait_for_job(vg_job)
+
 
 if __name__ == '__main__':
     unittest.main()
