@@ -124,7 +124,12 @@ class Manager(AutomatedProperties):
         Returns the number of changes, object add/remove/properties changed
         """
         #cfg.om.refresh_all()
-        return load(refresh=True)
+        utils.pprint('Manager.Refresh - entry',
+                     'bg_black', 'fg_light_red')
+        rc = load(refresh=True)
+        utils.pprint('Manager.Refresh - exit %d' % (rc),
+                     'bg_black', 'fg_light_red')
+        return rc
 
     @dbus.service.method(dbus_interface=MANAGER_INTERFACE,
                          in_signature='s',
