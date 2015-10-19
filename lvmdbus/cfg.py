@@ -16,6 +16,7 @@
 import multiprocessing
 import Queue
 import itertools
+import jobmonitor
 
 # This is the global object manager
 om = None
@@ -62,3 +63,6 @@ vg_id = itertools.count()
 lv_id = itertools.count()
 thin_id = itertools.count()
 job_id = itertools.count()
+
+
+jobs = jobmonitor.Monitor()

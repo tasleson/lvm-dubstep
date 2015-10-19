@@ -345,12 +345,12 @@ class TestDbusService(unittest.TestCase):
         import time
         while True:
             j = RemoteObject(self.bus, j_path, JOB_INT)
-            if j.is_complete:
+            if j.Complete:
                 print 'Done!'
                 j.Remove()
                 break
 
-            print 'Percentage = ', j.percent
+            print 'Percentage = ', j.Percent
             time.sleep(1)
 
     def test_lv_move(self):

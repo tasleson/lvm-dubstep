@@ -20,9 +20,6 @@ import objectmanager
 import utils
 from cfg import BASE_INTERFACE, BASE_OBJ_PATH, MANAGER_OBJ_PATH
 import threading
-import Queue
-import traceback
-import sys
 import cmdhandler
 import time
 import signal
@@ -30,6 +27,10 @@ import dbus
 import gobject
 from fetch import load
 from manager import Manager
+from jobmonitor import monitor_moves
+import traceback
+import Queue
+import sys
 
 
 class Lvm(objectmanager.ObjectManager):
@@ -47,75 +48,6 @@ def process_request():
         except Exception:
             traceback.print_exc(file=sys.stdout)
             pass
-
-
-def signal_move_changes(obj_mgr):
-    prev_jobs = {}
-
-    def gen_signals(p, c):
-        if p:
-            #print 'PREV=', str(p)
-            #print 'CURR=', str(c)
-
-            for prev_k, prev_v in p.items():
-                if prev_k in c:
-                    if prev_v['src_dev'] == c[prev_k]['src_dev']:
-                        prev_v['percent'] = c[prev_k]['percent']
-                    else:
-                        p[prev_k] = c[prev_k]
-
-                    del c[prev_k]
-                else:
-                    state = p[prev_k]
-                    del p[prev_k]
-
-                    with cfg.om.locked():
-                        # Best guess is that the lv and the source & dest.
-                        # PV state needs to be updated, need to verify.
-                        utils.pprint('gen_signals %s' % (str(state)))
-
-                        vg = obj_mgr.get_by_lvm_id(prev_k)
-                        if vg:
-                            vg.refresh()
-
-                        pv = obj_mgr.get_by_lvm_id(state['src_dev'])
-                        if pv:
-                            pv.refresh()
-                        pv = obj_mgr.get_by_lvm_id(state['dest_dev'])
-                        if pv:
-                            pv.refresh()
-
-            # Update previous to current
-            p.update(c)
-
-    while cfg.run.value != 0:
-        try:
-            cfg.kick_q.get(True, 5)
-        except IOError:
-            pass
-        except Queue.Empty:
-            pass
-
-        while True:
-            if cfg.run.value == 0:
-                break
-
-            cur_jobs = cmdhandler.pv_move_status()
-
-            if cur_jobs:
-                if not prev_jobs:
-                    prev_jobs = cur_jobs
-                else:
-                    gen_signals(prev_jobs, cur_jobs)
-            else:
-                #Signal any that remain in running!
-                gen_signals(prev_jobs, cur_jobs)
-                prev_jobs = None
-                break
-
-            time.sleep(1)
-
-    sys.exit(0)
 
 
 def main():
@@ -143,7 +75,7 @@ def main():
 
     # Start up process to monitor moves
     process_list.append(
-        threading.Thread(target=signal_move_changes, args=(cfg.om,)))
+        threading.Thread(target=monitor_moves, args=(cfg.om,)))
 
     # Using a thread to process requests.
     process_list.append(threading.Thread(target=process_request))
