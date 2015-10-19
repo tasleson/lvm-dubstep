@@ -153,8 +153,8 @@ def get_object_property_diff(o_prop, n_prop):
             rc[k] = n_prop[k]
             # If the values aren't sorted the same, we get bogus differences.
             # Using this to tell the difference.
-            print('DEBUG: get_object_property_diff %s:%s to %s:%s' %
-                  (k, str(o_prop[k]), k, str(n_prop[k])))
+            # print('DEBUG: get_object_property_diff %s:%s to %s:%s' %
+            #       (k, str(o_prop[k]), k, str(n_prop[k])))
     return rc
 
 
