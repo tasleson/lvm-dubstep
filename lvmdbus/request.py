@@ -30,7 +30,7 @@ class RequestEntry(object):
         self.cb_error = cb_error
 
         self.timer_id = -1
-        self.lock = threading.Lock()
+        self.lock = threading.RLock()
         self.done = False
         self._result = None
         self._job = False
