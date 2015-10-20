@@ -80,7 +80,7 @@ class LvState(State):
                      vg_name, vg_uuid, pool_lv_uuid, PoolLv,
                      origin_uuid, OriginLv, DataPercent, Attr, Tags):
         utils.init_class_from_arguments(self, None)
-        self._segs = []
+        self._segs = dbus.Array([], signature='s')
 
         self.Vg = cfg.om.get_object_path_by_lvm_id(
             Uuid, vg_name, vg_obj_path_generate)
