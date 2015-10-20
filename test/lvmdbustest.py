@@ -22,6 +22,7 @@ import sys
 import random
 import string
 import functools
+import time
 
 
 BUSNAME = "com.redhat.lvmdbus1"
@@ -343,16 +344,22 @@ class TestDbusService(unittest.TestCase):
     # noinspection PyUnresolvedReferences
     def _wait_for_job(self, j_path):
         import time
+        rc = None
         while True:
             j = RemoteObject(self.bus, j_path, JOB_INT)
             if j.Complete:
                 print 'Done!'
                 self.assertTrue(j.Percent == 100)
+
+                rc = j.Result
                 j.Remove()
+
                 break
             else:
                 print 'Percentage = ', j.Percent
             time.sleep(1)
+
+        return rc
 
     def test_lv_move(self):
         lv = self._create_lv()
@@ -381,6 +388,58 @@ class TestDbusService(unittest.TestCase):
         self.assertTrue(vg_job and len(vg_job) > 0)
 
         self._wait_for_job(vg_job)
+
+    def _test_expired_timer(self):
+        rc = False
+        pv_paths = []
+        for pp in self.objs[PV_INT]:
+            pv_paths.append(pp.object_path)
+
+        vg_name = rs(8, '_vg')
+
+        # Test getting a job right away
+        start = time.time()
+
+        vg_path, vg_job = self.objs[MANAGER_INT][0].VgCreate(
+            vg_name, pv_paths,
+            1, {})
+
+        end = time.time()
+
+        self.assertTrue((end - float(start)) < 2.0)
+
+        # Depending on how long it took we could finish either way
+        if vg_path == '/':
+            # We got a job
+            self.assertTrue(vg_path == '/')
+            self.assertTrue(vg_job and len(vg_job) > 0)
+
+            vg_path = self._wait_for_job(vg_job)
+            rc = True
+        else:
+            # It completed!
+            self.assertTrue(vg_job == '/')
+
+        # clean-up in case we need to try again
+        vg = RemoteObject(self.bus, vg_path, VG_INT)
+        vg.Remove(-1, {})
+
+        return rc
+
+    def test_job_handling_timer(self):
+
+        yes = False
+
+        print "\nNote: This test isn't guaranteed to pass..."
+
+        for i in range(0, 20):
+            yes = self._test_expired_timer()
+            if yes:
+                print 'Success!'
+                break
+            print 'Attempt (%d) failed, trying again...' % (i)
+
+        self.assertTrue(yes)
 
 
 if __name__ == '__main__':
