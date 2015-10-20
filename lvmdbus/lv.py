@@ -38,7 +38,7 @@ def lvs_state_retrieve(selection):
                                l['vg_uuid'], l['pool_lv_uuid'],
                                 l['pool_lv'], l['origin_uuid'], l['origin'],
                                n32(l['data_percent']), l['lv_attr'],
-                               l['lv_tags'], l['segtype']))
+                               l['lv_tags']))
     return rc
 
 
@@ -52,15 +52,19 @@ def load_lvs(lv_name=None, object_path=None, refresh=False):
 # noinspection PyPep8Naming,PyUnresolvedReferences,PyUnusedLocal
 class LvState(State):
 
-    @staticmethod
-    def _pv_devices(lvm_id):
+    def _pv_devices(self, lvm_id):
         rc = []
         for pv in sorted(cmdhandler.lv_pv_devices(lvm_id)):
             (pv_name, pv_segs, pv_uuid) = pv
             pv_obj = cfg.om.get_object_path_by_lvm_id(
                 pv_uuid, pv_name, gen_new=False)
             rc.append((pv_obj, pv_segs))
-        return dbus.Array(rc, signature="(oa(tt))")
+
+            for s in pv_segs:
+                if s[2] not in self._segs:
+                    self._segs.append(s[2])
+
+        return dbus.Array(rc, signature="(oa(tts))")
 
     def vg_name_lookup(self):
         return cfg.om.get_by_path(self.Vg).Name
@@ -74,12 +78,13 @@ class LvState(State):
 
     def __init__(self, Uuid, Name, Path, SizeBytes,
                      vg_name, vg_uuid, pool_lv_uuid, PoolLv,
-                     origin_uuid, OriginLv, DataPercent, Attr, Tags, SegType):
+                     origin_uuid, OriginLv, DataPercent, Attr, Tags):
         utils.init_class_from_arguments(self, None)
+        self._segs = []
 
         self.Vg = cfg.om.get_object_path_by_lvm_id(
             Uuid, vg_name, vg_obj_path_generate)
-        self.Devices = LvState._pv_devices(self.lvm_id)
+        self.Devices = self._pv_devices(self.lvm_id)
 
         if PoolLv:
             self.PoolLv = cfg.om.get_object_path_by_lvm_id(
@@ -95,6 +100,10 @@ class LvState(State):
                     vg_obj_path_generate)
         else:
             self.OriginLv = '/'
+
+    @property
+    def SegType(self):
+        return self._segs
 
     def create_dbus_object(self, path):
         if not path:
@@ -126,16 +135,17 @@ def lv_object_factory(interface_name, *args):
     @utils.dbus_property('Path', 's')
     @utils.dbus_property('SizeBytes', 't')
     @utils.dbus_property('DataPercent', 'u')
-    @utils.dbus_property('SegType', 's')
+    @utils.dbus_property('SegType', 'as')
     @utils.dbus_property('Vg', 'o')
     @utils.dbus_property('OriginLv', 'o')
     @utils.dbus_property('PoolLv', 'o')
-    @utils.dbus_property('Devices', "a(oa(tt))")
+    @utils.dbus_property('Devices', "a(oa(tts))")
     class Lv(AutomatedProperties):
         DBUS_INTERFACE = interface_name
         _Tags_type = "as"
         _IsThinVolume_type = "b"
         _IsThinPool_type = "b"
+        #_SegType_type = "as"
 
         # noinspection PyUnusedLocal,PyPep8Naming
         def __init__(self, object_path, object_state):

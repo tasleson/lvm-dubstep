@@ -564,7 +564,7 @@ def lv_retrieve(lv_name):
     columns = ['lv_uuid', 'lv_name', 'lv_path', 'lv_size',
                 'vg_name', 'pool_lv_uuid', 'pool_lv', 'origin_uuid',
                 'origin', 'data_percent',
-               'lv_attr', 'lv_tags', 'segtype', 'vg_uuid']
+               'lv_attr', 'lv_tags', 'vg_uuid']
 
     cmd = _dc('lvs', ['-o', ','.join(columns)])
 
@@ -581,16 +581,16 @@ def lv_retrieve(lv_name):
     return d
 
 
-def _pv_device(data, device, uuid):
+def _pv_device(data, device, uuid, seg_type):
     device, seg = device.split(':')
     r1, r2 = seg.split('-')
 
     if device in data:
-        data[device]['ranges'].append((r1, r2))
+        data[device]['ranges'].append((r1, r2, seg_type))
         data[device]['uuid'] = uuid
     else:
         data[device] = dict()
-        data[device]['ranges'] = [((r1, r2))]
+        data[device]['ranges'] = [((r1, r2, seg_type))]
         data[device]['uuid'] = uuid
 
 
@@ -598,7 +598,7 @@ def lv_pv_devices(lv_name):
     data = []
     tmp = {}
 
-    cmd = _dc('pvs', ['-o', 'uuid,seg_pe_ranges', '-S',
+    cmd = _dc('pvs', ['-o', 'uuid,seg_pe_ranges,seg_type', '-S',
                       'lv_full_name=~"%s.+"' % lv_name])
 
     rc, out, err = call(cmd)
@@ -613,10 +613,10 @@ def lv_pv_devices(lv_name):
                 if ' ' in l[1]:
                     devices = l[1].split(' ')
                     for d in devices:
-                        _pv_device(tmp, d, l[0])
+                        _pv_device(tmp, d, l[0], l[2])
                     break
                 else:
-                    _pv_device(tmp, l[1], l[0])
+                    _pv_device(tmp, l[1], l[0], l[2])
 
             for k, v in tmp.items():
                 data.append((k, v['ranges'], v['uuid']))
