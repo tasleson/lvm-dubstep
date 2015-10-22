@@ -163,7 +163,7 @@ class Manager(AutomatedProperties):
         # it takes just as long to selectively re-fresh as it does to grab
         # everything and let stuff sort itself out.
         vg = cfg.om.get_by_uuid_lvm_id(lvm_uuid, lvm_id)
-        if not (vg and vg.Seqno == seq_no):
+        if not (event == 'vg_update' and vg and vg.Seqno == seq_no):
             load(refresh=True)
 
     @dbus.service.method(dbus_interface=MANAGER_INTERFACE,
