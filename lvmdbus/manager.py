@@ -154,7 +154,7 @@ class Manager(AutomatedProperties):
         return '/'
 
     @staticmethod
-    def _process_external_event(event, lvm_id, lvm_uuid, seq_no):
+    def handle_external_event(event, lvm_id, lvm_uuid, seq_no):
         utils.pprint("External event: '%s', '%s', '%s', '%s'" %
                      (event, lvm_id, lvm_uuid, str(seq_no)))
         # Let's see if we have the VG and if the sequence numbers match, if
@@ -162,14 +162,18 @@ class Manager(AutomatedProperties):
         # We can try to be selective about what we re-fresh, but in reality
         # it takes just as long to selectively re-fresh as it does to grab
         # everything and let stuff sort itself out.
-        vg = cfg.om.get_by_uuid_lvm_id(lvm_uuid, lvm_id)
-        if not (event == 'vg_update' and vg and vg.Seqno == seq_no):
+        if lvm_uuid and lvm_id:
+            # If we are supplied with these, lets see if we need to update
+            vg = cfg.om.get_by_uuid_lvm_id(lvm_uuid, lvm_id)
+            if not (event == 'vg_update' and vg and vg.Seqno == seq_no):
+                load(refresh=True)
+        else:
             load(refresh=True)
 
     @dbus.service.method(dbus_interface=MANAGER_INTERFACE,
                          in_signature='sssu', out_signature='i')
     def ExternalEvent(self, event, lvm_id, lvm_uuid, seqno):
-        r = RequestEntry(-1, Manager._process_external_event,
+        r = RequestEntry(-1, Manager.handle_external_event,
                          (event, lvm_id, lvm_uuid, seqno), None, None, False)
         cfg.worker_q.put(r)
         return dbus.Int32(0)

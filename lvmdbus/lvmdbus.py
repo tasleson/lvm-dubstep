@@ -31,6 +31,7 @@ from jobmonitor import monitor_moves
 import traceback
 import Queue
 import sys
+import udevwatch
 
 
 class Lvm(objectmanager.ObjectManager):
@@ -91,9 +92,14 @@ def main():
     print 'Service ready! total time= %.2f, lvm time= %.2f count= %d' % \
           (end - start, cmdhandler.total_time, cmdhandler.total_count)
 
+    # Add udev watching
+    udevwatch.add()
+
     try:
         if cfg.run.value != 0:
             cfg.loop.run()
+
+            udevwatch.remove()
 
             for process in process_list:
                 process.join()
