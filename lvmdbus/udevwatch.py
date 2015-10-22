@@ -17,6 +17,7 @@ import pyudev
 import cfg
 from request import RequestEntry
 from manager import Manager
+import datetime
 
 observer = None
 
@@ -44,7 +45,8 @@ def filter_event(action, device):
 
     if refresh:
         r = RequestEntry(-1, Manager.handle_external_event,
-                         ('udev', None, None, 0), None, None, False)
+                         (datetime.datetime.now(),
+                          'udev', None, None, 0), None, None, False)
         cfg.worker_q.put(r)
 
 
