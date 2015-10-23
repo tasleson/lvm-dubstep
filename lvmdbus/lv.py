@@ -280,12 +280,10 @@ def lv_object_factory(interface_name, *args):
 
                 if rc == 0:
                     # Create job object for monitoring
-                    jobs = cmdhandler.pv_move_status()
-                    if self.lvm_id in jobs:
-                        job_obj = Job(self.lvm_id)
-                        cfg.om.register_object(job_obj)
-                        cfg.kick_q.put("wake up!")
-                        return job_obj.dbus_object_path()
+                    job_obj = Job(self.lvm_id)
+                    cfg.om.register_object(job_obj)
+                    cfg.kick_q.put("wake up!")
+                    return job_obj.dbus_object_path()
                 else:
                     raise dbus.exceptions.DBusException(
                         interface_name,
