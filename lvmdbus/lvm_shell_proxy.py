@@ -19,8 +19,8 @@ import subprocess
 import shlex
 from fcntl import fcntl, F_GETFL, F_SETFL
 from os import O_NONBLOCK
+import cfg
 
-SHELL = "lvm"
 SHELL_PROMPT = "lvm> "
 
 
@@ -35,7 +35,7 @@ class LVMShellProxy(object):
     def __init__(self):
         # run the lvm shell
         self.lvm_shell = subprocess.Popen(
-            [SHELL], stdin=subprocess.PIPE, stdout=subprocess.PIPE, 
+            [cfg.LVM_CMD], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
             stderr=subprocess.PIPE, close_fds=True)
         flags = fcntl(self.lvm_shell.stdout, F_GETFL)
         fcntl(self.lvm_shell.stdout, F_SETFL, flags | O_NONBLOCK)

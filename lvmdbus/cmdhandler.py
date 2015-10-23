@@ -18,11 +18,12 @@ import traceback
 import sys
 import math
 import time
+import cfg
 import threading
 
 from lvm_shell_proxy import LVMShellProxy
 
-USE_SHELL = False
+USE_SHELL = True
 
 SEP = '{|}'
 
@@ -34,6 +35,7 @@ total_count = 0
 # at the same time.
 cmd_lock = threading.Lock()
 
+
 def call_lvm(command, debug=False):
     """
     Call an executable and return a tuple of exitcode, stdout, stderr
@@ -41,6 +43,10 @@ def call_lvm(command, debug=False):
     #print 'STACK:'
     #for line in traceback.format_stack():
     #    print line.strip()
+
+    # Prepend the full lvm executable so that we can run different versions
+    # in different locations on the same box
+    command.insert(0, cfg.LVM_CMD)
 
     process = Popen(command, stdout=PIPE, stderr=PIPE, close_fds=True)
     out = process.communicate()
@@ -54,6 +60,7 @@ def call_lvm(command, debug=False):
     return process.returncode, out[0], out[1]
 
 if USE_SHELL:
+    print 'Using lvm shell!'
     lvm_shell = LVMShellProxy()
     t_call = lvm_shell.call_lvm
 else:

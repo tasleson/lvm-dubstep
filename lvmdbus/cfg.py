@@ -12,6 +12,9 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 # Copyright 2015, Tony Asleson <tasleson@redhat.com>
+import os
+
+LVM_CMD = os.getenv('LVM_DBUSCMD', '/usr/sbin/lvm')
 
 import multiprocessing
 import Queue
