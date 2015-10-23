@@ -18,6 +18,7 @@ import traceback
 import sys
 import math
 import time
+import threading
 
 from lvm_shell_proxy import LVMShellProxy
 
@@ -29,6 +30,9 @@ SEP = '{|}'
 total_time = 0.0
 total_count = 0
 
+# We need to prevent different threads from using the same lvm shell
+# at the same time.
+cmd_lock = threading.Lock()
 
 def call_lvm(command, debug=False):
     """
@@ -57,16 +61,15 @@ else:
 
 
 def time_wrapper(command, debug=False):
-    start = time.time()
-    results = t_call(command, debug)
-
-    if results[0] != 0:
-        results = t_call(command, debug)
-
     global total_time
     global total_count
-    total_time += (time.time() - start)
-    total_count += 1
+
+    with cmd_lock:
+        start = time.time()
+        results = t_call(command, debug)
+        total_time += (time.time() - start)
+        total_count += 1
+
     return results
 
 
