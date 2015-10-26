@@ -14,10 +14,8 @@
 # Copyright 2015, Tony Asleson <tasleson@redhat.com>
 
 import pyudev
+from refresh import event_add
 import cfg
-from request import RequestEntry
-from manager import Manager
-import datetime
 
 observer = None
 
@@ -44,10 +42,7 @@ def filter_event(action, device):
         refresh = True
 
     if refresh:
-        r = RequestEntry(-1, Manager.handle_external_event,
-                         (datetime.datetime.now(),
-                          'udev', None, None, 0), None, None, False)
-        cfg.worker_q.put(r)
+        event_add(('udev', None, None, 0))
 
 
 def add():
