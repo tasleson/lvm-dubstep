@@ -19,6 +19,36 @@ import cfg
 import utils
 import cmdhandler
 import time
+import datetime
+
+POLL_INTERVAL_SECONDS = 5
+
+
+def refresh_move_objs(lvm_id, src_pv=None, dest_pv=None):
+    lv = cfg.om.get_by_lvm_id(lvm_id)
+    if lv:
+        # Best guess is that the lv and the source & dest.
+        # PV state needs to be updated, need to verify.
+        utils.pprint('gen_signals: move LV %s' % (str(lvm_id)),
+                                     "fg_yellow", "bg_black")
+        lv.refresh()
+
+        vg = cfg.om.get_by_path(lv.Vg)
+        if vg:
+            vg.refresh()
+
+            if not src_pv and not dest_pv:
+                for pv_object_path in vg.Pvs:
+                    pv = cfg.om.get_by_path(pv_object_path)
+                    if pv:
+                        pv.refresh()
+            else:
+                pv = cfg.om.get_by_lvm_id(src_pv)
+                if pv:
+                    pv.refresh()
+                pv = cfg.om.get_by_lvm_id(dest_pv)
+                if pv:
+                    pv.refresh()
 
 
 class Monitor(object):
@@ -30,27 +60,42 @@ class Monitor(object):
     def get(self, lv_name):
         with self._rlock:
             if lv_name in self._jobs:
-                return self._jobs[lv_name]
+                return self._jobs[lv_name][0]
             return None
 
     def set(self, lv_name, job):
         with self._rlock:
-            self._jobs[lv_name] = job
+            self._jobs[lv_name] = (job, datetime.datetime.now())
 
     def delete(self, lv_name):
         with self._rlock:
             assert lv_name in self._jobs
-            assert self._jobs[lv_name].Complete
+            assert self._jobs[lv_name][0].Complete
             del self._jobs[lv_name]
 
+    def num_jobs(self):
+        with self._rlock:
+            return len(self._jobs.keys())
 
-def monitor_moves(obj_mgr):
+    def finish_all(self, last_change):
+        with self._rlock:
+            for k in self._jobs.keys():
+                v, ts = self._jobs[k]
+
+                if (last_change - ts).seconds >= (2 * POLL_INTERVAL_SECONDS):
+                    refresh_move_objs(k)
+                    v.Percent = 100
+                    v.Complete = True
+                    del self._jobs[k]
+
+
+def monitor_moves():
     prev_jobs = {}
 
     def gen_signals(p, c):
         if p:
-            print 'PREV=', str(p)
-            print 'CURR=', str(c)
+            #print 'PREV=', str(p)
+            #print 'CURR=', str(c)
 
             for prev_k, prev_v in p.items():
                 if prev_k in c:
@@ -69,25 +114,8 @@ def monitor_moves(obj_mgr):
                     # This move is over, update the job object and generate
                     # signals
                     with cfg.om.locked():
-                        # Best guess is that the lv and the source & dest.
-                        # PV state needs to be updated, need to verify.
-                        utils.pprint('gen_signals %s' % (str(state)),
-                                     "fg_yellow", "bg_black")
-
-                        lv = obj_mgr.get_by_lvm_id(prev_k)
-                        if lv:
-                            lv.refresh()
-
-                            vg = obj_mgr.get_by_path(lv.Vg)
-                            if vg:
-                                vg.refresh()
-
-                        pv = obj_mgr.get_by_lvm_id(state['src_dev'])
-                        if pv:
-                            pv.refresh()
-                        pv = obj_mgr.get_by_lvm_id(state['dest_dev'])
-                        if pv:
-                            pv.refresh()
+                        refresh_move_objs(prev_k, state['src_dev'],
+                                          state['dest_dev'])
 
                         job_obj = cfg.jobs.get(prev_k)
                         job_obj.Percent = 100
@@ -98,12 +126,15 @@ def monitor_moves(obj_mgr):
             p.update(c)
 
     while cfg.run.value != 0:
+
         try:
-            cfg.kick_q.get(True, 5)
+            cfg.kick_q.get(True, POLL_INTERVAL_SECONDS)
         except IOError:
             pass
         except Queue.Empty:
             pass
+
+        last_seen = datetime.datetime.now()
 
         while True:
             if cfg.run.value == 0:
@@ -112,6 +143,7 @@ def monitor_moves(obj_mgr):
             cur_jobs = cmdhandler.pv_move_status()
 
             if cur_jobs:
+                last_seen = datetime.datetime.now()
                 if not prev_jobs:
                     prev_jobs = cur_jobs
                 else:
@@ -120,6 +152,13 @@ def monitor_moves(obj_mgr):
                 #Signal any that remain in running!
                 gen_signals(prev_jobs, cur_jobs)
                 prev_jobs = None
+
+                # Check to see if we have any jobs that are not making
+                # progress
+                with cfg.om.locked():
+                    if cfg.jobs.num_jobs() > 0:
+                        cfg.jobs.finish_all(last_seen)
+
                 break
 
             time.sleep(1)

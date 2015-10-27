@@ -76,7 +76,7 @@ def main():
 
     # Start up process to monitor moves
     process_list.append(
-        threading.Thread(target=monitor_moves, args=(cfg.om,)))
+        threading.Thread(target=monitor_moves))
 
     # Using a thread to process requests.
     process_list.append(threading.Thread(target=process_request))
