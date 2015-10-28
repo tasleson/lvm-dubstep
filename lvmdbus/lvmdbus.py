@@ -52,7 +52,7 @@ def process_request():
 
 
 def main():
-    # Queue to wake up move monitor
+    # List of threads that we start up
     process_list = []
 
     start = time.time()
@@ -74,7 +74,7 @@ def main():
     cfg.om = Lvm(BASE_OBJ_PATH)
     cfg.om.register_object(Manager(MANAGER_OBJ_PATH))
 
-    # Start up process to monitor moves
+    # Start up thread to monitor pv moves
     process_list.append(
         threading.Thread(target=monitor_moves))
 
