@@ -23,7 +23,7 @@ import threading
 
 from lvm_shell_proxy import LVMShellProxy
 
-USE_SHELL = True
+USE_SHELL = False
 
 SEP = '{|}'
 
