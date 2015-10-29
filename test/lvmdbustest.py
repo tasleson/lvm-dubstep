@@ -42,23 +42,26 @@ def rs(length, suffix):
 
 class RemoteObject(object):
 
+    def _set_props(self, props=None):
+        #print 'Fetching properties'
+        if not props:
+            prop_fetch = dbus.Interface(self.bus.get_object(
+                BUSNAME, self.object_path), 'org.freedesktop.DBus.Properties')
+            props = prop_fetch.GetAll(self.interface)
+
+        if props:
+            for kl, vl in props.items():
+                setattr(self, kl, vl)
+
     def __init__(self, bus, object_path, interface, properties=None):
         self.object_path = object_path
         self.interface = interface
+        self.bus = bus
 
         self.dbus_method = dbus.Interface(bus.get_object(
             BUSNAME, self.object_path), self.interface)
 
-        if not properties:
-            #print 'Fetching properties'
-            prop_fetch = dbus.Interface(bus.get_object(
-                BUSNAME, self.object_path), 'org.freedesktop.DBus.Properties')
-            properties = prop_fetch.GetAll(self.interface)
-            #print str(properties)
-
-        if properties:
-            for kl, vl in properties.items():
-                setattr(self, kl, vl)
+        self._set_props(properties)
 
     def __getattr__(self, item):
         if hasattr(self.dbus_method, item):
@@ -68,6 +71,9 @@ class RemoteObject(object):
 
     def _wrapper(self, _method_name, *args, **kwargs):
         return getattr(self.dbus_method, _method_name)(*args, **kwargs)
+
+    def update(self):
+        self._set_props()
 
 
 def get_objects():
