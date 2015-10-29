@@ -20,6 +20,7 @@ import math
 import time
 import cfg
 import threading
+from itertools import chain
 
 from lvm_shell_proxy import LVMShellProxy
 
@@ -151,6 +152,19 @@ def pv_remove(device, remove_options):
     cmd.extend(options_to_cli_args(remove_options))
     cmd.append(device)
     return call(cmd)
+
+
+def pv_tag(pv_devices, add, rm, tag_options):
+    cmd = ['pvchange']
+    cmd.extend(options_to_cli_args(tag_options))
+    cmd.extend(pv_devices)
+
+    if add:
+        cmd.extend(list(chain.from_iterable(('--addtag', x) for x in add)))
+    if rm:
+        cmd.extend(list(chain.from_iterable(('--deltag', x) for x in rm)))
+
+    return call(cmd, False)
 
 
 def vg_rename(vg, new_name, rename_options):

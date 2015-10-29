@@ -447,6 +447,31 @@ class TestDbusService(unittest.TestCase):
 
         self.assertTrue(yes)
 
+    def test_pv_tags(self):
+        pvs = []
+        t = ['hello', 'world']
+
+        pv_paths = []
+        for pp in self.objs[PV_INT]:
+            pv_paths.append(pp.object_path)
+
+        vg = self._vg_create(pv_paths)
+
+        # Get the PVs
+        for p in vg.Pvs:
+            pvs.append(RemoteObject(self.bus, p, PV_INT))
+
+        rc = vg.PvTagsAdd(vg.Pvs, ['hello', 'world'], -1, {})
+        self.assertTrue(rc == '/')
+
+        for p in pvs:
+            p.update()
+            self.assertTrue(t == p.Tags)
+
+        vg.PvTagsDel(vg.Pvs, p.Tags, -1, {})
+        for p in pvs:
+            p.update()
+            self.assertTrue([] == p.Tags)
 
 if __name__ == '__main__':
     unittest.main()

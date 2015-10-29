@@ -574,6 +574,64 @@ class Vg(AutomatedProperties):
                           thin_pool, create_options), cb, cbe)
         cfg.worker_q.put(r)
 
+    @staticmethod
+    def _pv_add_rm_tags(uuid, vg_name, pv_object_paths, tags_add,
+                        tags_del, tag_options):
+        pv_devices = []
+
+        # Make sure we have a dbus object representing it
+        dbo = cfg.om.get_by_uuid_lvm_id(uuid, vg_name)
+
+        if dbo:
+            # Check for existence of pv object paths
+            for p in pv_object_paths:
+                pv = cfg.om.get_by_path(p)
+                if pv:
+                    pv_devices.append(pv.Name)
+                else:
+                    raise dbus.exceptions.DBusException(
+                        MANAGER_INTERFACE, 'PV object path = %s not found' % p)
+
+            rc, out, err = cmdhandler.pv_tag(pv_devices, tags_add, tags_del,
+                                             tag_options)
+            if rc == 0:
+                # For each PV that had a name change refresh it
+                for p in pv_object_paths:
+                    cfg.om.get_by_path(p).refresh()
+
+                return '/'
+            else:
+                raise dbus.exceptions.DBusException(
+                    MANAGER_INTERFACE,
+                    'Exit code %s, stderr = %s' % (str(rc), err))
+
+        else:
+            raise dbus.exceptions.DBusException(
+                VG_INTERFACE, 'VG with uuid %s and name %s not present!' %
+                (uuid, vg_name))
+
+    @dbus.service.method(dbus_interface=VG_INTERFACE,
+                         in_signature='aoasia{sv}',
+                         out_signature='o',
+                         async_callbacks=('cb', 'cbe'))
+    def PvTagsAdd(self, pvs, tags, tmo, tag_options, cb, cbe):
+        r = RequestEntry(tmo, Vg._pv_add_rm_tags,
+                         (self.state.Uuid, self.state.lvm_id,
+                          pvs, tags, None, tag_options),
+                         cb, cbe, return_tuple=False)
+        cfg.worker_q.put(r)
+
+    @dbus.service.method(dbus_interface=VG_INTERFACE,
+                         in_signature='aoasia{sv}',
+                         out_signature='o',
+                         async_callbacks=('cb', 'cbe'))
+    def PvTagsDel(self, pvs, tags, tmo, tag_options, cb, cbe):
+        r = RequestEntry(tmo, Vg._pv_add_rm_tags,
+                         (self.state.Uuid, self.state.lvm_id,
+                          pvs, None, tags, tag_options),
+                         cb, cbe, return_tuple=False)
+        cfg.worker_q.put(r)
+
     def _attribute(self, pos, ch):
         if self.state.attr[pos] == ch:
             return True
