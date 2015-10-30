@@ -473,5 +473,17 @@ class TestDbusService(unittest.TestCase):
             p.update()
             self.assertTrue([] == p.Tags)
 
+    def test_vg_tags(self):
+        vg = self._vg_create()
+
+        t = ['Testing', 'tags']
+
+        vg.TagsAdd(t, -1, {})
+        vg.update()
+        self.assertTrue(t == vg.Tags)
+        vg.TagsDel(t, -1, {})
+        vg.update()
+        self.assertTrue([] == vg.Tags)
+
 if __name__ == '__main__':
     unittest.main()
