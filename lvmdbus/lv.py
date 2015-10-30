@@ -342,6 +342,50 @@ def lv_object_factory(interface_name, *args):
                               optional_size, snapshot_options), cb, cbe)
             cfg.worker_q.put(r)
 
+        @staticmethod
+        def _add_rm_tags(uuid, lv_name, tags_add, tags_del, tag_options):
+            # Make sure we have a dbus object representing it
+            dbo = cfg.om.get_by_uuid_lvm_id(uuid, lv_name)
+
+            if dbo:
+
+                rc, out, err = cmdhandler.lv_tag(lv_name, tags_add, tags_del,
+                                                 tag_options)
+                if rc == 0:
+                    dbo.refresh()
+                    return '/'
+                else:
+                    raise dbus.exceptions.DBusException(
+                        MANAGER_INTERFACE,
+                        'Exit code %s, stderr = %s' % (str(rc), err))
+
+            else:
+                raise dbus.exceptions.DBusException(
+                    LV_INTERFACE, 'LV with uuid %s and name %s not present!' %
+                    (uuid, lv_name))
+
+        @dbus.service.method(dbus_interface=LV_INTERFACE,
+                             in_signature='asia{sv}',
+                             out_signature='o',
+                             async_callbacks=('cb', 'cbe'))
+        def TagsAdd(self, tags, tmo, tag_options, cb, cbe):
+            r = RequestEntry(tmo, Lv._add_rm_tags,
+                             (self.state.Uuid, self.state.lvm_id,
+                              tags, None, tag_options),
+                             cb, cbe, return_tuple=False)
+            cfg.worker_q.put(r)
+
+        @dbus.service.method(dbus_interface=LV_INTERFACE,
+                             in_signature='asia{sv}',
+                             out_signature='o',
+                             async_callbacks=('cb', 'cbe'))
+        def TagsDel(self, tags, tmo, tag_options, cb, cbe):
+            r = RequestEntry(tmo, Lv._add_rm_tags,
+                             (self.state.Uuid, self.state.lvm_id,
+                              None, tags, tag_options),
+                             cb, cbe, return_tuple=False)
+            cfg.worker_q.put(r)
+
     # noinspection PyPep8Naming
     class LvPoolInherit(Lv):
 

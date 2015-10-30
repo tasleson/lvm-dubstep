@@ -180,6 +180,19 @@ def vg_tag(vg_name, add, rm, tag_options):
     return call(cmd, False)
 
 
+def lv_tag(lv_name, add, rm, tag_options):
+    cmd = ['lvchange']
+    cmd.extend(options_to_cli_args(tag_options))
+    cmd.append(lv_name)
+
+    if add:
+        cmd.extend(list(chain.from_iterable(('--addtag', x) for x in add)))
+    if rm:
+        cmd.extend(list(chain.from_iterable(('--deltag', x) for x in rm)))
+
+    return call(cmd, False)
+
+
 def vg_rename(vg, new_name, rename_options):
     cmd = ['vgrename']
     cmd.extend(options_to_cli_args(rename_options))

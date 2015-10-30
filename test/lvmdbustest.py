@@ -485,5 +485,21 @@ class TestDbusService(unittest.TestCase):
         vg.update()
         self.assertTrue([] == vg.Tags)
 
+    def test_lv_tags(self):
+        vg = self._vg_create()
+        lv = self._test_lv_create(
+            vg.LvCreateLinear,
+            (rs(8, '_lv'), 1024 * 1024 * 4, False, -1, {}),
+            vg)
+
+        t = ['Testing', 'tags']
+
+        lv.TagsAdd(t, -1, {})
+        lv.update()
+        self.assertTrue(t == lv.Tags)
+        lv.TagsDel(t, -1, {})
+        lv.update()
+        self.assertTrue([] == lv.Tags)
+
 if __name__ == '__main__':
     unittest.main()
