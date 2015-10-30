@@ -10,6 +10,9 @@ pp = pprint.PrettyPrinter(depth=4)
 
 unique_interfaces = {}
 
+INT = 'com.redhat.lvmdbus1'
+PATH = '/com/redhat/lvmdbus1'
+
 
 TYPE_TABLE = {
     'y': 'uint8_t',
@@ -164,9 +167,8 @@ def get_properties(et_props):
 
 
 def get_introspect_data(bus, object_p, interface):
-    obj = bus.get_object("com.redhat.lvm1", object_p)
-    intf = dbus.Interface(obj,
-                          "org.freedesktop.DBus.Introspectable")
+    obj = bus.get_object(INT, object_p)
+    intf = dbus.Interface(obj, "org.freedesktop.DBus.Introspectable")
 
     intf_data = intf.Introspect()
 
@@ -185,14 +187,13 @@ def get_introspect_data(bus, object_p, interface):
 def _get_doc():
 
     bus = dbus.SystemBus(mainloop=DBusGMainLoop())
-    manager = dbus.Interface(bus.get_object(
-        "com.redhat.lvm1", "/com/redhat/lvm1"),
-        "org.freedesktop.DBus.ObjectManager")
+    manager = dbus.Interface(bus.get_object(INT, PATH),
+                             "org.freedesktop.DBus.ObjectManager")
 
     objects = manager.GetManagedObjects()
 
     for object_path, val in objects.items():
-        keys = [k for k in val.keys() if k[0:15] == "com.redhat.lvm1"]
+        keys = [k for k in val.keys() if k[0:len(INT)] == INT]
 
         for k in keys:
             unique_interfaces[str(k)] = dict(object_path=object_path)
