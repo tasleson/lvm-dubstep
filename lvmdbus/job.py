@@ -27,7 +27,7 @@ class Job(AutomatedProperties):
     _Percent_type = 'y'
     _Complete_type = 'b'
     _Result_type = 'o'
-    _get_error_type = '(is)'
+    _GetError_type = '(is)'
 
     def __init__(self, lv_name):
         super(Job, self).__init__(job_obj_path_generate(), JOB_INTERFACE)
@@ -59,7 +59,7 @@ class Job(AutomatedProperties):
             self._complete = value
 
     @property
-    def get_error(self):
+    def GetError(self):
         if self.Complete:
             return (0, '')
         else:
@@ -94,7 +94,7 @@ class AsyncJob(AutomatedProperties):
     _Percent_type = 'y'
     _Complete_type = 'b'
     _Result_type = 'o'
-    _get_error_type = '(is)'
+    _GetError_type = '(is)'
 
     def __init__(self, request):
         super(AsyncJob, self).__init__(job_obj_path_generate(),
@@ -114,7 +114,7 @@ class AsyncJob(AutomatedProperties):
         return done
 
     @property
-    def get_error(self):
+    def GetError(self):
         if self.Complete:
             (rc, error) = self._request.get_errors()
             return (rc, str(error))
