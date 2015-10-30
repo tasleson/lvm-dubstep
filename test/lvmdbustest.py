@@ -468,7 +468,7 @@ class TestDbusService(unittest.TestCase):
             p.update()
             self.assertTrue(t == p.Tags)
 
-        vg.PvTagsDel(vg.Pvs, p.Tags, -1, {})
+        vg.PvTagsDel(vg.Pvs, t, -1, {})
         for p in pvs:
             p.update()
             self.assertTrue([] == p.Tags)
