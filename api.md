@@ -1,5 +1,82 @@
 
-## Interface com.redhat.lvm1.Manager ##
+## Interface com.redhat.lvmdbus1.Job ##
+
+#### Methods ####
+* Remove 
+  * Arguments (None)
+  * Returns
+      * None
+
+#### Properties ####
+* Complete (Boolean (0 is false, 1 is true))
+* Percent (uint8_t)
+* Result (Oject path)
+* get_error (Structure (int32_t, String))
+
+## Interface com.redhat.lvmdbus1.Lv ##
+
+#### Methods ####
+* Move 
+  * Arguments
+      * pv_src_obj (Oject path)
+      * pv_source_range (Structure (uint64_t, uint64_t))
+      * pv_dest_obj (Oject path)
+      * pv_dest_range (Structure (uint64_t, uint64_t))
+      * move_options (Dictionary:{String, Variant})
+  * Returns
+      * Oject path
+* Remove 
+  * Arguments
+      * tmo (int32_t)
+      * remove_options (Dictionary:{String, Variant})
+  * Returns
+      * Oject path
+* Rename 
+  * Arguments
+      * name (String)
+      * tmo (int32_t)
+      * rename_options (Dictionary:{String, Variant})
+  * Returns
+      * Oject path
+* Snapshot 
+  * Arguments
+      * name (String)
+      * tmo (int32_t)
+      * optional_size (uint64_t)
+      * snapshot_options (Dictionary:{String, Variant})
+  * Returns
+      * Structure (Oject path, Oject path)
+* TagsAdd 
+  * Arguments
+      * tags (Array of String )
+      * tmo (int32_t)
+      * tag_options (Dictionary:{String, Variant})
+  * Returns
+      * Oject path
+* TagsDel 
+  * Arguments
+      * tags (Array of String )
+      * tmo (int32_t)
+      * tag_options (Dictionary:{String, Variant})
+  * Returns
+      * Oject path
+
+#### Properties ####
+* DataPercent (uint32_t)
+* Devices (Array of Structure (Oject path, Array of Structure (uint64_t, uint64_t, String)))
+* IsThinPool (Boolean (0 is false, 1 is true))
+* IsThinVolume (Boolean (0 is false, 1 is true))
+* Name (String)
+* OriginLv (Oject path)
+* Path (String)
+* PoolLv (Oject path)
+* SegType (Array of String )
+* SizeBytes (uint64_t)
+* Tags (Array of String )
+* Uuid (String)
+* Vg (Oject path)
+
+## Interface com.redhat.lvmdbus1.Manager ##
 
 #### Methods ####
 * ExternalEvent 
@@ -36,57 +113,9 @@
       * Structure (Oject path, Oject path)
 
 #### Properties ####
+* Version (uint64_t)
 
-## Interface com.redhat.lvm1.lv ##
-
-#### Methods ####
-* Move 
-  * Arguments
-      * pv_src_obj (Oject path)
-      * pv_source_range (Structure (uint64_t, uint64_t))
-      * pv_dest_obj (Oject path)
-      * pv_dest_range (Structure (uint64_t, uint64_t))
-      * move_options (Dictionary:{String, Variant})
-  * Returns
-      * Oject path
-* Remove 
-  * Arguments
-      * tmo (int32_t)
-      * remove_options (Dictionary:{String, Variant})
-  * Returns
-      * Oject path
-* Rename 
-  * Arguments
-      * name (String)
-      * tmo (int32_t)
-      * rename_options (Dictionary:{String, Variant})
-  * Returns
-      * Oject path
-* Snapshot 
-  * Arguments
-      * name (String)
-      * tmo (int32_t)
-      * optional_size (uint64_t)
-      * snapshot_options (Dictionary:{String, Variant})
-  * Returns
-      * Structure (Oject path, Oject path)
-
-#### Properties ####
-* Attr (String)
-* DataPercent (uint32_t)
-* Devices (Array of Structure (Oject path, Array of Structure (uint64_t, uint64_t)))
-* IsThinVolume (Boolean (0 is false, 1 is true))
-* Name (String)
-* OriginLv (Oject path)
-* Path (String)
-* PoolLv (Oject path)
-* SegType (String)
-* SizeBytes (uint64_t)
-* Tags (Array of String )
-* Uuid (String)
-* Vg (Oject path)
-
-## Interface com.redhat.lvm1.pv ##
+## Interface com.redhat.lvmdbus1.Pv ##
 
 #### Methods ####
 * AllocationEnabled 
@@ -133,7 +162,7 @@
 * Uuid (String)
 * Vg (Oject path)
 
-## Interface com.redhat.lvm1.thinpool ##
+## Interface com.redhat.lvmdbus1.Thinpool ##
 
 #### Methods ####
 * LvCreate 
@@ -176,21 +205,21 @@
       * Structure (Oject path, Oject path)
 
 #### Properties ####
-* Attr (String)
 * DataPercent (uint32_t)
-* Devices (Array of Structure (Oject path, Array of Structure (uint64_t, uint64_t)))
+* Devices (Array of Structure (Oject path, Array of Structure (uint64_t, uint64_t, String)))
+* IsThinPool (Boolean (0 is false, 1 is true))
 * IsThinVolume (Boolean (0 is false, 1 is true))
 * Name (String)
 * OriginLv (Oject path)
 * Path (String)
 * PoolLv (Oject path)
-* SegType (String)
+* SegType (Array of String )
 * SizeBytes (uint64_t)
 * Tags (Array of String )
 * Uuid (String)
 * Vg (Oject path)
 
-## Interface com.redhat.lvm1.vg ##
+## Interface com.redhat.lvmdbus1.Vg ##
 
 #### Methods ####
 * Change 
@@ -247,6 +276,22 @@
       * create_options (Dictionary:{String, Variant})
   * Returns
       * Structure (Oject path, Oject path)
+* PvTagsAdd 
+  * Arguments
+      * pvs (Array of Oject path )
+      * tags (Array of String )
+      * tmo (int32_t)
+      * tag_options (Dictionary:{String, Variant})
+  * Returns
+      * Oject path
+* PvTagsDel 
+  * Arguments
+      * pvs (Array of Oject path )
+      * tags (Array of String )
+      * tmo (int32_t)
+      * tag_options (Dictionary:{String, Variant})
+  * Returns
+      * Oject path
 * Reduce 
   * Arguments
       * missing (Boolean (0 is false, 1 is true))
@@ -266,6 +311,20 @@
       * name (String)
       * tmo (int32_t)
       * rename_options (Dictionary:{String, Variant})
+  * Returns
+      * Oject path
+* TagsAdd 
+  * Arguments
+      * tags (Array of String )
+      * tmo (int32_t)
+      * tag_options (Dictionary:{String, Variant})
+  * Returns
+      * Oject path
+* TagsDel 
+  * Arguments
+      * tags (Array of String )
+      * tmo (int32_t)
+      * tag_options (Dictionary:{String, Variant})
   * Returns
       * Oject path
 
