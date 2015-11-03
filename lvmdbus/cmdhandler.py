@@ -24,7 +24,6 @@ from itertools import chain
 
 from lvm_shell_proxy import LVMShellProxy
 
-USE_SHELL = False
 
 SEP = '{|}'
 
@@ -35,6 +34,10 @@ total_count = 0
 # We need to prevent different threads from using the same lvm shell
 # at the same time.
 cmd_lock = threading.Lock()
+
+# The actual method which gets called to invoke the lvm command, can vary
+# from forking a new process to using lvm shell
+_t_call = None
 
 
 def call_lvm(command, debug=False):
@@ -60,12 +63,30 @@ def call_lvm(command, debug=False):
 
     return process.returncode, out[0], out[1]
 
-if USE_SHELL:
+
+def _shell_cfg():
+    global _t_call
     print 'Using lvm shell!'
     lvm_shell = LVMShellProxy()
-    t_call = lvm_shell.call_lvm
+    _t_call = lvm_shell.call_lvm
+
+
+if cfg.USE_SHELL:
+    _shell_cfg()
 else:
-    t_call = call_lvm
+    _t_call = call_lvm
+
+
+def set_execution(shell):
+    global _t_call
+    with cmd_lock:
+        _t_call = None
+        if shell:
+            print 'Using lvm shell!'
+            lvm_shell = LVMShellProxy()
+            _t_call = lvm_shell.call_lvm
+        else:
+            _t_call = call_lvm
 
 
 def time_wrapper(command, debug=False):
@@ -74,7 +95,7 @@ def time_wrapper(command, debug=False):
 
     with cmd_lock:
         start = time.time()
-        results = t_call(command, debug)
+        results = _t_call(command, debug)
         total_time += (time.time() - start)
         total_count += 1
 

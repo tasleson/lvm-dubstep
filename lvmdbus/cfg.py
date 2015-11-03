@@ -13,13 +13,11 @@
 #
 # Copyright 2015, Tony Asleson <tasleson@redhat.com>
 import os
-
-LVM_CMD = os.getenv('LVM_DBUSCMD', '/usr/sbin/lvm')
-
 import multiprocessing
 import Queue
 import itertools
-import jobmonitor
+
+LVM_CMD = os.getenv('LVM_DBUSCMD', '/usr/sbin/lvm')
 
 # This is the global object manager
 om = None
@@ -30,8 +28,11 @@ bus = None
 # Shared state variable across all processes
 run = multiprocessing.Value('i', 1)
 
-#Debug
+# Debug
 DEBUG = True
+
+# Use lvm shell
+USE_SHELL = False
 
 # Lock used by pprint
 stdout_lock = multiprocessing.Lock()
