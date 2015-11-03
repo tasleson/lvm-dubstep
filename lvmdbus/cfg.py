@@ -68,4 +68,4 @@ thin_id = itertools.count()
 job_id = itertools.count()
 
 
-jobs = jobmonitor.Monitor()
+jobs = None

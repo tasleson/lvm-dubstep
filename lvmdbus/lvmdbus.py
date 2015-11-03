@@ -27,7 +27,7 @@ import dbus
 import gobject
 from fetch import load
 from manager import Manager
-from jobmonitor import monitor_moves
+from jobmonitor import monitor_moves, Monitor
 import traceback
 import Queue
 import sys
@@ -73,6 +73,9 @@ def main():
     base_name = dbus.service.BusName(BASE_INTERFACE, cfg.bus)
     cfg.om = Lvm(BASE_OBJ_PATH)
     cfg.om.register_object(Manager(MANAGER_OBJ_PATH))
+
+    # Create the job monitor
+    cfg.jobs = Monitor()
 
     # Start up thread to monitor pv moves
     process_list.append(
