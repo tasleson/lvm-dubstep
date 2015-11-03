@@ -39,6 +39,7 @@ def rs(length, suffix):
     return ''.join(random.choice(string.ascii_lowercase)
                    for _ in range(length)) + suffix
 
+bus = dbus.SystemBus(mainloop=DBusGMainLoop())
 
 class RemoteObject(object):
 
@@ -80,7 +81,6 @@ def get_objects():
     rc = {MANAGER_INT: [], PV_INT: [], VG_INT: [], LV_INT: [],
           THINPOOL_INT: [], JOB_INT: []}
 
-    bus = dbus.SystemBus(mainloop=DBusGMainLoop())
     manager = dbus.Interface(bus.get_object(
         BUSNAME, "/com/redhat/lvmdbus1"),
         "org.freedesktop.DBus.ObjectManager")
@@ -94,6 +94,12 @@ def get_objects():
 
     return rc, bus
 
+
+def set_execution(lvmshell):
+    lvm_manager = dbus.Interface(bus.get_object(
+        BUSNAME, "/com/redhat/lvmdbus1/Manager"),
+        "com.redhat.lvmdbus1.Manager")
+    lvm_manager.UseLvmShell(lvmshell)
 
 class TestDbusService(unittest.TestCase):
     def setUp(self):
@@ -502,4 +508,11 @@ class TestDbusService(unittest.TestCase):
         self.assertTrue([] == lv.Tags)
 
 if __name__ == '__main__':
+    # Test forking & exec new each time
+    set_execution(False)
+    unittest.main(exit=False)
+
+    # Test lvm shell
+    print '\n *** Testing lvm shell *** \n'
+    set_execution(True)
     unittest.main()
