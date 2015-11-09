@@ -529,15 +529,14 @@ class Vg(AutomatedProperties):
 
     @staticmethod
     def _lv_create_raid(uuid, vg_name, name, raid_type, size_bytes,
-                        num_stripes, stripe_size_kb, thin_pool,
-                        create_options):
+                        num_stripes, stripe_size_kb, create_options):
         # Make sure we have a dbus object representing it
         dbo = cfg.om.get_by_uuid_lvm_id(uuid, vg_name)
 
         if dbo:
             rc, out, err = cmdhandler.vg_lv_create_raid(
                 vg_name, create_options, name, raid_type, size_bytes,
-                num_stripes, stripe_size_kb, thin_pool)
+                num_stripes, stripe_size_kb)
             if rc == 0:
                 created_lv = "/"
                 full_name = "%s/%s" % (vg_name, name)
@@ -562,16 +561,16 @@ class Vg(AutomatedProperties):
         return created_lv
 
     @dbus.service.method(dbus_interface=VG_INTERFACE,
-                         in_signature='sstuubia{sv}',
+                         in_signature='sstuuia{sv}',
                          out_signature='(oo)',
                          async_callbacks=('cb', 'cbe'))
     def LvCreateRaid(self, name, raid_type, size_bytes,
-                     num_stripes, stripe_size_kb, thin_pool, tmo,
+                     num_stripes, stripe_size_kb, tmo,
                      create_options, cb, cbe):
         r = RequestEntry(tmo, Vg._lv_create_raid,
                          (self.state.Uuid, self.state.lvm_id, name,
                           raid_type, size_bytes, num_stripes, stripe_size_kb,
-                          thin_pool, create_options), cb, cbe)
+                          create_options), cb, cbe)
         cfg.worker_q.put(r)
 
     @staticmethod

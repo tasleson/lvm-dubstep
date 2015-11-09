@@ -300,7 +300,7 @@ class TestDbusService(unittest.TestCase):
         vg = self._vg_create(pv_paths)
         self._test_lv_create(vg.LvCreateRaid,
                              (rs(8, '_lv'), 'raid4',
-                              1024 * 1024 * 16, 2, 8, False, -1, {}), vg)
+                              1024 * 1024 * 16, 2, 8, -1, {}), vg)
 
     def _create_lv(self, thinpool=False):
         pv_paths = []
