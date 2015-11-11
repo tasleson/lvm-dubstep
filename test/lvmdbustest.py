@@ -510,9 +510,9 @@ class TestDbusService(unittest.TestCase):
 if __name__ == '__main__':
     # Test forking & exec new each time
     set_execution(False)
-    unittest.main(exit=False)
+    unittest.main()
 
     # Test lvm shell
-    print '\n *** Testing lvm shell *** \n'
-    set_execution(True)
-    unittest.main()
+    #print '\n *** Testing lvm shell *** \n'
+    #set_execution(True)
+    #unittest.main()
