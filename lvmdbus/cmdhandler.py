@@ -548,6 +548,13 @@ def vg_extend(vg_name, extend_devices, extend_options):
     return call(cmd)
 
 
+def vg_allocation_policy(vg_name, policy, policy_options):
+    cmd = ['vgchange']
+    cmd.extend(options_to_cli_args(policy_options))
+    cmd.extend([vg_name, '--alloc', policy])
+    return call(cmd)
+
+
 def vg_retrieve(vg_specific):
 
     if vg_specific:

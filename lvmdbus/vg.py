@@ -675,6 +675,39 @@ class Vg(AutomatedProperties):
                          cb, cbe, return_tuple=False)
         cfg.worker_q.put(r)
 
+    @staticmethod
+    def _allocation_policy_set(uuid, vg_name, allocation_policy, policy_options):
+        # Make sure we have a dbus object representing it
+        dbo = cfg.om.get_by_uuid_lvm_id(uuid, vg_name)
+
+        if dbo:
+
+            rc, out, err = cmdhandler.vg_allocation_policy(
+                vg_name, allocation_policy, policy_options)
+            if rc == 0:
+                dbo.refresh()
+                return '/'
+            else:
+                raise dbus.exceptions.DBusException(
+                    MANAGER_INTERFACE,
+                    'Exit code %s, stderr = %s' % (str(rc), err))
+
+        else:
+            raise dbus.exceptions.DBusException(
+                VG_INTERFACE, 'VG with uuid %s and name %s not present!' %
+                (uuid, vg_name))
+
+    @dbus.service.method(dbus_interface=VG_INTERFACE,
+                         in_signature='sia{sv}',
+                         out_signature='o',
+                         async_callbacks=('cb', 'cbe'))
+    def AllocationPolicySet(self, policy, tmo, policy_options, cb, cbe):
+        r = RequestEntry(tmo, Vg._allocation_policy_set,
+                         (self.state.Uuid, self.state.lvm_id,
+                          policy, policy_options),
+                         cb, cbe, return_tuple=False)
+        cfg.worker_q.put(r)
+
     def _attribute(self, pos, ch):
         if self.state.attr[pos] == ch:
             return True

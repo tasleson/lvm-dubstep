@@ -507,6 +507,17 @@ class TestDbusService(unittest.TestCase):
         lv.update()
         self.assertTrue([] == lv.Tags)
 
+    def test_vg_allocation_policy_set(self):
+        vg = self._vg_create()
+
+        for p in ['anywhere', 'contiguous', 'cling', 'normal']:
+            rc = vg.AllocationPolicySet(p, -1, {})
+            self.assertEqual(rc, '/')
+            vg.update()
+
+            prop = getattr(vg, 'Alloc' + p.title())
+            self.assertTrue(prop)
+
 if __name__ == '__main__':
     # Test forking & exec new each time
     set_execution(False)
