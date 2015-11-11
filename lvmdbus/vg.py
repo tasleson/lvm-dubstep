@@ -722,7 +722,7 @@ class Vg(AutomatedProperties):
 
     @property
     def AllocCling(self):
-        return self._attribute(4, 'c')
+        return self._attribute(4, 'l')
 
     @property
     def AllocNormal(self):
