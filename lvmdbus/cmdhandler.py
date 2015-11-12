@@ -555,6 +555,13 @@ def vg_allocation_policy(vg_name, policy, policy_options):
     return call(cmd)
 
 
+def vg_max_pv(vg_name, number, max_options):
+    cmd = ['vgchange']
+    cmd.extend(options_to_cli_args(max_options))
+    cmd.extend([vg_name, '--maxphysicalvolumes', str(number)])
+    return call(cmd)
+
+
 def vg_retrieve(vg_specific):
 
     if vg_specific:

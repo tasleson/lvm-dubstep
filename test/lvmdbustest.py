@@ -518,6 +518,18 @@ class TestDbusService(unittest.TestCase):
             prop = getattr(vg, 'Alloc' + p.title())
             self.assertTrue(prop)
 
+    def test_vg_max_pv(self):
+        vg = self._vg_create()
+
+        # BZ: https://bugzilla.redhat.com/show_bug.cgi?id=1280496
+        # TODO: Add a test back for larger values here when bug is resolved
+        for p in [0, 1, 10, 100, 100, 1024, 2**32 - 1]:
+            rc = vg.MaxPvSet(p, -1, {})
+            self.assertEqual(rc, '/')
+            vg.update()
+            self.assertTrue(vg.MaxPv == p, "Expected %s != Actual %s" %
+                            (str(p), str(vg.MaxPv)))
+
 if __name__ == '__main__':
     # Test forking & exec new each time
     set_execution(False)
