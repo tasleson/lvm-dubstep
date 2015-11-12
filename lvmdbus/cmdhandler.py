@@ -16,7 +16,6 @@
 from subprocess import Popen, PIPE
 import traceback
 import sys
-import math
 import time
 import cfg
 import threading
