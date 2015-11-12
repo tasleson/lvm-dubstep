@@ -62,6 +62,9 @@ def call_lvm(command, debug=False):
         print("STDOUT=\n %s\n" % out[0])
         print("STDERR=\n %s\n" % out[1])
 
+    if process.returncode == 0:
+        assert(out[1] is None or len(out[1]) == 0)
+
     return process.returncode, out[0], out[1]
 
 
