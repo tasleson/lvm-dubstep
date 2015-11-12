@@ -43,6 +43,8 @@ _t_call = None
 def call_lvm(command, debug=False):
     """
     Call an executable and return a tuple of exitcode, stdout, stderr
+    :param command:     Command to execute
+    :param debug:       Dump debug to stdout
     """
     #print 'STACK:'
     #for line in traceback.format_stack():

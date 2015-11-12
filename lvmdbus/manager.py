@@ -146,6 +146,7 @@ class Manager(AutomatedProperties):
 
         return the object path in O(1) time.
 
+        :param key: The lookup value
         :return: Return the object path.  If object not found you will get '/'
         """
         p = cfg.om.get_object_path_by_lvm_id(

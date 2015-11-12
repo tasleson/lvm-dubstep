@@ -46,6 +46,7 @@ def rtype(dbus_type):
     """
     Decorator making sure that the decorated function returns a value of
     specified type.
+    :param dbus_type: The specific dbus type to return value as
     """
 
     def decorator(fn):

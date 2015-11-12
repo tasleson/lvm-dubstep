@@ -144,6 +144,7 @@ class Vg(AutomatedProperties):
     def refresh_pvs(self, pv_list=None):
         """
         Refresh the state of the PVs for this vg given a PV object path
+        :param pv_list:  List of PVs to refresh (optional), do all when None
         """
         if not pv_list:
             pv_list = self.state.Pvs
@@ -155,6 +156,8 @@ class Vg(AutomatedProperties):
     def refresh_lvs(self, lv_list=None, vg_name=None):
         """
         Refresh the state of the PVs for this vg given a PV object path
+        :param lv_list: List of specific LVs to refresh
+        :param vg_name: VG the LV resides on
         """
         if not lv_list:
             lv_list = self.state.Lvs

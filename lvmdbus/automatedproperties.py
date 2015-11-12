@@ -110,6 +110,8 @@ class AutomatedProperties(dbus.service.Object):
         Take the values (properties) of an object and update them with what
         lvm currently has.  You can either fetch the new ones or supply the
         new state to be updated with
+        :param search_key: The value to use to search for
+        :param object_state: Use this as the new object state
         """
         num_changed = 0
 

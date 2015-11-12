@@ -117,6 +117,8 @@ class ObjectManager(AutomatedProperties):
     def register_object(self, dbus_object, emit_signal=False):
         """
         Given a dbus object add it to the collection
+        :param dbus_object: Dbus object to register
+        :param emit_signal: If true emit a signal for interfaces added
         """
         with self.rlock:
             path, props = dbus_object.emit_data()
@@ -136,6 +138,8 @@ class ObjectManager(AutomatedProperties):
         """
         Given a dbus object, remove it from the collection and remove it
         from the dbus framework as well
+        :param dbus_object:  Dbus object to remove
+        :param emit_signal:  If true emit the interfaces removed signal
         """
         with self.rlock:
             # Store off the object path and the interface first
@@ -157,6 +161,8 @@ class ObjectManager(AutomatedProperties):
     def get_by_path(self, path):
         """
         Given a dbus path return the object registered for it
+        :param path: The dbus path
+        :return: The object
         """
         with self.rlock:
             if path in self._objects:
@@ -171,6 +177,7 @@ class ObjectManager(AutomatedProperties):
     def get_by_lvm_id(self, lvm_id):
         """
         Given an lvm identifier, return the object registered for it
+        :param lvm_id: The lvm identifier
         """
         with self.rlock:
             if lvm_id in self._id_to_object_path:
@@ -181,6 +188,10 @@ class ObjectManager(AutomatedProperties):
                                   gen_new=True):
         """
         For a given lvm asset return the dbus object registered to it
+        :param uuid: The uuid for the lvm object
+        :param lvm_id: The lvm name
+        :param path_create: If true create an object path if not found
+        :param gen_new: The function used to create the new path
         """
         with self.rlock:
             assert lvm_id
