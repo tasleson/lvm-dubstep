@@ -530,6 +530,18 @@ class TestDbusService(unittest.TestCase):
             self.assertTrue(vg.MaxPv == p, "Expected %s != Actual %s" %
                             (str(p), str(vg.MaxPv)))
 
+    def test_vg_max_lv(self):
+        vg = self._vg_create()
+
+        # BZ: https://bugzilla.redhat.com/show_bug.cgi?id=1280496
+        # TODO: Add a test back for larger values here when bug is resolved
+        for p in [0, 1, 10, 100, 100, 1024, 2**32 - 1]:
+            rc = vg.MaxLvSet(p, -1, {})
+            self.assertEqual(rc, '/')
+            vg.update()
+            self.assertTrue(vg.MaxLv == p, "Expected %s != Actual %s" %
+                            (str(p), str(vg.MaxLv)))
+
 if __name__ == '__main__':
     # Test forking & exec new each time
     set_execution(False)
