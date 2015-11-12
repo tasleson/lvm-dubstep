@@ -41,6 +41,7 @@ def rs(length, suffix):
 
 bus = dbus.SystemBus(mainloop=DBusGMainLoop())
 
+
 class RemoteObject(object):
 
     def _set_props(self, props=None):
@@ -100,6 +101,7 @@ def set_execution(lvmshell):
         BUSNAME, "/com/redhat/lvmdbus1/Manager"),
         "com.redhat.lvmdbus1.Manager")
     lvm_manager.UseLvmShell(lvmshell)
+
 
 class TestDbusService(unittest.TestCase):
     def setUp(self):

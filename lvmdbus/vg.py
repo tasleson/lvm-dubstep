@@ -679,7 +679,8 @@ class Vg(AutomatedProperties):
         cfg.worker_q.put(r)
 
     @staticmethod
-    def _allocation_policy_set(uuid, vg_name, allocation_policy, policy_options):
+    def _allocation_policy_set(uuid, vg_name, allocation_policy,
+                               policy_options):
         # Make sure we have a dbus object representing it
         dbo = cfg.om.get_by_uuid_lvm_id(uuid, vg_name)
 
