@@ -549,25 +549,25 @@ def vg_extend(vg_name, extend_devices, extend_options):
     return call(cmd)
 
 
-def vg_allocation_policy(vg_name, policy, policy_options):
+def _vg_value_set(name, arguments, options):
     cmd = ['vgchange']
-    cmd.extend(options_to_cli_args(policy_options))
-    cmd.extend([vg_name, '--alloc', policy])
+    cmd.extend(options_to_cli_args(options))
+    cmd.append(name)
+    cmd.extend(arguments)
     return call(cmd)
+
+
+def vg_allocation_policy(vg_name, policy, policy_options):
+    return _vg_value_set(vg_name, ['--alloc', policy], policy_options)
 
 
 def vg_max_pv(vg_name, number, max_options):
-    cmd = ['vgchange']
-    cmd.extend(options_to_cli_args(max_options))
-    cmd.extend([vg_name, '--maxphysicalvolumes', str(number)])
-    return call(cmd)
+    return _vg_value_set(vg_name, ['--maxphysicalvolumes', str(number)],
+                         max_options)
 
 
 def vg_max_lv(vg_name, number, max_options):
-    cmd = ['vgchange']
-    cmd.extend(options_to_cli_args(max_options))
-    cmd.extend([vg_name, '-l', str(number)])
-    return call(cmd)
+    return _vg_value_set(vg_name, ['-l', str(number)], max_options)
 
 
 def vg_retrieve(vg_specific):

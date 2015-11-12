@@ -679,15 +679,12 @@ class Vg(AutomatedProperties):
         cfg.worker_q.put(r)
 
     @staticmethod
-    def _allocation_policy_set(uuid, vg_name, allocation_policy,
-                               policy_options):
+    def _vg_change_set(uuid, vg_name, method, value, options):
         # Make sure we have a dbus object representing it
         dbo = cfg.om.get_by_uuid_lvm_id(uuid, vg_name)
 
         if dbo:
-
-            rc, out, err = cmdhandler.vg_allocation_policy(
-                vg_name, allocation_policy, policy_options)
+            rc, out, err = method(vg_name, value, options)
             if rc == 0:
                 dbo.refresh()
                 return '/'
@@ -706,41 +703,21 @@ class Vg(AutomatedProperties):
                          out_signature='o',
                          async_callbacks=('cb', 'cbe'))
     def AllocationPolicySet(self, policy, tmo, policy_options, cb, cbe):
-        r = RequestEntry(tmo, Vg._allocation_policy_set,
+        r = RequestEntry(tmo, Vg._vg_change_set,
                          (self.state.Uuid, self.state.lvm_id,
+                          cmdhandler.vg_allocation_policy,
                           policy, policy_options),
                          cb, cbe, return_tuple=False)
         cfg.worker_q.put(r)
-
-    @staticmethod
-    def _max_pv_set(uuid, vg_name, max_num_pv, max_options):
-        # Make sure we have a dbus object representing it
-        dbo = cfg.om.get_by_uuid_lvm_id(uuid, vg_name)
-
-        if dbo:
-            rc, out, err = cmdhandler.vg_max_pv(
-                vg_name, max_num_pv, max_options)
-            if rc == 0:
-                dbo.refresh()
-                return '/'
-            else:
-                raise dbus.exceptions.DBusException(
-                    MANAGER_INTERFACE,
-                    'Exit code %s, stderr = %s' % (str(rc), err))
-
-        else:
-            raise dbus.exceptions.DBusException(
-                VG_INTERFACE, 'VG with uuid %s and name %s not present!' %
-                (uuid, vg_name))
 
     @dbus.service.method(dbus_interface=VG_INTERFACE,
                          in_signature='tia{sv}',
                          out_signature='o',
                          async_callbacks=('cb', 'cbe'))
     def MaxPvSet(self, number, tmo, max_options, cb, cbe):
-        r = RequestEntry(tmo, Vg._max_pv_set,
+        r = RequestEntry(tmo, Vg._vg_change_set,
                          (self.state.Uuid, self.state.lvm_id,
-                          number, max_options),
+                          cmdhandler.vg_max_pv, number, max_options),
                          cb, cbe, return_tuple=False)
         cfg.worker_q.put(r)
 
@@ -749,35 +726,14 @@ class Vg(AutomatedProperties):
             return True
         return False
 
-    @staticmethod
-    def _max_lv_set(uuid, vg_name, max_num_pv, max_options):
-        # Make sure we have a dbus object representing it
-        dbo = cfg.om.get_by_uuid_lvm_id(uuid, vg_name)
-
-        if dbo:
-            rc, out, err = cmdhandler.vg_max_lv(
-                vg_name, max_num_pv, max_options)
-            if rc == 0:
-                dbo.refresh()
-                return '/'
-            else:
-                raise dbus.exceptions.DBusException(
-                    MANAGER_INTERFACE,
-                    'Exit code %s, stderr = %s' % (str(rc), err))
-
-        else:
-            raise dbus.exceptions.DBusException(
-                VG_INTERFACE, 'VG with uuid %s and name %s not present!' %
-                (uuid, vg_name))
-
     @dbus.service.method(dbus_interface=VG_INTERFACE,
                          in_signature='tia{sv}',
                          out_signature='o',
                          async_callbacks=('cb', 'cbe'))
     def MaxLvSet(self, number, tmo, max_options, cb, cbe):
-        r = RequestEntry(tmo, Vg._max_lv_set,
+        r = RequestEntry(tmo, Vg._vg_change_set,
                          (self.state.Uuid, self.state.lvm_id,
-                          number, max_options),
+                          cmdhandler.vg_max_lv, number, max_options),
                          cb, cbe, return_tuple=False)
         cfg.worker_q.put(r)
 
