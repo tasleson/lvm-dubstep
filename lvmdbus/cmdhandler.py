@@ -575,6 +575,44 @@ def vg_uuid_gen(vg_name, ignore, options):
     return _vg_value_set(vg_name, ['--uuid'], options)
 
 
+def vg_activate_deactivate(vg_name, activate, control_flags, options):
+    cmd = ['vgchange']
+    cmd.extend(options_to_cli_args(options))
+
+    op = '-a'
+
+    if control_flags:
+        # Autoactivation
+        if (1 << 0) & control_flags:
+            op += 'a'
+        # Exclusive locking (Cluster)
+        if (1 << 1) & control_flags:
+            op += 'e'
+
+        # Local node activation
+        if (1 << 2) & control_flags:
+            op += 'l'
+
+        # Activation modes
+        if (1 << 3) & control_flags:
+            cmd.extend(['--activationmode', 'complete'])
+        elif (1 << 4) & control_flags:
+            cmd.extend(['--activationmode', 'partial'])
+
+        # Ignore activation skip
+        if (1 << 5) & control_flags:
+            cmd.append('--ignoreactivationskip')
+
+    if activate:
+        op += 'y'
+    else:
+        op += 'n'
+
+    cmd.append(op)
+    cmd.append(vg_name)
+    return call(cmd, True)
+
+
 def vg_retrieve(vg_specific):
 
     if vg_specific:

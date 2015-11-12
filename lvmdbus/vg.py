@@ -748,6 +748,51 @@ class Vg(AutomatedProperties):
                          cb, cbe, return_tuple=False)
         cfg.worker_q.put(r)
 
+    @staticmethod
+    def _vg_activate_deactivate(uuid, vg_name, activate, control_flags, options):
+        # Make sure we have a dbus object representing it
+        dbo = cfg.om.get_by_uuid_lvm_id(uuid, vg_name)
+
+        if dbo:
+            rc, out, err = cmdhandler.vg_activate_deactivate(
+                vg_name, activate, control_flags, options)
+            if rc == 0:
+                dbo.refresh()
+                # Refresh all the LVs too
+                dbo.refresh_lvs()
+
+                return '/'
+            else:
+                raise dbus.exceptions.DBusException(
+                    MANAGER_INTERFACE,
+                    'Exit code %s, stderr = %s' % (str(rc), err))
+        else:
+            raise dbus.exceptions.DBusException(
+                VG_INTERFACE, 'VG with uuid %s and name %s not present!' %
+                (uuid, vg_name))
+
+    @dbus.service.method(dbus_interface=VG_INTERFACE,
+                         in_signature='tia{sv}',
+                         out_signature='o',
+                         async_callbacks=('cb', 'cbe'))
+    def Activate(self, control_flags, tmo, activate_options, cb, cbe):
+        r = RequestEntry(tmo, Vg._vg_activate_deactivate,
+                         (self.state.Uuid, self.state.lvm_id, True,
+                          control_flags, activate_options),
+                         cb, cbe, return_tuple=False)
+        cfg.worker_q.put(r)
+
+    @dbus.service.method(dbus_interface=VG_INTERFACE,
+                         in_signature='tia{sv}',
+                         out_signature='o',
+                         async_callbacks=('cb', 'cbe'))
+    def Deactivate(self, control_flags, tmo, activate_options, cb, cbe):
+        r = RequestEntry(tmo, Vg._vg_activate_deactivate,
+                         (self.state.Uuid, self.state.lvm_id, False,
+                          control_flags, activate_options),
+                         cb, cbe, return_tuple=False)
+        cfg.worker_q.put(r)
+
     @property
     def Tags(self):
         return utils.parse_tags(self.state.tags)

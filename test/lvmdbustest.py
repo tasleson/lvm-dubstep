@@ -559,6 +559,25 @@ class TestDbusService(unittest.TestCase):
             self.assertTrue(vg.Uuid != prev_uuid, "Expected %s != Actual %s" %
                             (vg.Uuid, prev_uuid))
 
+    def test_vg_activate_deactivate(self):
+        vg = self._vg_create()
+        lv = self._test_lv_create(
+            vg.LvCreateLinear,
+            (rs(8, '_lv'), 1024 * 1024 * 4, False, -1, {}),
+            vg)
+
+        vg.update()
+
+        vg.Deactivate(0, -1, {})
+        self.assertEqual(self._refresh(), 0)
+
+        vg.Activate(0, -1, {})
+        self.assertEqual(self._refresh(), 0)
+
+        # Try control flags
+        for i in range(0, 5):
+            vg.Activate(1 << i, -1, {})
+
 if __name__ == '__main__':
     # Test forking & exec new each time
     set_execution(False)
