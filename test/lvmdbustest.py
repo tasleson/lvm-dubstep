@@ -55,12 +55,12 @@ class RemoteObject(object):
             for kl, vl in props.items():
                 setattr(self, kl, vl)
 
-    def __init__(self, bus, object_path, interface, properties=None):
+    def __init__(self, specified_bus, object_path, interface, properties=None):
         self.object_path = object_path
         self.interface = interface
-        self.bus = bus
+        self.bus = specified_bus
 
-        self.dbus_method = dbus.Interface(bus.get_object(
+        self.dbus_method = dbus.Interface(specified_bus.get_object(
             BUSNAME, self.object_path), self.interface)
 
         self._set_props(properties)
