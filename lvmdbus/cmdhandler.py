@@ -570,6 +570,11 @@ def vg_max_lv(vg_name, number, max_options):
     return _vg_value_set(vg_name, ['-l', str(number)], max_options)
 
 
+def vg_uuid_gen(vg_name, ignore, options):
+    assert ignore is None
+    return _vg_value_set(vg_name, ['--uuid'], options)
+
+
 def vg_retrieve(vg_specific):
 
     if vg_specific:

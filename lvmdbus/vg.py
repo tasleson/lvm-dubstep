@@ -721,6 +721,17 @@ class Vg(AutomatedProperties):
                          cb, cbe, return_tuple=False)
         cfg.worker_q.put(r)
 
+    @dbus.service.method(dbus_interface=VG_INTERFACE,
+                         in_signature='ia{sv}',
+                         out_signature='o',
+                         async_callbacks=('cb', 'cbe'))
+    def UuidGenerate(self, tmo, options, cb, cbe):
+        r = RequestEntry(tmo, Vg._vg_change_set,
+                         (self.state.Uuid, self.state.lvm_id,
+                          cmdhandler.vg_uuid_gen, None, options),
+                         cb, cbe, return_tuple=False)
+        cfg.worker_q.put(r)
+
     def _attribute(self, pos, ch):
         if self.state.attr[pos] == ch:
             return True
