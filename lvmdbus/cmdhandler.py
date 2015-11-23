@@ -39,6 +39,13 @@ cmd_lock = threading.Lock()
 _t_call = None
 
 
+def _debug_c(cmd, exit_code, out):
+    print 'CMD:', ' '.join(cmd)
+    print("EC = %d" % exit_code)
+    print("STDOUT=\n %s\n" % out[0])
+    print("STDERR=\n %s\n" % out[1])
+
+
 def call_lvm(command, debug=False):
     """
     Call an executable and return a tuple of exitcode, stdout, stderr
@@ -57,13 +64,12 @@ def call_lvm(command, debug=False):
     out = process.communicate()
 
     if debug or process.returncode != 0:
-        print 'CMD:', ' '.join(command)
-        print("EC = %d" % process.returncode)
-        print("STDOUT=\n %s\n" % out[0])
-        print("STDERR=\n %s\n" % out[1])
+        _debug_c(command, process.returncode, out)
 
     if process.returncode == 0:
-        assert(out[1] is None or len(out[1]) == 0)
+        if out[1] and len(out[1]):
+            print 'WARNING: lvm is out-putting text to STDERR on success!'
+            _debug_c(command, process.returncode, out)
 
     return process.returncode, out[0], out[1]
 
