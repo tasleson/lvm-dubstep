@@ -49,14 +49,7 @@ class AutomatedProperties(dbus.service.Object):
         return self._ap_o_path, props
 
     def interface(self, all_interfaces=False):
-        rc = []
-        if all_interfaces:
-            rc = self._dbus_interface_table.keys()
-        else:
-            for k in self._dbus_interface_table.keys():
-                if not k.startswith('org.freedesktop.DBus'):
-                    rc.append(k)
-        return rc
+        return [self._ap_interface]
 
     # Properties
     # noinspection PyUnusedLocal
