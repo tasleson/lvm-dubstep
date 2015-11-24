@@ -158,13 +158,8 @@ def lv_object_factory(interface_name, *args):
         def signal_vg_pv_changes(self):
             # Signal property changes...
             vg_obj = cfg.om.get_by_path(self.Vg)
-            if vg_obj:
-                vg_obj.refresh()
-
-            for d in self.Devices:
-                pv = cfg.om.get_by_path(d[0])
-                if pv:
-                    pv.refresh()
+            vg_obj.refresh()
+            vg_obj.refresh_pvs()
 
         def vg_name_lookup(self):
             return self.state.vg_name_lookup()
@@ -216,7 +211,8 @@ def lv_object_factory(interface_name, *args):
                     vg_name = dbo.vg_name_lookup()
 
                     dbo.refresh("%s/%s" % (vg_name, new_name))
-                    cfg.om.get_by_path(dbo.Vg).refresh()
+                    dbo.signal_vg_pv_changes()
+
                 else:
                     # Need to work on error handling, need consistent
                     raise dbus.exceptions.DBusException(
