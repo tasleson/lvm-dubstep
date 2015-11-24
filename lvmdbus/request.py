@@ -57,13 +57,12 @@ class RequestEntry(object):
         r.timer_expired()
 
     def _return_job(self):
-        self._job = True
-        job = Job(None, self)
-        cfg.om.register_object(job, True)
+        self._job = Job(None, self)
+        cfg.om.register_object(self._job, True)
         if self._return_tuple:
-            self.cb(('/', job.dbus_object_path()))
+            self.cb(('/', self._job.dbus_object_path()))
         else:
-            self.cb(job.dbus_object_path())
+            self.cb(self._job.dbus_object_path())
 
     def run_cmd(self):
         try:
@@ -115,6 +114,11 @@ class RequestEntry(object):
                 else:
                     if self.cb_error:
                         self.cb_error(self._rc_error)
+            else:
+                # We have a job and it's complete, indicate that it's done.
+                # TODO: We need to signal the job is done too.
+                self._job.Complete = True
+                self._job = None
 
     def register_error(self, error_rc, error):
         self._reg_ending(None, error_rc, error)

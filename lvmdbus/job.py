@@ -36,6 +36,7 @@ class Job(AutomatedProperties):
         self._percent = 0
         self._complete = False
         self._request = request
+        self._cond = threading.Condition(self.rlock)
 
         # This is an lvm command that is just taking too long and doesn't
         # support background operation
@@ -74,6 +75,7 @@ class Job(AutomatedProperties):
     def Complete(self, value):
         with self.rlock:
             self._complete = value
+            self._cond.notify_all()
 
     @property
     def GetError(self):
@@ -96,6 +98,22 @@ class Job(AutomatedProperties):
             else:
                 raise dbus.exceptions.DBusException(
                     JOB_INTERFACE, 'Job is not complete!')
+
+    @dbus.service.method(dbus_interface=JOB_INTERFACE,
+                         in_signature='i',
+                         out_signature='b')
+    def Wait(self, timeout):
+        try:
+            with self._cond:
+                # Check to see if we are done, before we wait
+                if not self.Complete:
+                    if timeout != -1:
+                        self._cond.wait(timeout)
+                    else:
+                        self._cond.wait()
+                return self.Complete
+        except RuntimeError:
+            return False
 
     @property
     def Result(self):
