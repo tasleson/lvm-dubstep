@@ -94,9 +94,9 @@ class AutomatedProperties(dbus.service.Object):
                          signature='sa{sv}as')
     def PropertiesChanged(self, interface_name, changed_properties,
                           invalidated_properties):
-        print('SIGNAL: PropertiesChanged(%s, %s, %s)' %
-              (str(interface_name), str(changed_properties),
-               str(invalidated_properties)))
+        print('SIGNAL: PropertiesChanged(%s, %s, %s, %s)' %
+              (str(self._ap_o_path), str(interface_name),
+               str(changed_properties), str(invalidated_properties)))
 
     def refresh(self, search_key=None, object_state=None):
         """
