@@ -29,14 +29,26 @@ class Job(AutomatedProperties):
     _Result_type = 'o'
     _GetError_type = '(is)'
 
-    def __init__(self, lv_name):
+    def __init__(self, lv_name, request):
         super(Job, self).__init__(job_obj_path_generate(), JOB_INTERFACE)
-        self._lv_name = lv_name
         self.rlock = threading.RLock()
+
         self._percent = 0
         self._complete = False
+        self._request = request
 
-        cfg.jobs.set(lv_name, self)
+        # This is an lvm command that is just taking too long and doesn't
+        # support background operation
+        if self._request:
+            # Faking the percentage when we don't have one
+            self._percent = 1
+
+        # This is a lv that is having a move in progress
+        if lv_name:
+            cfg.jobs.set(lv_name, self)
+
+        assert ((self._request is None and lv_name) or
+                (self._request and lv_name is None))
 
     @property
     def Percent(self):
@@ -51,6 +63,11 @@ class Job(AutomatedProperties):
     @property
     def Complete(self):
         with self.rlock:
+            if self._request:
+                self._complete = self._request.is_done()
+                if self._complete:
+                    self._percent = 100
+
             return self._complete
 
     @Complete.setter
@@ -60,79 +77,32 @@ class Job(AutomatedProperties):
 
     @property
     def GetError(self):
-        if self.Complete:
-            return (0, '')
-        else:
-            return (-1, 'Job is not complete!')
+        with self.rlock:
+            if self.Complete:
+                if self._request:
+                    (rc, error) = self._request.get_errors()
+                    return (rc, str(error))
+                else:
+                    return (0, '')
+            else:
+                return (-1, 'Job is not complete!')
 
     @dbus.service.method(dbus_interface=JOB_INTERFACE)
     def Remove(self):
         with self.rlock:
             if self.Complete:
                 cfg.om.remove_object(self, True)
+                self._request = None
             else:
                 raise dbus.exceptions.DBusException(
                     JOB_INTERFACE, 'Job is not complete!')
 
     @property
     def Result(self):
-        return '/'
-
-    @property
-    def lvm_id(self):
-        return str(id(self))
-
-    @property
-    def Uuid(self):
-        import uuid
-        return uuid.uuid1()
-
-
-# noinspection PyPep8Naming
-class AsyncJob(AutomatedProperties):
-    DBUS_INTERFACE = JOB_INTERFACE
-    _Percent_type = 'y'
-    _Complete_type = 'b'
-    _Result_type = 'o'
-    _GetError_type = '(is)'
-
-    def __init__(self, request):
-        super(AsyncJob, self).__init__(job_obj_path_generate(),
-                                       JOB_INTERFACE)
-        self._request = request
-        self._percent = 1
-
-    @property
-    def Percent(self):
-        return self._percent
-
-    @property
-    def Complete(self):
-        done = self._request.is_done()
-        if done:
-            self._percent = 100
-        return done
-
-    @property
-    def GetError(self):
-        if self.Complete:
-            (rc, error) = self._request.get_errors()
-            return (rc, str(error))
-        else:
-            return (-1, 'Job is not complete!')
-
-    @dbus.service.method(dbus_interface=JOB_INTERFACE)
-    def Remove(self):
-        if self.Complete:
-            cfg.om.remove_object(self, True)
-            self._request = None
-        else:
-            raise dbus.exceptions.DBusException(
-                JOB_INTERFACE, 'Job is not complete!')
-
-    @property
-    def Result(self):
-        return self._request.result()
+        with self.rlock:
+            if self._request:
+                return self._request.result()
+            return '/'
 
     @property
     def lvm_id(self):

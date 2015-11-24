@@ -15,7 +15,7 @@
 
 import threading
 import gobject
-from job import AsyncJob
+from job import Job
 import cfg
 import dbus
 
@@ -58,7 +58,7 @@ class RequestEntry(object):
 
     def _return_job(self):
         self._job = True
-        job = AsyncJob(self)
+        job = Job(None, self)
         cfg.om.register_object(job, True)
         if self._return_tuple:
             self.cb(('/', job.dbus_object_path()))

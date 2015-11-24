@@ -280,7 +280,7 @@ def lv_object_factory(interface_name, *args):
 
                 if rc == 0:
                     # Create job object for monitoring
-                    job_obj = Job(self.lvm_id)
+                    job_obj = Job(self.lvm_id, None)
                     cfg.om.register_object(job_obj)
                     cfg.kick_q.put("wake up!")
                     return job_obj.dbus_object_path()
