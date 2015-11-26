@@ -157,7 +157,7 @@ def parse_column_names(out, column_names):
 
 def options_to_cli_args(options):
     rc = []
-    for k, v in options.items():
+    for k, v in dict(options).items():
         rc.append("--%s" % k)
         rc.append(str(v))
     return rc
