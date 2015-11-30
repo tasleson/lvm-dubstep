@@ -216,7 +216,7 @@ class Pv(AutomatedProperties):
                          async_callbacks=('cb', 'cbe'))
     def AllocationEnabled(self, yes, tmo, allocation_options, cb, cbe):
         r = RequestEntry(tmo, Pv._allocation_enabled,
-                         (self.state.uuid, self.state.lvm_id,
+                         (self.Uuid, self.lvm_id,
                           yes, allocation_options),
                          cb, cbe, False)
         cfg.worker_q.put(r)
