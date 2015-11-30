@@ -187,7 +187,7 @@ class Pv(AutomatedProperties):
                          async_callbacks=('cb', 'cbe'))
     def ReSize(self, new_size_bytes, tmo, resize_options, cb, cbe):
         r = RequestEntry(tmo, Pv._resize,
-                         (self.uuid, self.lvm_id, new_size_bytes,
+                         (self.Uuid, self.lvm_id, new_size_bytes,
                           resize_options), cb, cbe, False)
         cfg.worker_q.put(r)
 
