@@ -48,6 +48,7 @@ class AutomatedProperties(dbus.service.Object):
 
         return self._ap_o_path, props
 
+    # noinspection PyUnusedLocal
     def interface(self, all_interfaces=False):
         return [self._ap_interface]
 

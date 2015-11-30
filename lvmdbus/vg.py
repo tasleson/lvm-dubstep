@@ -749,7 +749,8 @@ class Vg(AutomatedProperties):
         cfg.worker_q.put(r)
 
     @staticmethod
-    def _vg_activate_deactivate(uuid, vg_name, activate, control_flags, options):
+    def _vg_activate_deactivate(uuid, vg_name, activate, control_flags,
+                                options):
         # Make sure we have a dbus object representing it
         dbo = cfg.om.get_by_uuid_lvm_id(uuid, vg_name)
 

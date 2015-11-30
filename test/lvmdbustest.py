@@ -567,7 +567,7 @@ class TestDbusService(unittest.TestCase):
 
     def test_vg_activate_deactivate(self):
         vg = self._vg_create()
-        lv = self._test_lv_create(
+        self._test_lv_create(
             vg.LvCreateLinear,
             (rs(8, '_lv'), 1024 * 1024 * 4, False, -1, {}),
             vg)
@@ -600,7 +600,7 @@ class TestDbusService(unittest.TestCase):
             self.assertEqual(self._refresh(), 0)
             pv.update()
 
-            self.assertTrue( pv.SizeBytes != original_size)
+            self.assertTrue(pv.SizeBytes != original_size)
             pv.ReSize(0, -1, {})
             self.assertEqual(self._refresh(), 0)
             pv.update()
