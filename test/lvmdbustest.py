@@ -580,6 +580,29 @@ class TestDbusService(unittest.TestCase):
         for i in range(0, 5):
             vg.Activate(1 << i, -1, {})
 
+    def test_pv_resize(self):
+
+        self.assertTrue(len(self.objs[PV_INT]) > 0)
+
+        if len(self.objs[PV_INT]) > 0:
+            pv = RemoteObject(self.bus, self.objs[PV_INT][0].object_path,
+                              PV_INT)
+
+            original_size = pv.SizeBytes
+
+            new_size = original_size / 2
+
+            pv.ReSize(new_size, -1, {})
+            self.assertEqual(self._refresh(), 0)
+            pv.update()
+
+            self.assertTrue( pv.SizeBytes != original_size)
+            pv.ReSize(0, -1, {})
+            self.assertEqual(self._refresh(), 0)
+            pv.update()
+            self.assertTrue(pv.SizeBytes == original_size)
+
+
 if __name__ == '__main__':
     # Test forking & exec new each time
     set_execution(False)
