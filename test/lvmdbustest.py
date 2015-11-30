@@ -602,6 +602,28 @@ class TestDbusService(unittest.TestCase):
             pv.update()
             self.assertTrue(pv.SizeBytes == original_size)
 
+    def test_pv_allocation(self):
+
+        pv_paths = []
+        for pp in self.objs[PV_INT]:
+            pv_paths.append(pp.object_path)
+
+        vg = self._vg_create(pv_paths)
+
+        pv = RemoteObject(self.bus, vg.Pvs[0],
+                              PV_INT)
+
+        pv.AllocationEnabled(False, -1, {})
+        pv.update()
+        self.assertFalse(pv.Allocatable)
+
+        pv.AllocationEnabled(True, -1, {})
+        pv.update()
+        self.assertTrue(pv.Allocatable)
+
+        self.assertEqual(self._refresh(), 0)
+
+
 
 if __name__ == '__main__':
     # Test forking & exec new each time
