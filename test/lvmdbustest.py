@@ -23,6 +23,7 @@ import random
 import string
 import functools
 import time
+import pyudev
 
 
 BUSNAME = "com.redhat.lvmdbus1"
@@ -151,8 +152,11 @@ class TestDbusService(unittest.TestCase):
         self.assertTrue(pv_path is not None and len(pv_path) > 0)
         return pv_path
 
+    def _manager(self):
+        return self.objs[MANAGER_INT][0]
+
     def _refresh(self):
-        return self.objs[MANAGER_INT][0].Refresh()
+        return self._manager().Refresh()
 
     def test_refresh(self):
         rc = self._refresh()
@@ -623,6 +627,49 @@ class TestDbusService(unittest.TestCase):
 
         self.assertEqual(self._refresh(), 0)
 
+    def _get_devices(self):
+        context = pyudev.Context()
+        return context.list_devices(subsystem='block', MAJOR='8')
+
+    def test_pv_scan(self):
+        devices = self._get_devices()
+
+        mgr = self._manager()
+
+        self.assertEqual(mgr.PvScan(False, True,
+                                    dbus.Array([], 'o'),
+                                    dbus.Array([], '(ii)'), -1, {}), '/')
+        self.assertEqual(self._refresh(), 0)
+        self.assertEqual(mgr.PvScan(False, False,
+                                    dbus.Array([], 'o'),
+                                    dbus.Array([], '(ii)'), -1, {}), '/')
+        self.assertEqual(self._refresh(), 0)
+
+        block_path = []
+        for d in devices:
+            block_path.append(d['DEVNAME'])
+
+        self.assertEqual(mgr.PvScan(False, True,
+                                    block_path,
+                                    dbus.Array([], '(ii)'), -1, {}), '/')
+
+        self.assertEqual(self._refresh(), 0)
+
+        mm = []
+        for d in devices:
+            mm.append((int(d['MAJOR']), int(d['MINOR'])))
+
+        self.assertEqual(mgr.PvScan(False, True,
+                                    block_path,
+                                    mm, -1, {}), '/')
+
+        self.assertEqual(self._refresh(), 0)
+
+        self.assertEqual(mgr.PvScan(False, True,
+                                    dbus.Array([], 'o'),
+                                    mm, -1, {}), '/')
+
+        self.assertEqual(self._refresh(), 0)
 
 
 if __name__ == '__main__':

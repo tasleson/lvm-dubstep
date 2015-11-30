@@ -521,6 +521,27 @@ def pv_contained_lv(device):
     return data
 
 
+def pv_scan(activate, cache, device_paths, major_minors, scan_options):
+    cmd = ['pvscan']
+    cmd.extend(options_to_cli_args(scan_options))
+
+    if activate:
+        cmd.extend(['--activate', "ay"])
+
+    if cache:
+        cmd.append('--cache')
+
+        if len(device_paths) > 0:
+            for d in device_paths:
+                cmd.append(d)
+
+        if len(major_minors) > 0:
+            for mm in major_minors:
+                cmd.append("%s:%s" % (mm))
+
+    return call(cmd)
+
+
 def vg_create(create_options, pv_devices, name):
     cmd = ['vgcreate']
     cmd.extend(options_to_cli_args(create_options))

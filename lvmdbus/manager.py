@@ -172,6 +172,47 @@ class Manager(AutomatedProperties):
         event_add((event, lvm_id, lvm_uuid, seqno))
         return dbus.Int32(0)
 
+    @staticmethod
+    def _pv_scan(activate, cache, device_path, major_minor, scan_options):
+
+        rc, out, err = cmdhandler.pv_scan(activate, cache, device_path,
+                                          major_minor, scan_options)
+
+        if rc == 0:
+            # This could potentially change the state quite a bit, so lets
+            # update everything to be safe
+            load(refresh=True)
+            return '/'
+        else:
+            raise dbus.exceptions.DBusException(
+                MANAGER_INTERFACE,
+                'Exit code %s, stderr = %s' % (str(rc), err))
+
+    @dbus.service.method(dbus_interface=MANAGER_INTERFACE,
+                         in_signature='bbaoa(ii)ia{sv}',
+                         out_signature='o',
+                         async_callbacks=('cb', 'cbe'))
+    def PvScan(self, activate, cache, device_paths, major_minors,
+               tmo, scan_options, cb, cbe):
+        """
+        Scan all supported LVM block devices in the system for physical volumes
+        NOTE: major_minors & device_paths only usable when cache == True
+        :param activate: If True, activate any newly found LVs
+        :param cache:    If True, update lvmetad
+        :param device_paths: Array of device paths or empty
+        :param major_minors: Array of structures (major,minor)
+        :param tmo: Timeout for operation
+        :param scan_options:  Additional options to pvscan
+        :param cb: Not visible in API (used for async. callback)
+        :param cbe: Not visible in API (used for async. error callback)
+        :return: '/' if operation done, else job path
+        """
+        r = RequestEntry(tmo, Manager._pv_scan,
+                         (activate, cache, device_paths, major_minors,
+                          scan_options),
+                         cb, cbe, False)
+        cfg.worker_q.put(r)
+
     @property
     def lvm_id(self):
         """
