@@ -25,8 +25,8 @@ from job import Job
 from utils import lv_obj_path_generate, n, n32
 from loader import common
 from state import State
-from jobmonitor import pv_move_lv_cmd
-import jobmonitor
+from pvmover import pv_move_lv_cmd
+import pvmover
 
 
 def lvs_state_retrieve(selection):
@@ -283,7 +283,7 @@ def lv_object_factory(interface_name, *args):
                 # Create job object to be used while running the command
                 job_obj = Job(None)
                 cfg.om.register_object(job_obj)
-                jobmonitor.add(cmd, job_obj)
+                pvmover.add(cmd, job_obj)
                 return job_obj.dbus_object_path()
             else:
                 raise dbus.exceptions.DBusException(

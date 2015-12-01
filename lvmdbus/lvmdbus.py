@@ -27,7 +27,7 @@ import dbus
 import gobject
 from fetch import load
 from manager import Manager
-from jobmonitor import pv_move_reaper
+from pvmover import pv_move_reaper
 import traceback
 import Queue
 import sys
