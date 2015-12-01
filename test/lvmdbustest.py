@@ -637,11 +637,11 @@ class TestDbusService(unittest.TestCase):
         mgr = self._manager()
 
         self.assertEqual(mgr.PvScan(False, True,
-                                    dbus.Array([], 'o'),
+                                    dbus.Array([], 's'),
                                     dbus.Array([], '(ii)'), -1, {}), '/')
         self.assertEqual(self._refresh(), 0)
         self.assertEqual(mgr.PvScan(False, False,
-                                    dbus.Array([], 'o'),
+                                    dbus.Array([], 's'),
                                     dbus.Array([], '(ii)'), -1, {}), '/')
         self.assertEqual(self._refresh(), 0)
 
@@ -666,7 +666,7 @@ class TestDbusService(unittest.TestCase):
         self.assertEqual(self._refresh(), 0)
 
         self.assertEqual(mgr.PvScan(False, True,
-                                    dbus.Array([], 'o'),
+                                    dbus.Array([], 's'),
                                     mm, -1, {}), '/')
 
         self.assertEqual(self._refresh(), 0)

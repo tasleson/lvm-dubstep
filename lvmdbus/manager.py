@@ -189,7 +189,7 @@ class Manager(AutomatedProperties):
                 'Exit code %s, stderr = %s' % (str(rc), err))
 
     @dbus.service.method(dbus_interface=MANAGER_INTERFACE,
-                         in_signature='bbaoa(ii)ia{sv}',
+                         in_signature='bbasa(ii)ia{sv}',
                          out_signature='o',
                          async_callbacks=('cb', 'cbe'))
     def PvScan(self, activate, cache, device_paths, major_minors,
