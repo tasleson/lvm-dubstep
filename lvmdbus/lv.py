@@ -25,6 +25,8 @@ from job import Job
 from utils import lv_obj_path_generate, n, n32
 from loader import common
 from state import State
+from jobmonitor import pv_move_lv_cmd
+import jobmonitor
 
 
 def lvs_state_retrieve(selection):
@@ -258,32 +260,31 @@ def lv_object_factory(interface_name, *args):
             pv_dest = None
             pv_src = cfg.om.get_by_path(pv_src_obj)
             if pv_src:
+
+                # Check to see if we are handling a move to a specific dest
                 if pv_dest_obj != '/':
                     pv_dest_t = cfg.om.get_by_path(pv_dest_obj)
                     if not pv_dest_t:
                         raise dbus.exceptions.DBusException(
                             interface_name, 'pv_dest_obj (%s) not found' %
                             pv_src_obj)
+
                     pv_dest = pv_dest_t.lvm_id
 
-                rc, out, err = cmdhandler.pv_move_lv(
-                    move_options,
-                    self.lvm_id,
-                    pv_src.lvm_id,
-                    pv_source_range,
-                    pv_dest,
-                    pv_dest_range)
+                # Generate the command line for this command, but don't
+                # execute it.
+                cmd = pv_move_lv_cmd(move_options,
+                                        self.lvm_id,
+                                        pv_src.lvm_id,
+                                        pv_source_range,
+                                        pv_dest,
+                                        pv_dest_range)
 
-                if rc == 0:
-                    # Create job object for monitoring
-                    job_obj = Job(self.lvm_id, None)
-                    cfg.om.register_object(job_obj)
-                    cfg.kick_q.put("wake up!")
-                    return job_obj.dbus_object_path()
-                else:
-                    raise dbus.exceptions.DBusException(
-                        interface_name,
-                        'Exit code %s, stderr = %s' % (str(rc), err))
+                # Create job object to be used while running the command
+                job_obj = Job(None)
+                cfg.om.register_object(job_obj)
+                jobmonitor.add(cmd, job_obj)
+                return job_obj.dbus_object_path()
             else:
                 raise dbus.exceptions.DBusException(
                     interface_name, 'pv_src_obj (%s) not found' % pv_src_obj)

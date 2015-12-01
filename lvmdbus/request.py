@@ -57,7 +57,7 @@ class RequestEntry(object):
         r.timer_expired()
 
     def _return_job(self):
-        self._job = Job(None, self)
+        self._job = Job(self)
         cfg.om.register_object(self._job, True)
         if self._return_tuple:
             self.cb(('/', self._job.dbus_object_path()))

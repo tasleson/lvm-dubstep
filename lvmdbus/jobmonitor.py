@@ -14,153 +14,75 @@
 # Copyright 2015, Tony Asleson <tasleson@redhat.com>
 
 import threading
-import Queue
+import string
+import subprocess
 import cfg
-import utils
-import cmdhandler
 import time
-import datetime
+from cmdhandler import options_to_cli_args
 
-POLL_INTERVAL_SECONDS = 5
-
-
-def refresh_move_objs(lvm_id, src_pv=None, dest_pv=None):
-    lv = cfg.om.get_by_lvm_id(lvm_id)
-    if lv:
-        # Best guess is that the lv and the source & dest.
-        # PV state needs to be updated, need to verify.
-        utils.pprint('gen_signals: move LV %s' % (str(lvm_id)),
-                                     "fg_yellow", "bg_black")
-        lv.refresh()
-
-        vg = cfg.om.get_by_path(lv.Vg)
-        if vg:
-            vg.refresh()
-
-            if not src_pv and not dest_pv:
-                for pv_object_path in vg.Pvs:
-                    pv = cfg.om.get_by_path(pv_object_path)
-                    if pv:
-                        pv.refresh()
-            else:
-                pv = cfg.om.get_by_lvm_id(src_pv)
-                if pv:
-                    pv.refresh()
-                pv = cfg.om.get_by_lvm_id(dest_pv)
-                if pv:
-                    pv.refresh()
+_rlock = threading.RLock()
+_thread_list = list()
 
 
-class Monitor(object):
+def pv_move_lv_cmd(move_options, lv_full_name,
+                pv_source, pv_source_range, pv_dest, pv_dest_range):
+    cmd = ['pvmove', '-i', '1']
+    cmd.extend(options_to_cli_args(move_options))
 
-    def __init__(self):
-        self._rlock = threading.RLock()
-        self._jobs = {}
+    cmd.extend(['-n', lv_full_name])
 
-    def get(self, lv_name):
-        with self._rlock:
-            if lv_name in self._jobs:
-                return self._jobs[lv_name][0]
-            return None
+    if pv_source_range[1] != 0:
+        cmd.append("%s-%d:%d" %
+                   (pv_source, pv_source_range[0], pv_source_range[1]))
+    else:
+        cmd.append(pv_source)
 
-    def set(self, lv_name, job):
-        with self._rlock:
-            self._jobs[lv_name] = (job, datetime.datetime.now())
+    if pv_dest:
+        if pv_dest_range[1] != 0:
+            cmd.append("%s-%d:%d" %
+                       (pv_dest, pv_dest_range[0], pv_dest_range[1]))
+        else:
+            cmd.append(pv_dest)
 
-    def delete(self, lv_name):
-        with self._rlock:
-            assert lv_name in self._jobs
-            assert self._jobs[lv_name][0].Complete
-            del self._jobs[lv_name]
-
-    def num_jobs(self):
-        with self._rlock:
-            return len(self._jobs.keys())
-
-    def finish_all(self, last_change):
-        with self._rlock:
-            for k in self._jobs.keys():
-                v, ts = self._jobs[k]
-
-                if (last_change - ts).seconds >= (2 * POLL_INTERVAL_SECONDS):
-                    refresh_move_objs(k)
-                    v.Percent = 100
-                    v.Complete = True
-                    del self._jobs[k]
+    return cmd
 
 
-def monitor_moves():
-    prev_jobs = {}
-
-    def gen_signals(p, c):
-        if p:
-            #print 'PREV=', str(p)
-            #print 'CURR=', str(c)
-
-            for prev_k, prev_v in p.items():
-                if prev_k in c:
-                    if prev_v['src_dev'] == c[prev_k]['src_dev']:
-                        prev_v['percent'] = c[prev_k]['percent']
-
-                        j = cfg.jobs.get(prev_k)
-                        j.Percent = int(c[prev_k]['percent'])
-                    else:
-                        p[prev_k] = c[prev_k]
-                    del c[prev_k]
-                else:
-                    state = p[prev_k]
-                    del p[prev_k]
-
-                    # This move is over, update the job object and generate
-                    # signals
-                    with cfg.om.locked():
-                        refresh_move_objs(prev_k, state['src_dev'],
-                                          state['dest_dev'])
-
-                        job_obj = cfg.jobs.get(prev_k)
-                        job_obj.Percent = 100
-                        job_obj.Complete = True
-                        cfg.jobs.delete(prev_k)
-
-            # Update previous to current
-            p.update(c)
-
+def pv_move_reaper():
     while cfg.run.value != 0:
+        with _rlock:
+            num_threads = len(_thread_list) - 1
+            if num_threads >= 0:
+                for i in range(num_threads, -1, -1):
+                    _thread_list[i].join(0)
+                    if not _thread_list[i].is_alive():
+                        _thread_list.pop(i)
 
-        try:
-            cfg.kick_q.get(True, POLL_INTERVAL_SECONDS)
-        except IOError:
-            pass
-        except Queue.Empty:
-            pass
+        time.sleep(3)
 
-        last_seen = datetime.datetime.now()
 
-        while True:
-            if cfg.run.value == 0:
-                break
+def move_execute(command, move_job):
+    process = subprocess.Popen(command, stdout=subprocess.PIPE,
+                               stderr=subprocess.PIPE, close_fds=True)
+    lines_iterator = iter(process.stdout.readline, b"")
+    for line in lines_iterator:
+        if len(line) > 10:
+            (device, ignore, percentage) = line.split(':')
+            move_job.Percent = round(float(string.strip(percentage)[:-1]), 1)
 
-            cur_jobs = cmdhandler.pv_move_status()
+    out = process.communicate()
 
-            if cur_jobs:
-                last_seen = datetime.datetime.now()
-                if not prev_jobs:
-                    prev_jobs = cur_jobs
-                else:
-                    gen_signals(prev_jobs, cur_jobs)
-            else:
-                #Signal any that remain in running!
-                gen_signals(prev_jobs, cur_jobs)
-                prev_jobs = None
+    #print "DEBUG: EC %d, STDOUT %s, STDERR %s" % \
+    #      (process.returncode, out[0], out[1])
 
-                # Check to see if we have any jobs that are not making
-                # progress
-                with cfg.om.locked():
-                    if cfg.jobs.num_jobs() > 0:
-                        cfg.jobs.finish_all(last_seen)
+    move_job.set_result(process.returncode, out[1])
 
-                break
 
-            time.sleep(1)
+def add(command, reporting_job):
+    # Create the thread, get it running and then add it to the list
+    t = threading.Thread(target=move_execute,
+                            name="thread: " + ' '.join(command),
+                            args=(command, reporting_job))
+    t.start()
 
-    return None
+    with _rlock:
+        _thread_list.append(t)

@@ -29,7 +29,7 @@ class Job(AutomatedProperties):
     _Result_type = 'o'
     _GetError_type = '(is)'
 
-    def __init__(self, lv_name, request):
+    def __init__(self, request):
         super(Job, self).__init__(job_obj_path_generate(), JOB_INTERFACE)
         self.rlock = threading.RLock()
 
@@ -37,19 +37,14 @@ class Job(AutomatedProperties):
         self._complete = False
         self._request = request
         self._cond = threading.Condition(self.rlock)
+        self._ec = 0
+        self._stderr = ''
 
         # This is an lvm command that is just taking too long and doesn't
         # support background operation
         if self._request:
             # Faking the percentage when we don't have one
             self._percent = 1
-
-        # This is a lv that is having a move in progress
-        if lv_name:
-            cfg.jobs.set(lv_name, self)
-
-        assert ((self._request is None and lv_name) or
-                (self._request and lv_name is None))
 
     @property
     def Percent(self):
@@ -85,9 +80,15 @@ class Job(AutomatedProperties):
                     (rc, error) = self._request.get_errors()
                     return (rc, str(error))
                 else:
-                    return (0, '')
+                    return (self._ec, self._stderr)
             else:
                 return (-1, 'Job is not complete!')
+
+    def set_result(self, ec, msg):
+        with self.rlock:
+            self.Complete = True
+            self._ec = ec
+            self._stderr = msg
 
     @dbus.service.method(dbus_interface=JOB_INTERFACE)
     def Remove(self):

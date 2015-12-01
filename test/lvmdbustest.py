@@ -376,7 +376,7 @@ class TestDbusService(unittest.TestCase):
             else:
                 print 'Percentage = ', j.Percent
 
-            if j.Wait(3):
+            if j.Wait(1):
                 print 'Wait indicates we are done!'
 
         return rc

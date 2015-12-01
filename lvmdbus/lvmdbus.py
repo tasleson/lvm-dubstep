@@ -27,7 +27,7 @@ import dbus
 import gobject
 from fetch import load
 from manager import Manager
-from jobmonitor import monitor_moves, Monitor
+from jobmonitor import pv_move_reaper
 import traceback
 import Queue
 import sys
@@ -53,7 +53,7 @@ def process_request():
 
 def main():
     # List of threads that we start up
-    process_list = []
+    thread_list = []
 
     start = time.time()
 
@@ -74,20 +74,17 @@ def main():
     cfg.om = Lvm(BASE_OBJ_PATH)
     cfg.om.register_object(Manager(MANAGER_OBJ_PATH))
 
-    # Create the job monitor
-    cfg.jobs = Monitor()
-
     # Start up thread to monitor pv moves
-    process_list.append(
-        threading.Thread(target=monitor_moves))
+    thread_list.append(
+        threading.Thread(target=pv_move_reaper, name="pv_move_reaper"))
 
     # Using a thread to process requests.
-    process_list.append(threading.Thread(target=process_request))
+    thread_list.append(threading.Thread(target=process_request))
 
     load()
     cfg.loop = gobject.MainLoop()
 
-    for process in process_list:
+    for process in thread_list:
         process.damon = True
         process.start()
 
@@ -104,7 +101,7 @@ def main():
 
             udevwatch.remove()
 
-            for process in process_list:
+            for process in thread_list:
                 process.join()
     except KeyboardInterrupt:
         pass
