@@ -409,40 +409,43 @@ class TestDbusService(unittest.TestCase):
 
         self._wait_for_job(vg_job)
 
-    def _test_expired_timer(self):
+    def _test_expired_timer(self, num_lvs):
         rc = False
         pv_paths = []
         for pp in self.objs[PV_INT]:
             pv_paths.append(pp.object_path)
 
-        vg_name = rs(8, '_vg')
+        # In small configurations lvm is pretty snappy, so lets create a VG
+        # add a number of LVs and then remove the VG and all the contained
+        # LVs which appears to consistently run a little slow.
 
-        # Test getting a job right away
+        vg = self._vg_create(pv_paths)
+
+        for i in range(0, num_lvs):
+            obj_path, job = vg.LvCreateLinear(rs(8, "_lv"),
+                                              1024 * 1024 * 4, False, -1, {})
+            self.assertTrue(job == '/')
+
+        # Make sure that we are honoring the timeout
         start = time.time()
 
-        vg_path, vg_job = self.objs[MANAGER_INT][0].VgCreate(
-            vg_name, pv_paths,
-            1, {})
+        remove_job = vg.Remove(1, {})
 
         end = time.time()
 
-        self.assertTrue((end - float(start)) < 2.0)
+        tt_remove = float(end) - float(start)
+
+        self.assertTrue(tt_remove < 2.0, "remove time %s" % (str(tt_remove)))
 
         # Depending on how long it took we could finish either way
-        if vg_path == '/':
+        if remove_job != '/':
             # We got a job
-            self.assertTrue(vg_path == '/')
-            self.assertTrue(vg_job and len(vg_job) > 0)
-
-            vg_path = self._wait_for_job(vg_job)
+            result = self._wait_for_job(remove_job)
+            self.assertTrue(result == '/')
             rc = True
         else:
-            # It completed!
-            self.assertTrue(vg_job == '/')
-
-        # clean-up in case we need to try again
-        vg = RemoteObject(self.bus, vg_path, VG_INT)
-        vg.Remove(-1, {})
+            # It completed before timer popped
+            pass
 
         return rc
 
@@ -452,8 +455,8 @@ class TestDbusService(unittest.TestCase):
 
         print "\nNote: This test isn't guaranteed to pass..."
 
-        for i in range(0, 20):
-            yes = self._test_expired_timer()
+        for i in [32, 64]:
+            yes = self._test_expired_timer(i)
             if yes:
                 print 'Success!'
                 break

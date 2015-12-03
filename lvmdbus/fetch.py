@@ -23,27 +23,24 @@ def load(refresh=False):
 
     num_total_changes = 0
 
-    # When we are loading or reloading (refresh) don't let any other threads
-    # make changes to the object manager, we want consistent view.
-    with cfg.om.locked():
-        # Go through and load all the PVs, VGs and LVs
+    # Go through and load all the PVs, VGs and LVs
 
-        pvs, num_changes = load_pvs(refresh=refresh)
-        num_total_changes += num_changes
+    pvs, num_changes = load_pvs(refresh=refresh)
+    num_total_changes += num_changes
 
-        for p in pvs:
-            cfg.om.register_object(p, refresh)
+    for p in pvs:
+        cfg.om.register_object(p, refresh)
 
-        vgs, num_changes = load_vgs(refresh=refresh)
-        num_total_changes += num_changes
+    vgs, num_changes = load_vgs(refresh=refresh)
+    num_total_changes += num_changes
 
-        for v in vgs:
-            cfg.om.register_object(v, refresh)
+    for v in vgs:
+        cfg.om.register_object(v, refresh)
 
-        lvs, num_changes = load_lvs(refresh=refresh)
-        num_total_changes += num_changes
+    lvs, num_changes = load_lvs(refresh=refresh)
+    num_total_changes += num_changes
 
-        for l in lvs:
-            cfg.om.register_object(l, refresh)
+    for l in lvs:
+        cfg.om.register_object(l, refresh)
 
     return num_total_changes
