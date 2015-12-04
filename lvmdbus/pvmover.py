@@ -25,7 +25,7 @@ _thread_list = list()
 
 
 def pv_move_lv_cmd(move_options, lv_full_name,
-                pv_source, pv_source_range, pv_dest, pv_dest_range):
+                    pv_source, pv_source_range, pv_dest, pv_dest_range):
     cmd = ['pvmove', '-i', '1']
     cmd.extend(options_to_cli_args(move_options))
 
