@@ -24,25 +24,31 @@ _rlock = threading.RLock()
 _thread_list = list()
 
 
+def _range_append(cmd, device, start, end):
+
+    if (start, end) == (0, 0):
+        cmd.append(device)
+    else:
+        if start != 0 and end == 0:
+            cmd.append("%s-%d:-" % (device, start))
+        else:
+            cmd.append("%s-%d:%d" %
+                       (device, start, end))
+
+
 def pv_move_lv_cmd(move_options, lv_full_name,
-                    pv_source, pv_source_range, pv_dest, pv_dest_range):
+                    pv_source, pv_source_range, pv_dest_range_list):
     cmd = ['pvmove', '-i', '1']
     cmd.extend(options_to_cli_args(move_options))
 
-    cmd.extend(['-n', lv_full_name])
+    if lv_full_name:
+        cmd.extend(['-n', lv_full_name])
 
-    if pv_source_range[1] != 0:
-        cmd.append("%s-%d:%d" %
-                   (pv_source, pv_source_range[0], pv_source_range[1]))
-    else:
-        cmd.append(pv_source)
+    _range_append(cmd, pv_source, *pv_source_range)
 
-    if pv_dest:
-        if pv_dest_range[1] != 0:
-            cmd.append("%s-%d:%d" %
-                       (pv_dest, pv_dest_range[0], pv_dest_range[1]))
-        else:
-            cmd.append(pv_dest)
+    if len(pv_dest_range_list):
+        for i in pv_dest_range_list:
+            _range_append(cmd, *i)
 
     return cmd
 

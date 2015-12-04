@@ -367,7 +367,7 @@ class TestDbusService(unittest.TestCase):
             j = RemoteObject(self.bus, j_path, JOB_INT)
             if j.Complete:
                 print 'Done!'
-                self.assertTrue(j.Percent == 100)
+                self.assertTrue(j.Percent == 100, "P= %f" % j.Percent)
 
                 rc = j.Result
                 j.Remove()
@@ -388,7 +388,7 @@ class TestDbusService(unittest.TestCase):
 
         print pv_path_move
 
-        job = lv.Move(pv_path_move, (0, 0), '/', (0, 0), {})
+        job = lv.Move(pv_path_move, (0, 0), dbus.Array([], '(oii)'), {})
         self._wait_for_job(job)
         self.assertEqual(self._refresh(), 0)
 

@@ -253,23 +253,25 @@ def lv_object_factory(interface_name, *args):
             return self.state.Attr[0] == 't'
 
         @dbus.service.method(dbus_interface=interface_name,
-                             in_signature='o(tt)o(tt)a{sv}',
+                             in_signature='o(tt)a(ott)a{sv}',
                              out_signature='o')
-        def Move(self, pv_src_obj, pv_source_range, pv_dest_obj,
-                 pv_dest_range, move_options):
-            pv_dest = None
+        def Move(self, pv_src_obj, pv_source_range, pv_dests_and_ranges,
+                 move_options):
+            pv_dests = []
             pv_src = cfg.om.get_by_path(pv_src_obj)
             if pv_src:
 
-                # Check to see if we are handling a move to a specific dest
-                if pv_dest_obj != '/':
-                    pv_dest_t = cfg.om.get_by_path(pv_dest_obj)
-                    if not pv_dest_t:
-                        raise dbus.exceptions.DBusException(
-                            interface_name, 'pv_dest_obj (%s) not found' %
-                            pv_src_obj)
+                # Check to see if we are handling a move to a specific
+                # destination(s)
+                if len(pv_dests_and_ranges):
+                    for pr in pv_dests_and_ranges:
+                        pv_dbus_obj = cfg.om.get_by_path(pr[0])
+                        if not pv_dbus_obj:
+                            raise dbus.exceptions.DBusException(
+                                interface_name,
+                                'PV Destination (%s) not found' % pr[0])
 
-                    pv_dest = pv_dest_t.lvm_id
+                        pv_dests.append((pv_dbus_obj.lvm_id, pr[1], pr[2]))
 
                 # Generate the command line for this command, but don't
                 # execute it.
@@ -277,8 +279,7 @@ def lv_object_factory(interface_name, *args):
                                         self.lvm_id,
                                         pv_src.lvm_id,
                                         pv_source_range,
-                                        pv_dest,
-                                        pv_dest_range)
+                                        pv_dests)
 
                 # Create job object to be used while running the command
                 job_obj = Job(None)
