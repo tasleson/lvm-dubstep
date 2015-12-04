@@ -129,6 +129,9 @@ def move_execute(command, move_job):
     #print "DEBUG: EC %d, STDOUT %s, STDERR %s" % \
     #      (process.returncode, out[0], out[1])
 
+    if process.returncode == 0:
+        move_job.Percent = 100
+
     move_job.set_result(process.returncode, out[1])
 
 
