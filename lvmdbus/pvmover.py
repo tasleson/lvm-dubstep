@@ -19,6 +19,8 @@ import subprocess
 import cfg
 import time
 from cmdhandler import options_to_cli_args
+import dbus
+from job import Job
 
 _rlock = threading.RLock()
 _thread_list = list()
@@ -51,6 +53,53 @@ def pv_move_lv_cmd(move_options, lv_full_name,
             _range_append(cmd, *i)
 
     return cmd
+
+
+def move(interface_name, lv_name, pv_src_obj, pv_source_range,
+            pv_dests_and_ranges, move_options):
+    """
+    Common code for the pvmove handling.  As moves are usually time consuming
+    we will always be returning a job.
+    :param interface_name:  What dbus interface we are providing for
+    :param lv_name:     Optional (None or name of LV to move)
+    :param pv_src_obj:  dbus object patch for source PV
+    :param pv_source_range: (0,0 to ignore, else start, end segments)
+    :param pv_dests_and_ranges: Array of PV object paths and start/end segs
+    :param move_options: Hash with optional arguments
+    :return: Object path to job object
+    """
+    pv_dests = []
+    pv_src = cfg.om.get_by_path(pv_src_obj)
+    if pv_src:
+
+        # Check to see if we are handling a move to a specific
+        # destination(s)
+        if len(pv_dests_and_ranges):
+            for pr in pv_dests_and_ranges:
+                pv_dbus_obj = cfg.om.get_by_path(pr[0])
+                if not pv_dbus_obj:
+                    raise dbus.exceptions.DBusException(
+                        interface_name,
+                        'PV Destination (%s) not found' % pr[0])
+
+                pv_dests.append((pv_dbus_obj.lvm_id, pr[1], pr[2]))
+
+        # Generate the command line for this command, but don't
+        # execute it.
+        cmd = pv_move_lv_cmd(move_options,
+                                lv_name,
+                                pv_src.lvm_id,
+                                pv_source_range,
+                                pv_dests)
+
+        # Create job object to be used while running the command
+        job_obj = Job(None)
+        cfg.om.register_object(job_obj)
+        add(cmd, job_obj)
+        return job_obj.dbus_object_path()
+    else:
+        raise dbus.exceptions.DBusException(
+            interface_name, 'pv_src_obj (%s) not found' % pv_src_obj)
 
 
 def pv_move_reaper():

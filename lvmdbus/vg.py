@@ -26,6 +26,7 @@ from request import RequestEntry
 from loader import common
 from lv import load_lvs
 from state import State
+import pvmover
 
 
 def vgs_state_retrieve(selection):
@@ -392,6 +393,14 @@ class Vg(AutomatedProperties):
                           extend_options),
                          cb, cbe, False)
         cfg.worker_q.put(r)
+
+    @dbus.service.method(dbus_interface=VG_INTERFACE,
+                             in_signature='o(tt)a(ott)a{sv}',
+                             out_signature='o')
+    def Move(self, pv_src_obj, pv_source_range, pv_dests_and_ranges,
+             move_options):
+        return pvmover.move(VG_INTERFACE, None, pv_src_obj, pv_source_range,
+                            pv_dests_and_ranges, move_options)
 
     @staticmethod
     def _lv_create_linear(uuid, vg_name, name, size_bytes,

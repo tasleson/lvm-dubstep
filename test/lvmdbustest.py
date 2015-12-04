@@ -386,12 +386,21 @@ class TestDbusService(unittest.TestCase):
 
         pv_path_move = str(lv.Devices[0][0])
 
-        print pv_path_move
-
+        # Test moving a specific LV
         job = lv.Move(pv_path_move, (0, 0), dbus.Array([], '(oii)'), {})
         self._wait_for_job(job)
         self.assertEqual(self._refresh(), 0)
 
+        lv.update()
+        new_pv = str(lv.Devices[0][0])
+        self.assertTrue(pv_path_move != new_pv, "%s == %s" %
+                        (pv_path_move, new_pv))
+
+        # Test moving without being LV specific
+        vg = RemoteObject(self.bus, lv.Vg, VG_INT)
+        job = vg.Move(new_pv, (0, 0), dbus.Array([], '(oii)'), {})
+        self._wait_for_job(job)
+        self.assertEqual(self._refresh(), 0)
     def test_job_handling(self):
         pv_paths = []
         for pp in self.objs[PV_INT]:

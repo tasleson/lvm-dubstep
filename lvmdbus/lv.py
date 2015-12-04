@@ -21,11 +21,9 @@ import cmdhandler
 import cfg
 from cfg import LV_INTERFACE, MANAGER_INTERFACE, THIN_POOL_INTERFACE
 from request import RequestEntry
-from job import Job
 from utils import lv_obj_path_generate, n, n32
 from loader import common
 from state import State
-from pvmover import pv_move_lv_cmd
 import pvmover
 
 
@@ -257,38 +255,9 @@ def lv_object_factory(interface_name, *args):
                              out_signature='o')
         def Move(self, pv_src_obj, pv_source_range, pv_dests_and_ranges,
                  move_options):
-            pv_dests = []
-            pv_src = cfg.om.get_by_path(pv_src_obj)
-            if pv_src:
-
-                # Check to see if we are handling a move to a specific
-                # destination(s)
-                if len(pv_dests_and_ranges):
-                    for pr in pv_dests_and_ranges:
-                        pv_dbus_obj = cfg.om.get_by_path(pr[0])
-                        if not pv_dbus_obj:
-                            raise dbus.exceptions.DBusException(
-                                interface_name,
-                                'PV Destination (%s) not found' % pr[0])
-
-                        pv_dests.append((pv_dbus_obj.lvm_id, pr[1], pr[2]))
-
-                # Generate the command line for this command, but don't
-                # execute it.
-                cmd = pv_move_lv_cmd(move_options,
-                                        self.lvm_id,
-                                        pv_src.lvm_id,
-                                        pv_source_range,
-                                        pv_dests)
-
-                # Create job object to be used while running the command
-                job_obj = Job(None)
-                cfg.om.register_object(job_obj)
-                pvmover.add(cmd, job_obj)
-                return job_obj.dbus_object_path()
-            else:
-                raise dbus.exceptions.DBusException(
-                    interface_name, 'pv_src_obj (%s) not found' % pv_src_obj)
+            return pvmover.move(interface_name, self.lvm_id, pv_src_obj,
+                                pv_source_range, pv_dests_and_ranges,
+                                move_options)
 
         @staticmethod
         def _snap_shot(lv_uuid, lv_name, name, optional_size,
