@@ -405,6 +405,27 @@ class TestDbusService(unittest.TestCase):
         job = vg.Move(new_pv, (0, 0), dbus.Array([], '(oii)'), {})
         self._wait_for_job(job)
         self.assertEqual(self._refresh(), 0)
+
+        # Test Vg.Move
+        # TODO Test this more!
+        vg.update()
+        lv.update()
+
+        location = lv.Devices[0][0]
+
+        dst = None
+        for p in vg.Pvs:
+            if p != location:
+                dst = p
+
+        # Fetch the destination
+        pv = RemoteObject(self.bus, dst, PV_INT)
+
+        # Test range, move it to the middle of the new destination
+        job = vg.Move(location, (0, 0), [(dst, pv.PeCount / 2, 0), ], {})
+        self._wait_for_job(job)
+        self.assertEqual(self._refresh(), 0)
+
     def test_job_handling(self):
         pv_paths = []
         for pp in self.objs[PV_INT]:
