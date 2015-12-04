@@ -367,7 +367,11 @@ class TestDbusService(unittest.TestCase):
             j = RemoteObject(self.bus, j_path, JOB_INT)
             if j.Complete:
                 print 'Done!'
-                self.assertTrue(j.Percent == 100, "P= %f" % j.Percent)
+                (ec, error_msg) = j.GetError
+                self.assertTrue(ec == 0, "%d :%s" % (ec, error_msg))
+
+                if ec == 0:
+                    self.assertTrue(j.Percent == 100, "P= %f" % j.Percent)
 
                 rc = j.Result
                 j.Remove()
