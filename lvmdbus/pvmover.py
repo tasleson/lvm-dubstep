@@ -32,9 +32,9 @@ def _range_append(cmd, device, start, end):
         cmd.append(device)
     else:
         if start != 0 and end == 0:
-            cmd.append("%s-%d:-" % (device, start))
+            cmd.append("%s:%d-" % (device, start))
         else:
-            cmd.append("%s-%d:%d" %
+            cmd.append("%s:%d-%d" %
                        (device, start, end))
 
 
