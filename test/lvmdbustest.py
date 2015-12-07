@@ -359,6 +359,14 @@ class TestDbusService(unittest.TestCase):
         self.assertTrue(rc == '/')
         self.assertEqual(self._refresh(), 0)
 
+        rc, job = lv.Snapshot('ss2_' + lv.Name, 0, 0, {})
+        self.assertTrue(rc == '/')
+        self.assertTrue(job != '/')
+
+        self._wait_for_job(job)
+
+        self.assertEqual(self._refresh(), 0)
+
     # noinspection PyUnresolvedReferences
     def _wait_for_job(self, j_path):
         import time
