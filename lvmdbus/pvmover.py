@@ -20,7 +20,7 @@ import cfg
 import time
 from cmdhandler import options_to_cli_args
 import dbus
-from job import Job
+from job import Job, JobState
 
 _rlock = threading.RLock()
 _thread_list = list()
@@ -55,8 +55,14 @@ def pv_move_lv_cmd(move_options, lv_full_name,
     return cmd
 
 
+def _create_move_dbus_job(job_state):
+    job_obj = Job(None, job_state)
+    cfg.om.register_object(job_obj)
+    return job_obj.dbus_object_path()
+
+
 def move(interface_name, lv_name, pv_src_obj, pv_source_range,
-            pv_dests_and_ranges, move_options):
+         pv_dests_and_ranges, move_options, time_out):
     """
     Common code for the pvmove handling.  As moves are usually time consuming
     we will always be returning a job.
@@ -66,8 +72,10 @@ def move(interface_name, lv_name, pv_src_obj, pv_source_range,
     :param pv_source_range: (0,0 to ignore, else start, end segments)
     :param pv_dests_and_ranges: Array of PV object paths and start/end segs
     :param move_options: Hash with optional arguments
+    :param time_out:
     :return: Object path to job object
     """
+    rc = '/'
     pv_dests = []
     pv_src = cfg.om.get_by_path(pv_src_obj)
     if pv_src:
@@ -93,10 +101,27 @@ def move(interface_name, lv_name, pv_src_obj, pv_source_range,
                                 pv_dests)
 
         # Create job object to be used while running the command
-        job_obj = Job(None)
-        cfg.om.register_object(job_obj)
-        add(cmd, job_obj)
-        return job_obj.dbus_object_path()
+        job_state = JobState(None)
+        add(cmd, job_state)
+
+        if time_out == -1:
+            # Waiting forever
+            done = job_state.Wait(time_out)
+            if not done:
+                ec, err_msg = job_state.GetError
+                raise dbus.exceptions.DBusException(
+                    interface_name,
+                    'Exit code %s, stderr = %s' % (str(ec), err_msg))
+        elif time_out == 0:
+            # Immediately create and return a job
+            rc = _create_move_dbus_job(job_state)
+        else:
+            # Willing to wait for a bit
+            done = job_state.Wait(time_out)
+            if not done:
+                rc = _create_move_dbus_job(job_state)
+
+        return rc
     else:
         raise dbus.exceptions.DBusException(
             interface_name, 'pv_src_obj (%s) not found' % pv_src_obj)

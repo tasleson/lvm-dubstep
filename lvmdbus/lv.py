@@ -251,13 +251,13 @@ def lv_object_factory(interface_name, *args):
             return self.state.Attr[0] == 't'
 
         @dbus.service.method(dbus_interface=interface_name,
-                             in_signature='o(tt)a(ott)a{sv}',
+                             in_signature='o(tt)a(ott)ia{sv}',
                              out_signature='o')
         def Move(self, pv_src_obj, pv_source_range, pv_dests_and_ranges,
-                 move_options):
+                 tmo, move_options):
             return pvmover.move(interface_name, self.lvm_id, pv_src_obj,
                                 pv_source_range, pv_dests_and_ranges,
-                                move_options)
+                                move_options, tmo)
 
         @staticmethod
         def _snap_shot(lv_uuid, lv_name, name, optional_size,

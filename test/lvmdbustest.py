@@ -399,7 +399,7 @@ class TestDbusService(unittest.TestCase):
         pv_path_move = str(lv.Devices[0][0])
 
         # Test moving a specific LV
-        job = lv.Move(pv_path_move, (0, 0), dbus.Array([], '(oii)'), {})
+        job = lv.Move(pv_path_move, (0, 0), dbus.Array([], '(oii)'), 0, {})
         self._wait_for_job(job)
         self.assertEqual(self._refresh(), 0)
 
@@ -408,9 +408,13 @@ class TestDbusService(unittest.TestCase):
         self.assertTrue(pv_path_move != new_pv, "%s == %s" %
                         (pv_path_move, new_pv))
 
+    def test_move(self):
+        lv = self._create_lv()
+
         # Test moving without being LV specific
         vg = RemoteObject(self.bus, lv.Vg, VG_INT)
-        job = vg.Move(new_pv, (0, 0), dbus.Array([], '(oii)'), {})
+        pv_to_move = str(lv.Devices[0][0])
+        job = vg.Move(pv_to_move, (0, 0), dbus.Array([], '(oii)'), 0, {})
         self._wait_for_job(job)
         self.assertEqual(self._refresh(), 0)
 
@@ -429,9 +433,11 @@ class TestDbusService(unittest.TestCase):
         # Fetch the destination
         pv = RemoteObject(self.bus, dst, PV_INT)
 
-        # Test range, move it to the middle of the new destination
-        job = vg.Move(location, (0, 0), [(dst, pv.PeCount / 2, 0), ], {})
-        self._wait_for_job(job)
+        # Test range, move it to the middle of the new destination and blocking
+        # blocking for it to complete
+        job = vg.Move(location,
+                      (0, 0), [(dst, pv.PeCount / 2, 0), ], -1, {})
+        self.assertEqual(job, '/')
         self.assertEqual(self._refresh(), 0)
 
     def test_job_handling(self):
