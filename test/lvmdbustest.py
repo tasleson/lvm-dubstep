@@ -355,7 +355,7 @@ class TestDbusService(unittest.TestCase):
 
     def test_lv_snapshot(self):
         lv = self._create_lv()
-        rc = lv.Snapshot('ss_' + lv.Name, -1, 0, {})[0]
+        rc = lv.Snapshot('ss_' + lv.Name, 0, -1, {})[0]
         self.assertTrue(rc == '/')
         self.assertEqual(self._refresh(), 0)
 
