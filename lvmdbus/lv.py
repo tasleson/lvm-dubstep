@@ -299,10 +299,10 @@ def lv_object_factory(interface_name, *args):
             return '/'
 
         @dbus.service.method(dbus_interface=interface_name,
-                             in_signature='sita{sv}',
+                             in_signature='stia{sv}',
                              out_signature='(oo)',
                              async_callbacks=('cb', 'cbe'))
-        def Snapshot(self, name, tmo, optional_size, snapshot_options,
+        def Snapshot(self, name, optional_size, tmo, snapshot_options,
                      cb, cbe):
             r = RequestEntry(tmo, Lv._snap_shot,
                              (self.Uuid, self.lvm_id, name,

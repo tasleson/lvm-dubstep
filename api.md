@@ -41,8 +41,8 @@
 * Snapshot 
   * Arguments
       * name (String)
-      * tmo (int32_t)
       * optional_size (uint64_t)
+      * tmo (int32_t)
       * snapshot_options (Dictionary:{String, Variant})
   * Returns
       * Structure (Oject path, Oject path)
