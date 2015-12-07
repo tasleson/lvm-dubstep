@@ -310,6 +310,91 @@ def lv_object_factory(interface_name, *args):
             cfg.worker_q.put(r)
 
         @staticmethod
+        def _resize(lv_uuid, lv_name, fsck_fs, resize_fs,
+                    size_units, size_change,
+                    number_of_stripes, stripe_size, pv_dests_and_ranges,
+                    snapshot_options):
+            # Make sure we have a dbus object representing it
+            pv_dests = []
+            supported_units = ['', 'bytes', 'extents', '%vg',
+                                      '%lv', '%pvs', '%free', '%origin']
+            dbo = cfg.om.get_by_uuid_lvm_id(lv_uuid, lv_name)
+
+            if dbo:
+                # If we have PVs, verify them
+                if len(pv_dests_and_ranges):
+                    for pr in pv_dests_and_ranges:
+                        pv_dbus_obj = cfg.om.get_by_path(pr[0])
+                        if not pv_dbus_obj:
+                            raise dbus.exceptions.DBusException(
+                                interface_name,
+                                'PV Destination (%s) not found' % pr[0])
+
+                        pv_dests.append((pv_dbus_obj.lvm_id, pr[1], pr[2]))
+
+                # Verify size_units
+                size_units = size_units.lower()
+                if size_units not in supported_units:
+                    raise dbus.exceptions.DBusException(
+                        LV_INTERFACE,
+                        'Invalid size_units (%s), supported (%s)' %
+                        (size_units, ','.join(supported_units)))
+
+                rc, out, err = cmdhandler.lv_resize(
+                    dbo.lvm_id, fsck_fs, resize_fs,
+                    size_units, size_change,
+                    number_of_stripes, stripe_size, pv_dests)
+
+                if rc == 0:
+                    # Refresh what's changed
+                    dbo.refresh()
+                    dbo.signal_vg_pv_changes()
+                    return "/"
+                else:
+                    raise dbus.exceptions.DBusException(
+                        LV_INTERFACE,
+                        'Exit code %s, stderr = %s' % (str(rc), err))
+            else:
+                raise dbus.exceptions.DBusException(
+                    LV_INTERFACE, 'LV with uuid %s and name %s not present!' %
+                    (lv_uuid, lv_name))
+
+        @dbus.service.method(dbus_interface=interface_name,
+                             in_signature='bbsxiia(ott)ia{sv}',
+                             out_signature='o',
+                             async_callbacks=('cb', 'cbe'))
+        def Resize(self, fsck_fs, resize_fs, size_units,
+                   size_change, number_of_stripes, stripe_size,
+                   pv_dests_and_ranges, tmo, resize_options, cb, cbe):
+            """
+            Resize a LV
+            :param fsck_fs:     True == fsck filesystem
+            :param resize_fs:   True == re-size the filesystem after LV resized
+            :param size_units:  'one of the following
+                                ['', 'bytes', 'extents', '%vg','%lv', '%pvs',
+                                '%free', '%origin']
+            :param size_change: Positive or negative number
+            :param number_of_stripes:   -1 to ignore, else number of stripes
+            :param stripe_size: -1 to ignore, else stripe of each stripe
+            :param pv_dests_and_ranges: An array of pv object paths and src &
+                                        dst. segment ranges
+            :param tmo: -1 to wait forever, 0 to return job immediately, else
+                        number of seconds to wait for operation to complete
+                        before getting a job
+            :param resize_options: key/value hash of options
+            :param cb:
+            :param cbe:
+            :return: '/' if complete, else job object path
+            """
+            r = RequestEntry(tmo, Lv._resize,
+                             (self.Uuid, self.lvm_id, fsck_fs, resize_fs,
+                              size_units, size_change,
+                              number_of_stripes, stripe_size,
+                              pv_dests_and_ranges,
+                              resize_options), cb, cbe, return_tuple=False)
+            cfg.worker_q.put(r)
+
+        @staticmethod
         def _add_rm_tags(uuid, lv_name, tags_add, tags_del, tag_options):
             # Make sure we have a dbus object representing it
             dbo = cfg.om.get_by_uuid_lvm_id(uuid, lv_name)

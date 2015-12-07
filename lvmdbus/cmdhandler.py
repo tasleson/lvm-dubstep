@@ -20,6 +20,7 @@ import time
 import cfg
 import threading
 from itertools import chain
+from utils import pv_dest_ranges
 
 from lvm_shell_proxy import LVMShellProxy
 
@@ -332,6 +333,45 @@ def lv_rename(lv_path, new_name, rename_options):
     cmd = ['lvrename']
     cmd.extend(options_to_cli_args(rename_options))
     cmd.extend([lv_path, new_name])
+    return call(cmd)
+
+
+def lv_resize(lv_full_name, fsck_fs, resize_fs, size_units,
+              size_change, number_of_stripes, stripe_size, pv_dests):
+    cmd = ['lvresize', '--force']
+
+    if not fsck_fs:
+        cmd.append('--nofsck')
+
+    if resize_fs:
+        cmd.append('--resizefs')
+
+    # Handle the size and increase/decrease
+    if size_change < 0:
+        op = '-'
+        size_change = -(size_change)
+    else:
+        op = '+'
+
+    if size_units == 'bytes' or '':
+        method = '-L'
+        post = 'B'
+    else:
+        post = ''
+        method = '-l'
+        if '%' in size_units:
+            post = size_units
+
+    cmd.append('%s%s%d%s' % (method, op, size_change, post))
+
+    if number_of_stripes != -1:
+        cmd.extend(['--stripes', str(number_of_stripes)])
+
+    if stripe_size != -1:
+        cmd.extend(['--stripesize', str(stripe_size)])
+
+    cmd.append(lv_full_name)
+    pv_dest_ranges(cmd, pv_dests)
     return call(cmd)
 
 
