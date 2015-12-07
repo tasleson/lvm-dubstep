@@ -22,15 +22,9 @@ import threading
 
 
 # noinspection PyPep8Naming
-class Job(AutomatedProperties):
-    DBUS_INTERFACE = JOB_INTERFACE
-    _Percent_type = 'y'
-    _Complete_type = 'b'
-    _Result_type = 'o'
-    _GetError_type = '(is)'
+class JobState(object):
 
     def __init__(self, request):
-        super(Job, self).__init__(job_obj_path_generate(), JOB_INTERFACE)
         self.rlock = threading.RLock()
 
         self._percent = 0
@@ -90,19 +84,10 @@ class Job(AutomatedProperties):
             self._ec = ec
             self._stderr = msg
 
-    @dbus.service.method(dbus_interface=JOB_INTERFACE)
-    def Remove(self):
+    def dtor(self):
         with self.rlock:
-            if self.Complete:
-                cfg.om.remove_object(self, True)
-                self._request = None
-            else:
-                raise dbus.exceptions.DBusException(
-                    JOB_INTERFACE, 'Job is not complete!')
+            self._request = None
 
-    @dbus.service.method(dbus_interface=JOB_INTERFACE,
-                         in_signature='i',
-                         out_signature='b')
     def Wait(self, timeout):
         try:
             with self._cond:
@@ -122,6 +107,64 @@ class Job(AutomatedProperties):
             if self._request:
                 return self._request.result()
             return '/'
+
+
+# noinspection PyPep8Naming
+class Job(AutomatedProperties):
+    DBUS_INTERFACE = JOB_INTERFACE
+    _Percent_type = 'y'
+    _Complete_type = 'b'
+    _Result_type = 'o'
+    _GetError_type = '(is)'
+
+    def __init__(self, request, job_state=None):
+        super(Job, self).__init__(job_obj_path_generate(), JOB_INTERFACE)
+        if job_state:
+            self.state = job_state
+        else:
+            self.state = JobState(request)
+
+    @property
+    def Percent(self):
+        return self.state.Percent
+
+    @Percent.setter
+    def Percent(self, value):
+        self.state.Percent = value
+
+    @property
+    def Complete(self):
+        return self.state.Complete
+
+    @Complete.setter
+    def Complete(self, value):
+        self.state.Complete = value
+
+    @property
+    def GetError(self):
+        return self.state.GetError
+
+    def set_result(self, ec, msg):
+        self.state.set_result(ec, msg)
+
+    @dbus.service.method(dbus_interface=JOB_INTERFACE)
+    def Remove(self):
+        if self.state.Complete:
+            cfg.om.remove_object(self, True)
+            self.state.dtor()
+        else:
+            raise dbus.exceptions.DBusException(
+                JOB_INTERFACE, 'Job is not complete!')
+
+    @dbus.service.method(dbus_interface=JOB_INTERFACE,
+                         in_signature='i',
+                         out_signature='b')
+    def Wait(self, timeout):
+        return self.state.Wait(timeout)
+
+    @property
+    def Result(self):
+        return self.state.Result
 
     @property
     def lvm_id(self):
