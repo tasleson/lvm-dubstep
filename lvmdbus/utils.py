@@ -358,3 +358,21 @@ def color(text, *user_styles):
             return 'def color: parameter {} does not exist'.format(style)
     color_text += text
     return '\033[0m{0}\033[0m'.format(color_text)
+
+
+def pv_range_append(cmd, device, start, end):
+
+    if (start, end) == (0, 0):
+        cmd.append(device)
+    else:
+        if start != 0 and end == 0:
+            cmd.append("%s:%d-" % (device, start))
+        else:
+            cmd.append("%s:%d-%d" %
+                       (device, start, end))
+
+
+def pv_dest_ranges(cmd, pv_dest_range_list):
+    if len(pv_dest_range_list):
+        for i in pv_dest_range_list:
+            pv_range_append(cmd, *i)

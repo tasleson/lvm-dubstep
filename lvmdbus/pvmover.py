@@ -21,21 +21,11 @@ import time
 from cmdhandler import options_to_cli_args
 import dbus
 from job import Job, JobState
+from utils import pv_range_append, pv_dest_ranges
 
 _rlock = threading.RLock()
 _thread_list = list()
 
-
-def _range_append(cmd, device, start, end):
-
-    if (start, end) == (0, 0):
-        cmd.append(device)
-    else:
-        if start != 0 and end == 0:
-            cmd.append("%s:%d-" % (device, start))
-        else:
-            cmd.append("%s:%d-%d" %
-                       (device, start, end))
 
 
 def pv_move_lv_cmd(move_options, lv_full_name,
@@ -46,11 +36,8 @@ def pv_move_lv_cmd(move_options, lv_full_name,
     if lv_full_name:
         cmd.extend(['-n', lv_full_name])
 
-    _range_append(cmd, pv_source, *pv_source_range)
-
-    if len(pv_dest_range_list):
-        for i in pv_dest_range_list:
-            _range_append(cmd, *i)
+    pv_range_append(cmd, pv_source, *pv_source_range)
+    pv_dest_ranges(cmd, pv_dest_range_list)
 
     return cmd
 
