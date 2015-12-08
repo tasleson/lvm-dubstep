@@ -267,6 +267,7 @@ def lv_object_factory(interface_name, *args):
         @staticmethod
         def _snap_shot(lv_uuid, lv_name, name, optional_size,
                        snapshot_options):
+            rc = '/'
             # Make sure we have a dbus object representing it
             dbo = cfg.om.get_by_uuid_lvm_id(lv_uuid, lv_name)
 
@@ -289,10 +290,12 @@ def lv_object_factory(interface_name, *args):
                     for l in lvs:
                         cfg.om.register_object(l, True)
                         l.dbus_object_path()
+                        rc = l.dbus_object_path()
 
                     # Refresh self and all included PVs
                     dbo.refresh()
                     dbo.signal_vg_pv_changes()
+                    return rc
                 else:
                     raise dbus.exceptions.DBusException(
                         LV_INTERFACE,
@@ -301,7 +304,6 @@ def lv_object_factory(interface_name, *args):
                 raise dbus.exceptions.DBusException(
                     LV_INTERFACE, 'LV with uuid %s and name %s not present!' %
                     (lv_uuid, lv_name))
-            return '/'
 
         @dbus.service.method(dbus_interface=interface_name,
                              in_signature='stia{sv}',

@@ -355,14 +355,22 @@ class TestDbusService(unittest.TestCase):
 
     def test_lv_snapshot(self):
         lv = self._create_lv()
-        rc = lv.Snapshot('ss_' + lv.Name, 0, -1, {})[0]
-        self.assertTrue(rc == '/')
+        ss_name = 'ss_' + lv.Name
+
+        # Test waiting to complete
+        ss, job = lv.Snapshot(ss_name, 0, -1, {})
+        self.assertTrue(ss != '/')
+        self.assertTrue(job == '/')
+
+        snapshot = RemoteObject(self.bus, ss, LV_INT)
+        self.assertTrue(snapshot.Name == ss_name)
+
         self.assertEqual(self._refresh(), 0)
 
+        # Test getting a job returned immediately
         rc, job = lv.Snapshot('ss2_' + lv.Name, 0, 0, {})
         self.assertTrue(rc == '/')
         self.assertTrue(job != '/')
-
         self._wait_for_job(job)
 
         self.assertEqual(self._refresh(), 0)
