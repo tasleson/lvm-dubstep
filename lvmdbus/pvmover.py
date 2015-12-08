@@ -27,7 +27,6 @@ _rlock = threading.RLock()
 _thread_list = list()
 
 
-
 def pv_move_lv_cmd(move_options, lv_full_name,
                     pv_source, pv_source_range, pv_dest_range_list):
     cmd = ['pvmove', '-i', '1']
