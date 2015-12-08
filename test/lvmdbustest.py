@@ -412,7 +412,6 @@ class TestDbusService(unittest.TestCase):
 
             lv.update()
 
-
     def test_lv_move(self):
         lv = self._create_lv()
 
@@ -427,6 +426,21 @@ class TestDbusService(unittest.TestCase):
         new_pv = str(lv.Devices[0][0])
         self.assertTrue(pv_path_move != new_pv, "%s == %s" %
                         (pv_path_move, new_pv))
+
+    def test_lv_activate_deactivate(self):
+        lv = self._create_lv()
+        lv.update()
+
+        lv.Deactivate(0, -1, {})
+        self.assertEqual(self._refresh(), 0)
+
+        lv.Activate(0, -1, {})
+        self.assertEqual(self._refresh(), 0)
+
+        # Try control flags
+        for i in range(0, 5):
+            lv.Activate(1 << i, -1, {})
+            self.assertEqual(self._refresh(), 0)
 
     def test_move(self):
         lv = self._create_lv()
