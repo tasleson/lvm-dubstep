@@ -267,7 +267,6 @@ def lv_object_factory(interface_name, *args):
         @staticmethod
         def _snap_shot(lv_uuid, lv_name, name, optional_size,
                        snapshot_options):
-            rc = '/'
             # Make sure we have a dbus object representing it
             dbo = cfg.om.get_by_uuid_lvm_id(lv_uuid, lv_name)
 
@@ -285,17 +284,18 @@ def lv_object_factory(interface_name, *args):
                 rc, out, err = cmdhandler.vg_lv_snapshot(
                     lv_name, snapshot_options, name, optional_size)
                 if rc == 0:
+                    return_path = '/'
                     full_name = "%s/%s" % (dbo.vg_name_lookup(), name)
                     lvs = load_lvs([full_name])[0]
                     for l in lvs:
                         cfg.om.register_object(l, True)
                         l.dbus_object_path()
-                        rc = l.dbus_object_path()
+                        return_path = l.dbus_object_path()
 
                     # Refresh self and all included PVs
                     dbo.refresh()
                     dbo.signal_vg_pv_changes()
-                    return rc
+                    return return_path
                 else:
                     raise dbus.exceptions.DBusException(
                         LV_INTERFACE,
