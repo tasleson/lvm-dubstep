@@ -313,7 +313,7 @@ def lv_object_factory(interface_name, *args):
         def _resize(lv_uuid, lv_name, fsck_fs, resize_fs,
                     size_units, size_change,
                     number_of_stripes, stripe_size, pv_dests_and_ranges,
-                    snapshot_options):
+                    resize_options):
             # Make sure we have a dbus object representing it
             pv_dests = []
             supported_units = ['', 'bytes', 'extents', '%vg',
@@ -343,7 +343,7 @@ def lv_object_factory(interface_name, *args):
                 rc, out, err = cmdhandler.lv_resize(
                     dbo.lvm_id, fsck_fs, resize_fs,
                     size_units, size_change,
-                    number_of_stripes, stripe_size, pv_dests)
+                    number_of_stripes, stripe_size, pv_dests, resize_options)
 
                 if rc == 0:
                     # Refresh what's changed

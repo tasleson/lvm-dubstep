@@ -337,8 +337,11 @@ def lv_rename(lv_path, new_name, rename_options):
 
 
 def lv_resize(lv_full_name, fsck_fs, resize_fs, size_units,
-              size_change, number_of_stripes, stripe_size, pv_dests):
+              size_change, number_of_stripes, stripe_size, pv_dests,
+              resize_options):
     cmd = ['lvresize', '--force']
+
+    cmd.extend(options_to_cli_args(resize_options))
 
     if not fsck_fs:
         cmd.append('--nofsck')
