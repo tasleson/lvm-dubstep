@@ -573,8 +573,8 @@ def vg_uuid_gen(vg_name, ignore, options):
     return _vg_value_set(vg_name, ['--uuid'], options)
 
 
-def vg_activate_deactivate(vg_name, activate, control_flags, options):
-    cmd = ['vgchange']
+def activate_deactivate(op, name, activate, control_flags, options):
+    cmd = [op]
     cmd.extend(options_to_cli_args(options))
 
     op = '-a'
@@ -607,8 +607,8 @@ def vg_activate_deactivate(vg_name, activate, control_flags, options):
         op += 'n'
 
     cmd.append(op)
-    cmd.append(vg_name)
-    return call(cmd, True)
+    cmd.append(name)
+    return call(cmd)
 
 
 def vg_retrieve(vg_specific):

@@ -764,8 +764,8 @@ class Vg(AutomatedProperties):
         dbo = cfg.om.get_by_uuid_lvm_id(uuid, vg_name)
 
         if dbo:
-            rc, out, err = cmdhandler.vg_activate_deactivate(
-                vg_name, activate, control_flags, options)
+            rc, out, err = cmdhandler.activate_deactivate(
+                'vgchange', vg_name, activate, control_flags, options)
             if rc == 0:
                 dbo.refresh()
                 # Refresh all the LVs too
