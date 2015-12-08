@@ -19,7 +19,7 @@ from utils import vg_obj_path_generate, thin_pool_obj_path_generate
 import dbus
 import cmdhandler
 import cfg
-from cfg import LV_INTERFACE, MANAGER_INTERFACE, THIN_POOL_INTERFACE
+from cfg import LV_INTERFACE, THIN_POOL_INTERFACE
 from request import RequestEntry
 from utils import lv_obj_path_generate, n, n32
 from loader import common
@@ -290,7 +290,7 @@ def lv_object_factory(interface_name, *args):
                     dbo.signal_vg_pv_changes()
                 else:
                     raise dbus.exceptions.DBusException(
-                        MANAGER_INTERFACE,
+                        LV_INTERFACE,
                         'Exit code %s, stderr = %s' % (str(rc), err))
             else:
                 raise dbus.exceptions.DBusException(
@@ -408,7 +408,7 @@ def lv_object_factory(interface_name, *args):
                     return '/'
                 else:
                     raise dbus.exceptions.DBusException(
-                        MANAGER_INTERFACE,
+                        LV_INTERFACE,
                         'Exit code %s, stderr = %s' % (str(rc), err))
 
             else:
@@ -459,7 +459,7 @@ def lv_object_factory(interface_name, *args):
                         lv_created = l.dbus_object_path()
                 else:
                     raise dbus.exceptions.DBusException(
-                        MANAGER_INTERFACE,
+                        LV_INTERFACE,
                         'Exit code %s, stderr = %s' % (str(rc), err))
             else:
                 raise dbus.exceptions.DBusException(

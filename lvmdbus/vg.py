@@ -20,7 +20,7 @@ from utils import lv_obj_path_generate, thin_pool_obj_path_generate, \
     pv_obj_path_generate, vg_obj_path_generate, n
 import dbus
 import cfg
-from cfg import VG_INTERFACE, MANAGER_INTERFACE
+from cfg import VG_INTERFACE
 import cmdhandler
 from request import RequestEntry
 from loader import common
@@ -425,7 +425,7 @@ class Vg(AutomatedProperties):
                 dbo.refresh_pvs()
             else:
                 raise dbus.exceptions.DBusException(
-                    MANAGER_INTERFACE,
+                    VG_INTERFACE,
                     'Exit code %s, stderr = %s' % (str(rc), err))
         else:
             raise dbus.exceptions.DBusException(
@@ -472,7 +472,7 @@ class Vg(AutomatedProperties):
                 dbo.refresh_pvs()
             else:
                 raise dbus.exceptions.DBusException(
-                    MANAGER_INTERFACE,
+                    VG_INTERFACE,
                     'Exit code %s, stderr = %s' % (str(rc), err))
         else:
             raise dbus.exceptions.DBusException(
@@ -517,7 +517,7 @@ class Vg(AutomatedProperties):
                 dbo.refresh_pvs()
             else:
                 raise dbus.exceptions.DBusException(
-                    MANAGER_INTERFACE,
+                    VG_INTERFACE,
                     'Exit code %s, stderr = %s' % (str(rc), err))
 
         else:
@@ -562,7 +562,7 @@ class Vg(AutomatedProperties):
                 dbo.refresh_pvs()
             else:
                 raise dbus.exceptions.DBusException(
-                    MANAGER_INTERFACE,
+                    VG_INTERFACE,
                     'Exit code %s, stderr = %s' % (str(rc), err))
 
         else:
@@ -601,7 +601,7 @@ class Vg(AutomatedProperties):
                     pv_devices.append(pv.Name)
                 else:
                     raise dbus.exceptions.DBusException(
-                        MANAGER_INTERFACE, 'PV object path = %s not found' % p)
+                        VG_INTERFACE, 'PV object path = %s not found' % p)
 
             rc, out, err = cmdhandler.pv_tag(pv_devices, tags_add, tags_del,
                                              tag_options)
@@ -613,7 +613,7 @@ class Vg(AutomatedProperties):
                 return '/'
             else:
                 raise dbus.exceptions.DBusException(
-                    MANAGER_INTERFACE,
+                    VG_INTERFACE,
                     'Exit code %s, stderr = %s' % (str(rc), err))
 
         else:
@@ -657,7 +657,7 @@ class Vg(AutomatedProperties):
                 return '/'
             else:
                 raise dbus.exceptions.DBusException(
-                    MANAGER_INTERFACE,
+                    VG_INTERFACE,
                     'Exit code %s, stderr = %s' % (str(rc), err))
 
         else:
@@ -699,7 +699,7 @@ class Vg(AutomatedProperties):
                 return '/'
             else:
                 raise dbus.exceptions.DBusException(
-                    MANAGER_INTERFACE,
+                    VG_INTERFACE,
                     'Exit code %s, stderr = %s' % (str(rc), err))
 
         else:
@@ -774,7 +774,7 @@ class Vg(AutomatedProperties):
                 return '/'
             else:
                 raise dbus.exceptions.DBusException(
-                    MANAGER_INTERFACE,
+                    VG_INTERFACE,
                     'Exit code %s, stderr = %s' % (str(rc), err))
         else:
             raise dbus.exceptions.DBusException(
