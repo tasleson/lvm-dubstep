@@ -38,7 +38,7 @@ def lvs_state_retrieve(selection):
                                l['vg_uuid'], l['pool_lv_uuid'],
                                 l['pool_lv'], l['origin_uuid'], l['origin'],
                                n32(l['data_percent']), l['lv_attr'],
-                               l['lv_tags']))
+                               l['lv_tags'], l['lv_active']))
     return rc
 
 
@@ -78,7 +78,7 @@ class LvState(State):
 
     def __init__(self, Uuid, Name, Path, SizeBytes,
                      vg_name, vg_uuid, pool_lv_uuid, PoolLv,
-                     origin_uuid, OriginLv, DataPercent, Attr, Tags):
+                     origin_uuid, OriginLv, DataPercent, Attr, Tags, active):
         utils.init_class_from_arguments(self, None)
         self._segs = dbus.Array([], signature='s')
 
@@ -145,6 +145,7 @@ def lv_object_factory(interface_name, *args):
         _Tags_type = "as"
         _IsThinVolume_type = "b"
         _IsThinPool_type = "b"
+        _Active_type = "b"
         #_SegType_type = "as"
 
         # noinspection PyUnusedLocal,PyPep8Naming
@@ -249,6 +250,10 @@ def lv_object_factory(interface_name, *args):
         @property
         def IsThinPool(self):
             return self.state.Attr[0] == 't'
+
+        @property
+        def Active(self):
+            return self.state.active == "active"
 
         @dbus.service.method(dbus_interface=interface_name,
                              in_signature='o(tt)a(ott)ia{sv}',

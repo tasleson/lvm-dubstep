@@ -644,7 +644,7 @@ def lv_retrieve(lv_name):
     columns = ['lv_uuid', 'lv_name', 'lv_path', 'lv_size',
                 'vg_name', 'pool_lv_uuid', 'pool_lv', 'origin_uuid',
                 'origin', 'data_percent',
-               'lv_attr', 'lv_tags', 'vg_uuid']
+               'lv_attr', 'lv_tags', 'vg_uuid', 'lv_active']
 
     cmd = _dc('lvs', ['-o', ','.join(columns)])
 

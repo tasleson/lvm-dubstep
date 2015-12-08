@@ -432,14 +432,20 @@ class TestDbusService(unittest.TestCase):
         lv.update()
 
         lv.Deactivate(0, -1, {})
+        lv.update()
+        self.assertFalse(lv.Active)
         self.assertEqual(self._refresh(), 0)
 
         lv.Activate(0, -1, {})
+
+        lv.update()
+        self.assertTrue(lv.Active)
         self.assertEqual(self._refresh(), 0)
 
         # Try control flags
         for i in range(0, 5):
             lv.Activate(1 << i, -1, {})
+            self.assertTrue(lv.Active)
             self.assertEqual(self._refresh(), 0)
 
     def test_move(self):
