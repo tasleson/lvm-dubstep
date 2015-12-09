@@ -162,7 +162,8 @@ def options_to_cli_args(options):
             rc.append(k)
         else:
             rc.append("--%s" % k)
-        rc.append(str(v))
+        if v != "":
+            rc.append(str(v))
     return rc
 
 
