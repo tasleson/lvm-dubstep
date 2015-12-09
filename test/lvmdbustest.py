@@ -32,7 +32,7 @@ MANAGER_OBJ = '/' + BUSNAME.replace('.', '/') + 'Manager'
 PV_INT = BUSNAME + ".Pv"
 VG_INT = BUSNAME + ".Vg"
 LV_INT = BUSNAME + ".Lv"
-THINPOOL_INT = BUSNAME + ".Thinpool"
+THINPOOL_INT = BUSNAME + ".ThinPool"
 JOB_INT = BUSNAME + ".Job"
 
 
