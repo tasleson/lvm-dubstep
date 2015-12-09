@@ -162,7 +162,7 @@
 * Uuid (String)
 * Vg (Oject path)
 
-## Interface com.redhat.lvmdbus1.Thinpool ##
+## Interface com.redhat.lvmdbus1.ThinPool ##
 
 #### Methods ####
 * LvCreate 
