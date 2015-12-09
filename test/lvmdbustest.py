@@ -412,16 +412,9 @@ class TestDbusService(unittest.TestCase):
     def test_lv_resize(self):
         lv = self._create_lv()
 
-        for size, units in \
-                ((4194304, 'bytes'),
-                 (-4194304, 'bytes'),
-                 (4, 'extents'),
-                 (-4, 'extents'),
-                 (10, '%lv'),
-                 (-10, '%lv')):
-
-            rc = lv.Resize(False, False, units,
-                           size, -1, -1, dbus.Array([], '(oii)'), -1, {})
+        for size in [lv.SizeBytes + 4194304, lv.SizeBytes - 4194304,
+                     lv.SizeBytes + 2048, lv.SizeBytes - 2048, lv.SizeBytes]:
+            rc = lv.Resize(size, dbus.Array([], '(oii)'), -1, {})
 
             self.assertEqual(rc, '/')
             self.assertEqual(self._refresh(), 0)
