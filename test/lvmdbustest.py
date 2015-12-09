@@ -272,6 +272,14 @@ class TestDbusService(unittest.TestCase):
         self.assertEqual(self._refresh(), 0)
         return lv
 
+    def test_lv_create(self):
+        vg = self._vg_create()
+        self._test_lv_create(vg.LvCreate,
+                             (rs(8, '_lv'), 1024 * 1024 * 4,
+                              dbus.Array([], '(oii)'), -1, {}),
+                             vg)
+
+
     def test_lv_create_linear(self):
 
         vg = self._vg_create()

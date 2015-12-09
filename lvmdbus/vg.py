@@ -403,6 +403,77 @@ class Vg(AutomatedProperties):
                             pv_dests_and_ranges, move_options, tmo)
 
     @staticmethod
+    def _lv_create(uuid, vg_name, name, size_bytes, pv_dests_and_ranges,
+                    create_options):
+        # Make sure we have a dbus object representing it
+        pv_dests = []
+        dbo = cfg.om.get_by_uuid_lvm_id(uuid, vg_name)
+
+        if dbo:
+            if len(pv_dests_and_ranges):
+                for pr in pv_dests_and_ranges:
+                    pv_dbus_obj = cfg.om.get_by_path(pr[0])
+                    if not pv_dbus_obj:
+                        raise dbus.exceptions.DBusException(
+                            VG_INTERFACE,
+                            'PV Destination (%s) not found' % pr[0])
+
+                    pv_dests.append((pv_dbus_obj.lvm_id, pr[1], pr[2]))
+
+            rc, out, err = cmdhandler.vg_lv_create(
+                vg_name, create_options, name, size_bytes, pv_dests)
+
+            if rc == 0:
+                created_lv = "/"
+                full_name = "%s/%s" % (vg_name, name)
+                lvs = load_lvs([full_name])[0]
+                for l in lvs:
+                    cfg.om.register_object(l, True)
+                    created_lv = l.dbus_object_path()
+
+                # Refresh self and all included PVs
+                dbo.refresh()
+                dbo.refresh_pvs()
+                return created_lv
+            else:
+                raise dbus.exceptions.DBusException(
+                    VG_INTERFACE,
+                    'Exit code %s, stderr = %s' % (str(rc), err))
+        else:
+            raise dbus.exceptions.DBusException(
+                VG_INTERFACE, 'VG with uuid %s and name %s not present!' %
+                (uuid, vg_name))
+
+    @dbus.service.method(dbus_interface=VG_INTERFACE,
+                         in_signature='sta(ott)ia{sv}',
+                         out_signature='(oo)',
+                         async_callbacks=('cb', 'cbe'))
+    def LvCreate(self, name, size_bytes, pv_dests_and_ranges,
+                 tmo, create_options, cb, cbe):
+        """
+        This one it for the advanced users that want to roll their own
+        :param name:            Name of the LV
+        :param size_bytes:      Size of LV in bytes
+        :param pv_dests_and_ranges:   Optional array of PV object paths and
+                                    ranges
+        :param tmo: -1 == Wait forever, 0 == return job immediately, > 0 ==
+                            willing to wait that number of seconds before
+                            getting a job
+        :param create_options:  hash of key/value pairs
+        :param cb: Internal, not accessible by dbus API user
+        :param cbe: Internal, not accessible by dbus API user
+        :return: (oo) First object path is newly created object, second is
+                      job object path if created.  Each == '/' when it doesn't
+                      apply.
+        """
+        r = RequestEntry(tmo, Vg._lv_create,
+                         (self.state.Uuid, self.state.lvm_id,
+                          name, size_bytes, pv_dests_and_ranges,
+                          create_options),
+                         cb, cbe)
+        cfg.worker_q.put(r)
+
+    @staticmethod
     def _lv_create_linear(uuid, vg_name, name, size_bytes,
                           thin_pool, create_options):
         # Make sure we have a dbus object representing it

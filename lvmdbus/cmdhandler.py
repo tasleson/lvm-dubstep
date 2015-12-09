@@ -233,11 +233,12 @@ def vg_remove(vg_name, remove_options):
     return call(cmd)
 
 
-def vg_lv_create(vg_name, create_options, name, size_bytes):
+def vg_lv_create(vg_name, create_options, name, size_bytes, pv_dests):
     cmd = ['lvcreate']
     cmd.extend(options_to_cli_args(create_options))
     cmd.extend(['--size', str(size_bytes) + 'B'])
     cmd.extend(['--name', name, vg_name])
+    pv_dest_ranges(cmd, pv_dests)
     return call(cmd)
 
 
