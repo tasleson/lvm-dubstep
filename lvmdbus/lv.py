@@ -422,7 +422,7 @@ def lv_object_factory(interface_name, *args):
                     LV_INTERFACE, 'LV with uuid %s and name %s not present!' %
                     (uuid, lv_name))
 
-        @dbus.service.method(dbus_interface=LV_INTERFACE,
+        @dbus.service.method(dbus_interface=interface_name,
                              in_signature='tia{sv}',
                              out_signature='o',
                              async_callbacks=('cb', 'cbe'))
@@ -434,7 +434,7 @@ def lv_object_factory(interface_name, *args):
             cfg.worker_q.put(r)
 
         # noinspection PyProtectedMember
-        @dbus.service.method(dbus_interface=LV_INTERFACE,
+        @dbus.service.method(dbus_interface=interface_name,
                              in_signature='tia{sv}',
                              out_signature='o',
                              async_callbacks=('cb', 'cbe'))
@@ -467,7 +467,7 @@ def lv_object_factory(interface_name, *args):
                     LV_INTERFACE, 'LV with uuid %s and name %s not present!' %
                     (uuid, lv_name))
 
-        @dbus.service.method(dbus_interface=LV_INTERFACE,
+        @dbus.service.method(dbus_interface=interface_name,
                              in_signature='asia{sv}',
                              out_signature='o',
                              async_callbacks=('cb', 'cbe'))
@@ -478,7 +478,7 @@ def lv_object_factory(interface_name, *args):
                              cb, cbe, return_tuple=False)
             cfg.worker_q.put(r)
 
-        @dbus.service.method(dbus_interface=LV_INTERFACE,
+        @dbus.service.method(dbus_interface=interface_name,
                              in_signature='asia{sv}',
                              out_signature='o',
                              async_callbacks=('cb', 'cbe'))
