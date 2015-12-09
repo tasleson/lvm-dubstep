@@ -337,42 +337,16 @@ def lv_rename(lv_path, new_name, rename_options):
     return call(cmd)
 
 
-def lv_resize(lv_full_name, fsck_fs, resize_fs, size_units,
-              size_change, number_of_stripes, stripe_size, pv_dests,
+def lv_resize(lv_full_name, size_change, pv_dests,
               resize_options):
     cmd = ['lvresize', '--force']
 
     cmd.extend(options_to_cli_args(resize_options))
 
-    if not fsck_fs:
-        cmd.append('--nofsck')
-
-    if resize_fs:
-        cmd.append('--resizefs')
-
-    # Handle the size and increase/decrease
     if size_change < 0:
-        op = '-'
-        size_change = -(size_change)
+        cmd.append("-L-%dB" % (-size_change))
     else:
-        op = '+'
-
-    if size_units == 'bytes' or '':
-        method = '-L'
-        post = 'B'
-    else:
-        post = ''
-        method = '-l'
-        if '%' in size_units:
-            post = size_units
-
-    cmd.append('%s%s%d%s' % (method, op, size_change, post))
-
-    if number_of_stripes != -1:
-        cmd.extend(['--stripes', str(number_of_stripes)])
-
-    if stripe_size != -1:
-        cmd.extend(['--stripesize', str(stripe_size)])
+        cmd.append("-L+%dB" % (size_change))
 
     cmd.append(lv_full_name)
     pv_dest_ranges(cmd, pv_dests)
