@@ -45,7 +45,7 @@ def lvs_state_retrieve(selection):
 def load_lvs(lv_name=None, object_path=None, refresh=False):
     # noinspection PyUnresolvedReferences
     return common(lvs_state_retrieve,
-                  (lv_object_factory.lv_t, lv_object_factory.lv_pool_t),
+                  (Lv, LvPoolInherit),
                   lv_name, object_path, refresh)
 
 
@@ -111,427 +111,387 @@ class LvState(State):
                 self.Uuid, self.lvm_id, lv_obj_path_generate)
 
         if self.Attr[0] != 't':
-            return lv_object_factory(LV_INTERFACE, path, self)
+            return Lv(path, self)
         else:
-            return lv_object_factory(THIN_POOL_INTERFACE, path, self)
+            return LvPoolInherit(path, self)
 
 
-def lv_object_factory(interface_name, *args):
-    """
-    We want to be able to inherit from a class to minimize code.  When you
-    try to do this we get in a situation where we can't set the interface
-    because it's a string in the decorator.  Thus you cannot use a class
-    variable as 'self' doesn't exit yet.  Workaround is to do do a nested
-    class within a factory so that we can pass the interface we want to
-    create the object with.
+# noinspection PyPep8Naming
+@utils.dbus_property('Uuid', 's')
+@utils.dbus_property('Name', 's')
+@utils.dbus_property('Path', 's')
+@utils.dbus_property('SizeBytes', 't')
+@utils.dbus_property('DataPercent', 'u')
+@utils.dbus_property('SegType', 'as')
+@utils.dbus_property('Vg', 'o')
+@utils.dbus_property('OriginLv', 'o')
+@utils.dbus_property('PoolLv', 'o')
+@utils.dbus_property('Devices', "a(oa(tts))")
+class Lv(AutomatedProperties):
+    DBUS_INTERFACE = LV_INTERFACE
+    _Tags_type = "as"
+    _IsThinVolume_type = "b"
+    _IsThinPool_type = "b"
+    _Active_type = "b"
+    #_SegType_type = "as"
 
-    :param interface_name: Interface we want to associate with class
-    :param args: Arguments to be passed to object constructor
-    :return: Object instance that matches interface wanted.
-    """
-    # noinspection PyPep8Naming
-    @utils.dbus_property('Uuid', 's')
-    @utils.dbus_property('Name', 's')
-    @utils.dbus_property('Path', 's')
-    @utils.dbus_property('SizeBytes', 't')
-    @utils.dbus_property('DataPercent', 'u')
-    @utils.dbus_property('SegType', 'as')
-    @utils.dbus_property('Vg', 'o')
-    @utils.dbus_property('OriginLv', 'o')
-    @utils.dbus_property('PoolLv', 'o')
-    @utils.dbus_property('Devices', "a(oa(tts))")
-    class Lv(AutomatedProperties):
-        DBUS_INTERFACE = interface_name
-        _Tags_type = "as"
-        _IsThinVolume_type = "b"
-        _IsThinPool_type = "b"
-        _Active_type = "b"
-        #_SegType_type = "as"
+    # noinspection PyUnusedLocal,PyPep8Naming
+    def __init__(self, object_path, object_state):
+        super(Lv, self).__init__(object_path, LV_INTERFACE,
+                                 lvs_state_retrieve)
+        utils.init_class_from_arguments(self)
+        self.state = object_state
 
-        # noinspection PyUnusedLocal,PyPep8Naming
-        def __init__(self, object_path, object_state):
+    def signal_vg_pv_changes(self):
+        # Signal property changes...
+        vg_obj = cfg.om.get_by_path(self.Vg)
+        vg_obj.refresh()
+        vg_obj.refresh_pvs()
 
-            super(Lv, self).__init__(object_path, interface_name,
-                                     lvs_state_retrieve)
-            utils.init_class_from_arguments(self)
-            self.state = object_state
+    def vg_name_lookup(self):
+        return self.state.vg_name_lookup()
 
-        def signal_vg_pv_changes(self):
-            # Signal property changes...
-            vg_obj = cfg.om.get_by_path(self.Vg)
-            vg_obj.refresh()
-            vg_obj.refresh_pvs()
+    @staticmethod
+    def _remove(lv_uuid, lv_name, remove_options):
+        # Make sure we have a dbus object representing it
+        dbo = cfg.om.get_by_uuid_lvm_id(lv_uuid, lv_name)
 
-        def vg_name_lookup(self):
-            return self.state.vg_name_lookup()
+        if dbo:
+            # Remove the LV, if successful then remove from the model
+            rc, out, err = cmdhandler.lv_remove(lv_name, remove_options)
 
-        @staticmethod
-        def _remove(lv_uuid, lv_name, remove_options):
-            # Make sure we have a dbus object representing it
-            dbo = cfg.om.get_by_uuid_lvm_id(lv_uuid, lv_name)
-
-            if dbo:
-                # Remove the LV, if successful then remove from the model
-                rc, out, err = cmdhandler.lv_remove(lv_name, remove_options)
-
-                if rc == 0:
-                    dbo.signal_vg_pv_changes()
-                    cfg.om.remove_object(dbo, True)
-                else:
-                    # Need to work on error handling, need consistent
-                    raise dbus.exceptions.DBusException(
-                        interface_name,
-                        'Exit code %s, stderr = %s' % (str(rc), err))
+            if rc == 0:
+                dbo.signal_vg_pv_changes()
+                cfg.om.remove_object(dbo, True)
             else:
+                # Need to work on error handling, need consistent
                 raise dbus.exceptions.DBusException(
-                    LV_INTERFACE, 'LV with uuid %s and name %s not present!' %
-                    (lv_uuid, lv_name))
-            return '/'
+                    LV_INTERFACE,
+                    'Exit code %s, stderr = %s' % (str(rc), err))
+        else:
+            raise dbus.exceptions.DBusException(
+                LV_INTERFACE, 'LV with uuid %s and name %s not present!' %
+                (lv_uuid, lv_name))
+        return '/'
 
-        @dbus.service.method(dbus_interface=interface_name,
-                             in_signature='ia{sv}',
-                             out_signature='o',
-                             async_callbacks=('cb', 'cbe'))
-        def Remove(self, tmo, remove_options, cb, cbe):
-            r = RequestEntry(tmo, Lv._remove,
-                             (self.Uuid, self.lvm_id, remove_options),
-                             cb, cbe, False)
-            cfg.worker_q.put(r)
+    @dbus.service.method(dbus_interface=LV_INTERFACE,
+                         in_signature='ia{sv}',
+                         out_signature='o',
+                         async_callbacks=('cb', 'cbe'))
+    def Remove(self, tmo, remove_options, cb, cbe):
+        r = RequestEntry(tmo, Lv._remove,
+                         (self.Uuid, self.lvm_id, remove_options),
+                         cb, cbe, False)
+        cfg.worker_q.put(r)
 
-        @staticmethod
-        def _rename(lv_uuid, lv_name, new_name, rename_options):
-            # Make sure we have a dbus object representing it
-            dbo = cfg.om.get_by_uuid_lvm_id(lv_uuid, lv_name)
+    @staticmethod
+    def _rename(lv_uuid, lv_name, new_name, rename_options):
+        # Make sure we have a dbus object representing it
+        dbo = cfg.om.get_by_uuid_lvm_id(lv_uuid, lv_name)
 
-            if dbo:
-                # Rename the logical volume
-                rc, out, err = cmdhandler.lv_rename(lv_name, new_name,
-                                                    rename_options)
-                if rc == 0:
-                    # Refresh the VG
-                    vg_name = dbo.vg_name_lookup()
+        if dbo:
+            # Rename the logical volume
+            rc, out, err = cmdhandler.lv_rename(lv_name, new_name,
+                                                rename_options)
+            if rc == 0:
+                # Refresh the VG
+                vg_name = dbo.vg_name_lookup()
 
-                    dbo.refresh("%s/%s" % (vg_name, new_name))
-                    dbo.signal_vg_pv_changes()
-
-                else:
-                    # Need to work on error handling, need consistent
-                    raise dbus.exceptions.DBusException(
-                        interface_name,
-                        'Exit code %s, stderr = %s' % (str(rc), err))
-            else:
-                raise dbus.exceptions.DBusException(
-                    LV_INTERFACE, 'LV with uuid %s and name %s not present!' %
-                    (lv_uuid, lv_name))
-            return '/'
-
-        @dbus.service.method(dbus_interface=interface_name,
-                             in_signature='sia{sv}',
-                             out_signature='o',
-                             async_callbacks=('cb', 'cbe'))
-        def Rename(self, name, tmo, rename_options, cb, cbe):
-            r = RequestEntry(tmo, Lv._rename,
-                             (self.Uuid, self.lvm_id, name, rename_options),
-                             cb, cbe, False)
-            cfg.worker_q.put(r)
-
-        @property
-        def Tags(self):
-            return utils.parse_tags(self.state.Tags)
-
-        @property
-        def lvm_id(self):
-            return self.state.lvm_id
-
-        @property
-        def IsThinVolume(self):
-            return self.state.Attr[0] == 'V'
-
-        @property
-        def IsThinPool(self):
-            return self.state.Attr[0] == 't'
-
-        @property
-        def Active(self):
-            return self.state.active == "active"
-
-        @dbus.service.method(dbus_interface=interface_name,
-                             in_signature='o(tt)a(ott)ia{sv}',
-                             out_signature='o')
-        def Move(self, pv_src_obj, pv_source_range, pv_dests_and_ranges,
-                 tmo, move_options):
-            return pvmover.move(interface_name, self.lvm_id, pv_src_obj,
-                                pv_source_range, pv_dests_and_ranges,
-                                move_options, tmo)
-
-        @staticmethod
-        def _snap_shot(lv_uuid, lv_name, name, optional_size,
-                       snapshot_options):
-            # Make sure we have a dbus object representing it
-            dbo = cfg.om.get_by_uuid_lvm_id(lv_uuid, lv_name)
-
-            if dbo:
-                # If you specify a size you get a 'thick' snapshot even if
-                # it is a thin lv
-                if not dbo.IsThinVolume:
-                    if optional_size == 0:
-                        # TODO: Should we pick a sane default or force user to
-                        # make a decision?
-                        space = dbo.SizeBytes / 80
-                        remainder = space % 512
-                        optional_size = space + 512 - remainder
-
-                rc, out, err = cmdhandler.vg_lv_snapshot(
-                    lv_name, snapshot_options, name, optional_size)
-                if rc == 0:
-                    return_path = '/'
-                    full_name = "%s/%s" % (dbo.vg_name_lookup(), name)
-                    lvs = load_lvs([full_name])[0]
-                    for l in lvs:
-                        cfg.om.register_object(l, True)
-                        l.dbus_object_path()
-                        return_path = l.dbus_object_path()
-
-                    # Refresh self and all included PVs
-                    dbo.refresh()
-                    dbo.signal_vg_pv_changes()
-                    return return_path
-                else:
-                    raise dbus.exceptions.DBusException(
-                        LV_INTERFACE,
-                        'Exit code %s, stderr = %s' % (str(rc), err))
-            else:
-                raise dbus.exceptions.DBusException(
-                    LV_INTERFACE, 'LV with uuid %s and name %s not present!' %
-                    (lv_uuid, lv_name))
-
-        @dbus.service.method(dbus_interface=interface_name,
-                             in_signature='stia{sv}',
-                             out_signature='(oo)',
-                             async_callbacks=('cb', 'cbe'))
-        def Snapshot(self, name, optional_size, tmo, snapshot_options,
-                     cb, cbe):
-            r = RequestEntry(tmo, Lv._snap_shot,
-                             (self.Uuid, self.lvm_id, name,
-                              optional_size, snapshot_options), cb, cbe)
-            cfg.worker_q.put(r)
-
-        @staticmethod
-        def _resize(lv_uuid, lv_name, new_size_bytes, pv_dests_and_ranges,
-                    resize_options):
-            # Make sure we have a dbus object representing it
-            pv_dests = []
-            dbo = cfg.om.get_by_uuid_lvm_id(lv_uuid, lv_name)
-
-            if dbo:
-                # If we have PVs, verify them
-                if len(pv_dests_and_ranges):
-                    for pr in pv_dests_and_ranges:
-                        pv_dbus_obj = cfg.om.get_by_path(pr[0])
-                        if not pv_dbus_obj:
-                            raise dbus.exceptions.DBusException(
-                                interface_name,
-                                'PV Destination (%s) not found' % pr[0])
-
-                        pv_dests.append((pv_dbus_obj.lvm_id, pr[1], pr[2]))
-
-                size_change = new_size_bytes - dbo.SizeBytes
-
-                # Nothing to do
-                if size_change == 0:
-                    return '/'
-
-                rc, out, err = cmdhandler.lv_resize(dbo.lvm_id, size_change,
-                                                    pv_dests, resize_options)
-
-                if rc == 0:
-                    # Refresh what's changed
-                    dbo.refresh()
-                    dbo.signal_vg_pv_changes()
-                    return "/"
-                else:
-                    raise dbus.exceptions.DBusException(
-                        LV_INTERFACE,
-                        'Exit code %s, stderr = %s' % (str(rc), err))
-            else:
-                raise dbus.exceptions.DBusException(
-                    LV_INTERFACE, 'LV with uuid %s and name %s not present!' %
-                    (lv_uuid, lv_name))
-
-        @dbus.service.method(dbus_interface=interface_name,
-                             in_signature='ta(ott)ia{sv}',
-                             out_signature='o',
-                             async_callbacks=('cb', 'cbe'))
-        def Resize(self, new_size_bytes, pv_dests_and_ranges, tmo,
-                   resize_options, cb, cbe):
-            """
-            Resize a LV
-            :param new_size_bytes: The requested final size in bytes
-            :param pv_dests_and_ranges: An array of pv object paths and src &
-                                        dst. segment ranges
-            :param tmo: -1 to wait forever, 0 to return job immediately, else
-                        number of seconds to wait for operation to complete
-                        before getting a job
-            :param resize_options: key/value hash of options
-            :param cb:  Used by framework not client facing API
-            :param cbe: Used by framework not client facing API
-            :return: '/' if complete, else job object path
-            """
-            r = RequestEntry(tmo, Lv._resize,
-                             (self.Uuid, self.lvm_id, new_size_bytes,
-                              pv_dests_and_ranges,
-                              resize_options), cb, cbe, return_tuple=False)
-            cfg.worker_q.put(r)
-
-        @staticmethod
-        def _lv_activate_deactivate(uuid, lv_name, activate, control_flags,
-                                    options):
-            # Make sure we have a dbus object representing it
-            dbo = cfg.om.get_by_uuid_lvm_id(uuid, lv_name)
-
-            if dbo:
-                rc, out, err = cmdhandler.activate_deactivate(
-                    'lvchange', lv_name, activate, control_flags, options)
-                if rc == 0:
-                    dbo.refresh()
-                    return '/'
-                else:
-                    raise dbus.exceptions.DBusException(
-                        LV_INTERFACE,
-                        'Exit code %s, stderr = %s' % (str(rc), err))
-            else:
-                raise dbus.exceptions.DBusException(
-                    LV_INTERFACE, 'LV with uuid %s and name %s not present!' %
-                    (uuid, lv_name))
-
-        @dbus.service.method(dbus_interface=interface_name,
-                             in_signature='tia{sv}',
-                             out_signature='o',
-                             async_callbacks=('cb', 'cbe'))
-        def Activate(self, control_flags, tmo, activate_options, cb, cbe):
-            r = RequestEntry(tmo, Lv._lv_activate_deactivate,
-                             (self.state.Uuid, self.state.lvm_id, True,
-                              control_flags, activate_options),
-                             cb, cbe, return_tuple=False)
-            cfg.worker_q.put(r)
-
-        # noinspection PyProtectedMember
-        @dbus.service.method(dbus_interface=interface_name,
-                             in_signature='tia{sv}',
-                             out_signature='o',
-                             async_callbacks=('cb', 'cbe'))
-        def Deactivate(self, control_flags, tmo, activate_options, cb, cbe):
-            r = RequestEntry(tmo, Lv._lv_activate_deactivate,
-                             (self.state.Uuid, self.state.lvm_id, False,
-                              control_flags, activate_options),
-                             cb, cbe, return_tuple=False)
-            cfg.worker_q.put(r)
-
-        @staticmethod
-        def _add_rm_tags(uuid, lv_name, tags_add, tags_del, tag_options):
-            # Make sure we have a dbus object representing it
-            dbo = cfg.om.get_by_uuid_lvm_id(uuid, lv_name)
-
-            if dbo:
-
-                rc, out, err = cmdhandler.lv_tag(lv_name, tags_add, tags_del,
-                                                 tag_options)
-                if rc == 0:
-                    dbo.refresh()
-                    return '/'
-                else:
-                    raise dbus.exceptions.DBusException(
-                        LV_INTERFACE,
-                        'Exit code %s, stderr = %s' % (str(rc), err))
+                dbo.refresh("%s/%s" % (vg_name, new_name))
+                dbo.signal_vg_pv_changes()
 
             else:
+                # Need to work on error handling, need consistent
                 raise dbus.exceptions.DBusException(
-                    LV_INTERFACE, 'LV with uuid %s and name %s not present!' %
-                    (uuid, lv_name))
+                    LV_INTERFACE,
+                    'Exit code %s, stderr = %s' % (str(rc), err))
+        else:
+            raise dbus.exceptions.DBusException(
+                LV_INTERFACE, 'LV with uuid %s and name %s not present!' %
+                (lv_uuid, lv_name))
+        return '/'
 
-        @dbus.service.method(dbus_interface=interface_name,
-                             in_signature='asia{sv}',
-                             out_signature='o',
-                             async_callbacks=('cb', 'cbe'))
-        def TagsAdd(self, tags, tmo, tag_options, cb, cbe):
-            r = RequestEntry(tmo, Lv._add_rm_tags,
-                             (self.state.Uuid, self.state.lvm_id,
-                              tags, None, tag_options),
-                             cb, cbe, return_tuple=False)
-            cfg.worker_q.put(r)
+    @dbus.service.method(dbus_interface=LV_INTERFACE,
+                         in_signature='sia{sv}',
+                         out_signature='o',
+                         async_callbacks=('cb', 'cbe'))
+    def Rename(self, name, tmo, rename_options, cb, cbe):
+        r = RequestEntry(tmo, Lv._rename,
+                         (self.Uuid, self.lvm_id, name, rename_options),
+                         cb, cbe, False)
+        cfg.worker_q.put(r)
 
-        @dbus.service.method(dbus_interface=interface_name,
-                             in_signature='asia{sv}',
-                             out_signature='o',
-                             async_callbacks=('cb', 'cbe'))
-        def TagsDel(self, tags, tmo, tag_options, cb, cbe):
-            r = RequestEntry(tmo, Lv._add_rm_tags,
-                             (self.state.Uuid, self.state.lvm_id,
-                              None, tags, tag_options),
-                             cb, cbe, return_tuple=False)
-            cfg.worker_q.put(r)
+    @property
+    def Tags(self):
+        return utils.parse_tags(self.state.Tags)
 
-    # noinspection PyPep8Naming
-    class LvPoolInherit(Lv):
+    @property
+    def lvm_id(self):
+        return self.state.lvm_id
 
-        @staticmethod
-        def _lv_create(lv_uuid, lv_name, name, size_bytes, create_options):
-            # Make sure we have a dbus object representing it
-            dbo = cfg.om.get_by_uuid_lvm_id(lv_uuid, lv_name)
+    @property
+    def IsThinVolume(self):
+        return self.state.Attr[0] == 'V'
 
-            lv_created = '/'
+    @property
+    def IsThinPool(self):
+        return self.state.Attr[0] == 't'
 
-            if dbo:
-                rc, out, err = cmdhandler.lv_lv_create(
-                    lv_name, create_options, name, size_bytes)
-                if rc == 0:
-                    full_name = "%s/%s" % (dbo.vg_name_lookup(), name)
-                    lvs = load_lvs([full_name])[0]
-                    for l in lvs:
-                        cfg.om.register_object(l, True)
-                        lv_created = l.dbus_object_path()
-                else:
-                    raise dbus.exceptions.DBusException(
-                        LV_INTERFACE,
-                        'Exit code %s, stderr = %s' % (str(rc), err))
+    @property
+    def Active(self):
+        return self.state.active == "active"
+
+    @dbus.service.method(dbus_interface=LV_INTERFACE,
+                         in_signature='o(tt)a(ott)ia{sv}',
+                         out_signature='o')
+    def Move(self, pv_src_obj, pv_source_range, pv_dests_and_ranges,
+             tmo, move_options):
+        return pvmover.move(LV_INTERFACE, self.lvm_id, pv_src_obj,
+                            pv_source_range, pv_dests_and_ranges,
+                            move_options, tmo)
+
+    @staticmethod
+    def _snap_shot(lv_uuid, lv_name, name, optional_size,
+                   snapshot_options):
+        # Make sure we have a dbus object representing it
+        dbo = cfg.om.get_by_uuid_lvm_id(lv_uuid, lv_name)
+
+        if dbo:
+            # If you specify a size you get a 'thick' snapshot even if
+            # it is a thin lv
+            if not dbo.IsThinVolume:
+                if optional_size == 0:
+                    # TODO: Should we pick a sane default or force user to
+                    # make a decision?
+                    space = dbo.SizeBytes / 80
+                    remainder = space % 512
+                    optional_size = space + 512 - remainder
+
+            rc, out, err = cmdhandler.vg_lv_snapshot(
+                lv_name, snapshot_options, name, optional_size)
+            if rc == 0:
+                return_path = '/'
+                full_name = "%s/%s" % (dbo.vg_name_lookup(), name)
+                lvs = load_lvs([full_name])[0]
+                for l in lvs:
+                    cfg.om.register_object(l, True)
+                    l.dbus_object_path()
+                    return_path = l.dbus_object_path()
+
+                # Refresh self and all included PVs
+                dbo.refresh()
+                dbo.signal_vg_pv_changes()
+                return return_path
             else:
                 raise dbus.exceptions.DBusException(
-                    LV_INTERFACE, 'LV with uuid %s and name %s not present!' %
-                    (lv_uuid, lv_name))
-            return lv_created
+                    LV_INTERFACE,
+                    'Exit code %s, stderr = %s' % (str(rc), err))
+        else:
+            raise dbus.exceptions.DBusException(
+                LV_INTERFACE, 'LV with uuid %s and name %s not present!' %
+                (lv_uuid, lv_name))
 
-        @dbus.service.method(dbus_interface=interface_name,
-                             in_signature='stia{sv}',
-                             out_signature='(oo)',
-                             async_callbacks=('cb', 'cbe'))
-        def LvCreate(self, name, size_bytes, tmo, create_options, cb, cbe):
-            r = RequestEntry(tmo, LvPoolInherit._lv_create,
-                             (self.Uuid, self.lvm_id, name,
-                              size_bytes, create_options), cb, cbe)
-            cfg.worker_q.put(r)
+    @dbus.service.method(dbus_interface=LV_INTERFACE,
+                         in_signature='stia{sv}',
+                         out_signature='(oo)',
+                         async_callbacks=('cb', 'cbe'))
+    def Snapshot(self, name, optional_size, tmo, snapshot_options,
+                 cb, cbe):
+        r = RequestEntry(tmo, Lv._snap_shot,
+                         (self.Uuid, self.lvm_id, name,
+                          optional_size, snapshot_options), cb, cbe)
+        cfg.worker_q.put(r)
 
-    skip_create = False
-    if len(args) == 1 and args[0] is None:
-        skip_create = True
+    @staticmethod
+    def _resize(lv_uuid, lv_name, new_size_bytes, pv_dests_and_ranges,
+                resize_options):
+        # Make sure we have a dbus object representing it
+        pv_dests = []
+        dbo = cfg.om.get_by_uuid_lvm_id(lv_uuid, lv_name)
 
-    if interface_name == LV_INTERFACE:
-        if not hasattr(lv_object_factory, "lv_t"):
-            lv_object_factory.lv_t = Lv
+        if dbo:
+            # If we have PVs, verify them
+            if len(pv_dests_and_ranges):
+                for pr in pv_dests_and_ranges:
+                    pv_dbus_obj = cfg.om.get_by_path(pr[0])
+                    if not pv_dbus_obj:
+                        raise dbus.exceptions.DBusException(
+                            LV_INTERFACE,
+                            'PV Destination (%s) not found' % pr[0])
 
-        if not skip_create:
-            return lv_object_factory.lv_t(*args)
-    elif interface_name == THIN_POOL_INTERFACE:
-        if not hasattr(lv_object_factory, "lv_pool_t"):
-            lv_object_factory.lv_pool_t = LvPoolInherit
+                    pv_dests.append((pv_dbus_obj.lvm_id, pr[1], pr[2]))
 
-        if not skip_create:
-            return lv_object_factory.lv_pool_t(*args)
-    else:
-        raise Exception("Unsupported interface name %s" % (interface_name))
+            size_change = new_size_bytes - dbo.SizeBytes
+
+            # Nothing to do
+            if size_change == 0:
+                return '/'
+
+            rc, out, err = cmdhandler.lv_resize(dbo.lvm_id, size_change,
+                                                pv_dests, resize_options)
+
+            if rc == 0:
+                # Refresh what's changed
+                dbo.refresh()
+                dbo.signal_vg_pv_changes()
+                return "/"
+            else:
+                raise dbus.exceptions.DBusException(
+                    LV_INTERFACE,
+                    'Exit code %s, stderr = %s' % (str(rc), err))
+        else:
+            raise dbus.exceptions.DBusException(
+                LV_INTERFACE, 'LV with uuid %s and name %s not present!' %
+                (lv_uuid, lv_name))
+
+    @dbus.service.method(dbus_interface=LV_INTERFACE,
+                         in_signature='ta(ott)ia{sv}',
+                         out_signature='o',
+                         async_callbacks=('cb', 'cbe'))
+    def Resize(self, new_size_bytes, pv_dests_and_ranges, tmo,
+               resize_options, cb, cbe):
+        """
+        Resize a LV
+        :param new_size_bytes: The requested final size in bytes
+        :param pv_dests_and_ranges: An array of pv object paths and src &
+                                    dst. segment ranges
+        :param tmo: -1 to wait forever, 0 to return job immediately, else
+                    number of seconds to wait for operation to complete
+                    before getting a job
+        :param resize_options: key/value hash of options
+        :param cb:  Used by framework not client facing API
+        :param cbe: Used by framework not client facing API
+        :return: '/' if complete, else job object path
+        """
+        r = RequestEntry(tmo, Lv._resize,
+                         (self.Uuid, self.lvm_id, new_size_bytes,
+                          pv_dests_and_ranges,
+                          resize_options), cb, cbe, return_tuple=False)
+        cfg.worker_q.put(r)
+
+    @staticmethod
+    def _lv_activate_deactivate(uuid, lv_name, activate, control_flags,
+                                options):
+        # Make sure we have a dbus object representing it
+        dbo = cfg.om.get_by_uuid_lvm_id(uuid, lv_name)
+
+        if dbo:
+            rc, out, err = cmdhandler.activate_deactivate(
+                'lvchange', lv_name, activate, control_flags, options)
+            if rc == 0:
+                dbo.refresh()
+                return '/'
+            else:
+                raise dbus.exceptions.DBusException(
+                    LV_INTERFACE,
+                    'Exit code %s, stderr = %s' % (str(rc), err))
+        else:
+            raise dbus.exceptions.DBusException(
+                LV_INTERFACE, 'LV with uuid %s and name %s not present!' %
+                (uuid, lv_name))
+
+    @dbus.service.method(dbus_interface=LV_INTERFACE,
+                         in_signature='tia{sv}',
+                         out_signature='o',
+                         async_callbacks=('cb', 'cbe'))
+    def Activate(self, control_flags, tmo, activate_options, cb, cbe):
+        r = RequestEntry(tmo, Lv._lv_activate_deactivate,
+                         (self.state.Uuid, self.state.lvm_id, True,
+                          control_flags, activate_options),
+                         cb, cbe, return_tuple=False)
+        cfg.worker_q.put(r)
+
+    # noinspection PyProtectedMember
+    @dbus.service.method(dbus_interface=LV_INTERFACE,
+                         in_signature='tia{sv}',
+                         out_signature='o',
+                         async_callbacks=('cb', 'cbe'))
+    def Deactivate(self, control_flags, tmo, activate_options, cb, cbe):
+        r = RequestEntry(tmo, Lv._lv_activate_deactivate,
+                         (self.state.Uuid, self.state.lvm_id, False,
+                          control_flags, activate_options),
+                         cb, cbe, return_tuple=False)
+        cfg.worker_q.put(r)
+
+    @staticmethod
+    def _add_rm_tags(uuid, lv_name, tags_add, tags_del, tag_options):
+        # Make sure we have a dbus object representing it
+        dbo = cfg.om.get_by_uuid_lvm_id(uuid, lv_name)
+
+        if dbo:
+
+            rc, out, err = cmdhandler.lv_tag(lv_name, tags_add, tags_del,
+                                             tag_options)
+            if rc == 0:
+                dbo.refresh()
+                return '/'
+            else:
+                raise dbus.exceptions.DBusException(
+                    LV_INTERFACE,
+                    'Exit code %s, stderr = %s' % (str(rc), err))
+
+        else:
+            raise dbus.exceptions.DBusException(
+                LV_INTERFACE, 'LV with uuid %s and name %s not present!' %
+                (uuid, lv_name))
+
+    @dbus.service.method(dbus_interface=LV_INTERFACE,
+                         in_signature='asia{sv}',
+                         out_signature='o',
+                         async_callbacks=('cb', 'cbe'))
+    def TagsAdd(self, tags, tmo, tag_options, cb, cbe):
+        r = RequestEntry(tmo, Lv._add_rm_tags,
+                         (self.state.Uuid, self.state.lvm_id,
+                          tags, None, tag_options),
+                         cb, cbe, return_tuple=False)
+        cfg.worker_q.put(r)
+
+    @dbus.service.method(dbus_interface=LV_INTERFACE,
+                         in_signature='asia{sv}',
+                         out_signature='o',
+                         async_callbacks=('cb', 'cbe'))
+    def TagsDel(self, tags, tmo, tag_options, cb, cbe):
+        r = RequestEntry(tmo, Lv._add_rm_tags,
+                         (self.state.Uuid, self.state.lvm_id,
+                          None, tags, tag_options),
+                         cb, cbe, return_tuple=False)
+        cfg.worker_q.put(r)
 
 
-# Initialize the factory, yes this is a hack.  Still looking for something
-# better for reducing code duplication and supporting inheritance when using
-# method decorators.
-lv_object_factory(LV_INTERFACE, None)
-lv_object_factory(THIN_POOL_INTERFACE, None)
+# noinspection PyPep8Naming
+class LvPoolInherit(Lv):
+    @staticmethod
+    def _lv_create(lv_uuid, lv_name, name, size_bytes, create_options):
+        # Make sure we have a dbus object representing it
+        dbo = cfg.om.get_by_uuid_lvm_id(lv_uuid, lv_name)
+
+        lv_created = '/'
+
+        if dbo:
+            rc, out, err = cmdhandler.lv_lv_create(
+                lv_name, create_options, name, size_bytes)
+            if rc == 0:
+                full_name = "%s/%s" % (dbo.vg_name_lookup(), name)
+                lvs = load_lvs([full_name])[0]
+                for l in lvs:
+                    cfg.om.register_object(l, True)
+                    lv_created = l.dbus_object_path()
+            else:
+                raise dbus.exceptions.DBusException(
+                    LV_INTERFACE,
+                    'Exit code %s, stderr = %s' % (str(rc), err))
+        else:
+            raise dbus.exceptions.DBusException(
+                LV_INTERFACE, 'LV with uuid %s and name %s not present!' %
+                (lv_uuid, lv_name))
+        return lv_created
+
+    @dbus.service.method(dbus_interface=THIN_POOL_INTERFACE,
+                         in_signature='stia{sv}',
+                         out_signature='(oo)',
+                         async_callbacks=('cb', 'cbe'))
+    def LvCreate(self, name, size_bytes, tmo, create_options, cb, cbe):
+        r = RequestEntry(tmo, LvPoolInherit._lv_create,
+                         (self.Uuid, self.lvm_id, name,
+                          size_bytes, create_options), cb, cbe)
+        cfg.worker_q.put(r)

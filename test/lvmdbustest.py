@@ -258,17 +258,14 @@ class TestDbusService(unittest.TestCase):
         self.assertTrue(path == '/')
         self.assertEqual(self._refresh(), 0)
 
-    def _test_lv_create(self, method, params, vg, thinpool=False):
+    def _test_lv_create(self, method, params, vg):
         lv = None
         path = method(*params)[0]
 
         self.assertTrue(vg)
 
         if path:
-            if thinpool:
-                lv = RemoteObject(self.bus, path, THINPOOL_INT)
-            else:
-                lv = RemoteObject(self.bus, path, LV_INT)
+            lv = RemoteObject(self.bus, path, LV_INT)
             # TODO verify object properties
 
         self.assertEqual(self._refresh(), 0)
@@ -325,7 +322,7 @@ class TestDbusService(unittest.TestCase):
         vg = self._vg_create(pv_paths)
         return self._test_lv_create(
             vg.LvCreateLinear,
-            (rs(8, '_lv'), 1024 * 1024 * 128, thinpool, -1, {}), vg, thinpool)
+            (rs(8, '_lv'), 1024 * 1024 * 128, thinpool, -1, {}), vg)
 
     def test_lv_create_thin_pool(self):
         self._create_lv(True)
@@ -345,7 +342,12 @@ class TestDbusService(unittest.TestCase):
     # noinspection PyUnresolvedReferences
     def test_lv_on_thin_pool_rename(self):
         # Rename a LV on a thin Pool
-        thin_pool = self._create_lv(True)
+
+        # This returns a LV with the LV interface, need to get a proxy for
+        # thinpool interface too
+        lv_pool = self._create_lv(True)
+
+        thin_pool = RemoteObject(self.bus, lv_pool.object_path, THINPOOL_INT)
 
         thin_path = thin_pool.LvCreate(
             rs(10, '_thin_lv'), 1024 * 1024 * 10, -1, {})[0]

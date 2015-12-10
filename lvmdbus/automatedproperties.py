@@ -67,13 +67,9 @@ class AutomatedProperties(dbus.service.Object):
     @dbus.service.method(dbus_interface=dbus.PROPERTIES_IFACE,
                          in_signature='s', out_signature='a{sv}')
     def GetAll(self, interface_name):
-        if interface_name in self.interface():
-            # Using introspection, lets build this dynamically
-            return get_properties(self, interface_name)[1]
-        raise dbus.exceptions.DBusException(
-            self._ap_interface,
-            'The object %s does not implement the %s interface'
-            % (self.__class__, interface_name))
+        # TODO Add the ability to verify that this object supports this
+        # interface.
+        return get_properties(self, interface_name)[1]
 
     @dbus.service.method(dbus_interface=dbus.PROPERTIES_IFACE,
                          in_signature='ssv')
