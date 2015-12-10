@@ -335,7 +335,7 @@ def lv_object_factory(interface_name, *args):
 
                         pv_dests.append((pv_dbus_obj.lvm_id, pr[1], pr[2]))
 
-                size_change = dbo.SizeBytes - new_size_bytes
+                size_change = new_size_bytes - dbo.SizeBytes
 
                 # Nothing to do
                 if size_change == 0:
