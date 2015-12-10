@@ -1,1 +1,1 @@
-from lvmdbus import main
+from .lvmdbus import main

@@ -58,7 +58,7 @@ def _get_number(data, i):
     if '.' in raw:
         rc = float(raw)
     else:
-        rc = long(raw)
+        rc = int(raw)
 
     return rc, i
 
@@ -222,7 +222,7 @@ class Lvmetad(object):
         req = '''request = "%s"\n''' % cmd
 
         if args:
-            for k, v in args.items():
+            for k, v in list(args.items()):
                 req += '''%s =\"%s"\n''' % (k, v)
 
         req += '''token = "filter:0"\n'''

@@ -12,19 +12,19 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 # Copyright 2015, Tony Asleson <tasleson@redhat.com>
-from automatedproperties import AutomatedProperties
+from .automatedproperties import AutomatedProperties
 
-import utils
-from utils import vg_obj_path_generate, thin_pool_obj_path_generate
+from . import utils
+from .utils import vg_obj_path_generate, thin_pool_obj_path_generate
 import dbus
-import cmdhandler
-import cfg
-from cfg import LV_INTERFACE, THIN_POOL_INTERFACE
-from request import RequestEntry
-from utils import lv_obj_path_generate, n, n32
-from loader import common
-from state import State
-import pvmover
+from . import cmdhandler
+from . import cfg
+from .cfg import LV_INTERFACE, THIN_POOL_INTERFACE
+from .request import RequestEntry
+from .utils import lv_obj_path_generate, n, n32
+from .loader import common
+from .state import State
+from . import pvmover
 
 
 def lvs_state_retrieve(selection):

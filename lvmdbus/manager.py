@@ -13,16 +13,16 @@
 #
 # Copyright 2015, Tony Asleson <tasleson@redhat.com>
 
-from automatedproperties import AutomatedProperties
+from .automatedproperties import AutomatedProperties
 
-import utils
-from cfg import MANAGER_INTERFACE
+from . import utils
+from .cfg import MANAGER_INTERFACE
 import dbus
-import cfg
-import cmdhandler
-from fetch import load_pvs, load_vgs, load
-from request import RequestEntry
-from refresh import event_add
+from . import cfg
+from . import cmdhandler
+from .fetch import load_pvs, load_vgs, load
+from .request import RequestEntry
+from .refresh import event_add
 
 
 # noinspection PyPep8Naming

@@ -16,10 +16,10 @@
 # Try and minimize the refreshes we do.
 
 import threading
-from request import RequestEntry
-import cfg
-import utils
-from fetch import load
+from .request import RequestEntry
+from . import cfg
+from . import utils
+from .fetch import load
 
 
 _rlock = threading.RLock()

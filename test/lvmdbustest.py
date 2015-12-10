@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as
@@ -53,7 +53,7 @@ class RemoteObject(object):
             props = prop_fetch.GetAll(self.interface)
 
         if props:
-            for kl, vl in props.items():
+            for kl, vl in list(props.items()):
                 setattr(self, kl, vl)
 
     def __init__(self, specified_bus, object_path, interface, properties=None):
@@ -89,8 +89,8 @@ def get_objects():
 
     objects = manager.GetManagedObjects()
 
-    for object_path, val in objects.items():
-        for interface, props in val.items():
+    for object_path, val in list(objects.items()):
+        for interface, props in list(val.items()):
             o = RemoteObject(bus, object_path, interface, props)
             rc[interface].append(o)
 
@@ -111,14 +111,14 @@ class TestDbusService(unittest.TestCase):
         # we are not mucking with someones data on their system
         self.objs, self.bus = get_objects()
         if len(self.objs[PV_INT]) == 0:
-            print 'No PVs present exiting!'
+            print('No PVs present exiting!')
             sys.exit(1)
         if len(self.objs[MANAGER_INT]) != 1:
-            print 'Expecting a manager object!'
+            print('Expecting a manager object!')
             sys.exit(1)
 
         if len(self.objs[VG_INT]) != 0:
-            print 'Expecting no VGs to exist!'
+            print('Expecting no VGs to exist!')
             sys.exit(1)
 
         self.pvs = []
@@ -144,7 +144,7 @@ class TestDbusService(unittest.TestCase):
                         break
 
                 if not found:
-                    print 'Re-creating PV=', p
+                    print('Re-creating PV=', p)
                     self._pv_create(p)
 
     def _pv_create(self, device):
@@ -279,7 +279,6 @@ class TestDbusService(unittest.TestCase):
                               dbus.Array([], '(oii)'), -1, {}),
                              vg)
 
-
     def test_lv_create_linear(self):
 
         vg = self._vg_create()
@@ -390,7 +389,7 @@ class TestDbusService(unittest.TestCase):
         while True:
             j = RemoteObject(self.bus, j_path, JOB_INT)
             if j.Complete:
-                print 'Done!'
+                print('Done!')
                 (ec, error_msg) = j.GetError
                 self.assertTrue(ec == 0, "%d :%s" % (ec, error_msg))
 
@@ -402,10 +401,10 @@ class TestDbusService(unittest.TestCase):
 
                 break
             else:
-                print 'Percentage = ', j.Percent
+                print('Percentage = ', j.Percent)
 
             if j.Wait(1):
-                print 'Wait indicates we are done!'
+                print('Wait indicates we are done!')
 
         return rc
 
@@ -550,14 +549,14 @@ class TestDbusService(unittest.TestCase):
 
         yes = False
 
-        print "\nNote: This test isn't guaranteed to pass..."
+        print("\nNote: This test isn't guaranteed to pass...")
 
         for i in [32, 64]:
             yes = self._test_expired_timer(i)
             if yes:
-                print 'Success!'
+                print('Success!')
                 break
-            print 'Attempt (%d) failed, trying again...' % (i)
+            print('Attempt (%d) failed, trying again...' % (i))
 
         self.assertTrue(yes)
 
@@ -654,7 +653,7 @@ class TestDbusService(unittest.TestCase):
         # TODO renable test case when
         # https://bugzilla.redhat.com/show_bug.cgi?id=1264169 gets fixed
         # This was tested with lvmetad disabled and we passed
-        print "\nSkipping Vg.UuidGenerate until BZ: 1264169 resolved\n"
+        print("\nSkipping Vg.UuidGenerate until BZ: 1264169 resolved\n")
 
         if False:
             vg = self._vg_create()

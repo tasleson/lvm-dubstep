@@ -14,7 +14,7 @@
 # Copyright 2015, Tony Asleson <tasleson@redhat.com>
 import os
 import multiprocessing
-import Queue
+import queue
 import itertools
 
 LVM_CMD = os.getenv('LVM_DBUSCMD', '/usr/sbin/lvm')
@@ -38,7 +38,7 @@ USE_SHELL = False
 stdout_lock = multiprocessing.Lock()
 
 kick_q = multiprocessing.Queue()
-worker_q = Queue.Queue()
+worker_q = queue.Queue()
 
 # Main event loop
 loop = None

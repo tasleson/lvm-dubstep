@@ -15,23 +15,23 @@
 #
 # Copyright 2014-2015, Tony Asleson <tasleson@redhat.com>
 
-import cfg
-import objectmanager
-import utils
-from cfg import BASE_INTERFACE, BASE_OBJ_PATH, MANAGER_OBJ_PATH
+from . import cfg
+from . import objectmanager
+from . import utils
+from .cfg import BASE_INTERFACE, BASE_OBJ_PATH, MANAGER_OBJ_PATH
 import threading
-import cmdhandler
+from . import cmdhandler
 import time
 import signal
 import dbus
-import gobject
-from fetch import load
-from manager import Manager
-from pvmover import pv_move_reaper
+from gi.repository import GObject as gobject
+from .fetch import load
+from .manager import Manager
+from .pvmover import pv_move_reaper
 import traceback
-import Queue
+import queue
 import sys
-import udevwatch
+from . import udevwatch
 
 
 class Lvm(objectmanager.ObjectManager):
@@ -44,7 +44,7 @@ def process_request():
         try:
             req = cfg.worker_q.get(True, 5)
             req.run_cmd()
-        except Queue.Empty:
+        except queue.Empty:
             pass
         except Exception:
             traceback.print_exc(file=sys.stdout)
@@ -89,8 +89,8 @@ def main():
         process.start()
 
     end = time.time()
-    print 'Service ready! total time= %.2f, lvm time= %.2f count= %d' % \
-          (end - start, cmdhandler.total_time, cmdhandler.total_count)
+    print('Service ready! total time= %.2f, lvm time= %.2f count= %d' %
+          (end - start, cmdhandler.total_time, cmdhandler.total_count))
 
     # Add udev watching
     udevwatch.add()
@@ -104,5 +104,5 @@ def main():
             for process in thread_list:
                 process.join()
     except KeyboardInterrupt:
-        pass
+        utils.handler(signal.SIGINT, None)
     return 0

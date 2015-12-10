@@ -17,8 +17,8 @@ import sys
 import threading
 import traceback
 import dbus
-import cfg
-from automatedproperties import AutomatedProperties
+from . import cfg
+from .automatedproperties import AutomatedProperties
 
 
 # noinspection PyPep8Naming
@@ -41,7 +41,7 @@ class ObjectManager(AutomatedProperties):
         with self.rlock:
             rc = {}
             try:
-                for k, v in self._objects.items():
+                for k, v in list(self._objects.items()):
                     path, props = v[0].emit_data()
                     rc[path] = props
             except Exception:
@@ -61,14 +61,14 @@ class ObjectManager(AutomatedProperties):
     @dbus.service.signal(dbus_interface="org.freedesktop.DBus.ObjectManager",
                          signature='oa{sa{sv}}')
     def InterfacesAdded(self, object_path, int_name_prop_dict):
-        print('SIGNAL: InterfacesAdded(%s, %s)' %
-              (str(object_path), str(int_name_prop_dict)))
+        print(('SIGNAL: InterfacesAdded(%s, %s)' %
+              (str(object_path), str(int_name_prop_dict))))
 
     @dbus.service.signal(dbus_interface="org.freedesktop.DBus.ObjectManager",
                          signature='oas')
     def InterfacesRemoved(self, object_path, interface_list):
-        print('SIGNAL: InterfacesRemoved(%s, %s)' %
-              (str(object_path), str(interface_list)))
+        print(('SIGNAL: InterfacesRemoved(%s, %s)' %
+              (str(object_path), str(interface_list))))
 
     def _lookup_add(self, obj, path, lvm_id, uuid):
         """
@@ -109,7 +109,7 @@ class ObjectManager(AutomatedProperties):
         with self.rlock:
             rc = {}
 
-            for k, v in self._objects.items():
+            for k, v in list(self._objects.items()):
                 if isinstance(v[0], o_type):
                     rc[k] = True
             return rc
@@ -218,11 +218,11 @@ class ObjectManager(AutomatedProperties):
 
     def refresh_all(self):
         with self.rlock:
-            for k, v in self._objects.items():
+            for k, v in list(self._objects.items()):
                 try:
                     v[0].refresh()
                 except Exception:
-                    print 'Object path= ', k
+                    print('Object path= ', k)
                     traceback.print_exc(file=sys.stdout)
 
 
