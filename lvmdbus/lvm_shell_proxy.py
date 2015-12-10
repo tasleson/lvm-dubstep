@@ -19,7 +19,7 @@ import subprocess
 import shlex
 from fcntl import fcntl, F_GETFL, F_SETFL
 from os import O_NONBLOCK
-import cfg
+from . import cfg
 
 SHELL_PROMPT = "lvm> "
 
@@ -99,10 +99,10 @@ class LVMShellProxy(object):
             rc = 0
 
         if debug or rc != 0:
-            print('CMD: %s' % cmd)
-            print("EC = %d" % rc)
-            print("STDOUT=\n %s\n" % stdout)
-            print("STDERR=\n %s\n" % stderr)
+            print(('CMD: %s' % cmd))
+            print(("EC = %d" % rc))
+            print(("STDOUT=\n %s\n" % stdout))
+            print(("STDERR=\n %s\n" % stderr))
 
         return (rc, stdout, stderr)
 
@@ -114,12 +114,12 @@ if __name__ == "__main__":
     in_line = "start"
     try:
         while in_line:
-            in_line = raw_input("lvm> ")
+            in_line = input("lvm> ")
             if in_line:
                 ret, out, err, = shell.call_lvm(in_line.split())
-                print("RET: %d" % ret)
-                print("OUT:\n%s" % out)
-                print("ERR:\n%s" % err)
+                print(("RET: %d" % ret))
+                print(("OUT:\n%s" % out))
+                print(("ERR:\n%s" % err))
     except Exception:
         pass
     finally:

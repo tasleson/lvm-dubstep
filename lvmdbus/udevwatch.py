@@ -14,8 +14,8 @@
 # Copyright 2015, Tony Asleson <tasleson@redhat.com>
 
 import pyudev
-from refresh import event_add
-import cfg
+from .refresh import event_add
+from . import cfg
 
 observer = None
 

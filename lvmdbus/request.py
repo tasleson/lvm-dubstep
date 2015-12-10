@@ -14,9 +14,9 @@
 # Copyright 2015, Tony Asleson <tasleson@redhat.com>
 
 import threading
-import gobject
-from job import Job
-import cfg
+from gi.repository import GObject
+from .job import Job
+from . import cfg
 import dbus
 
 
@@ -44,7 +44,7 @@ class RequestEntry(object):
         elif tmo == 0:
             self._return_job()
         else:
-            self.timer_id = gobject.timeout_add_seconds(
+            self.timer_id = GObject.timeout_add_seconds(
                 tmo, RequestEntry._request_timeout, self)
 
     @staticmethod
@@ -93,7 +93,7 @@ class RequestEntry(object):
             self.done = True
             if self.timer_id != -1:
                 # Try to prevent the timer from firing
-                gobject.source_remove(self.timer_id)
+                GObject.source_remove(self.timer_id)
 
             self._result = result
             self._rc = error_rc

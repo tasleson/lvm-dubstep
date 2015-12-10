@@ -16,9 +16,7 @@
 from abc import ABCMeta, abstractmethod
 
 
-class State(object):
-    __metaclass__ = ABCMeta
-
+class State(object, metaclass=ABCMeta):
     @abstractmethod
     def lvm_id(self):
         pass

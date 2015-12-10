@@ -13,20 +13,20 @@
 #
 # Copyright 2015, Tony Asleson <tasleson@redhat.com>
 
-from automatedproperties import AutomatedProperties
+from .automatedproperties import AutomatedProperties
 
-import utils
-from utils import lv_obj_path_generate, thin_pool_obj_path_generate, \
+from . import utils
+from .utils import lv_obj_path_generate, thin_pool_obj_path_generate, \
     pv_obj_path_generate, vg_obj_path_generate, n
 import dbus
-import cfg
-from cfg import VG_INTERFACE
-import cmdhandler
-from request import RequestEntry
-from loader import common
-from lv import load_lvs
-from state import State
-import pvmover
+from . import cfg
+from .cfg import VG_INTERFACE
+from . import cmdhandler
+from .request import RequestEntry
+from .loader import common
+from .lv import load_lvs
+from .state import State
+from . import pvmover
 
 
 def vgs_state_retrieve(selection):

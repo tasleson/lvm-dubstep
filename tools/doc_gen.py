@@ -110,24 +110,24 @@ def type_to_human(t):
 def ouput_interfaces(interfaces):
 
     for interface_name, md in sorted(interfaces.items()):
-        print '\n## Interface %s ##' % (interface_name)
-        print '\n#### Methods ####'
+        print('\n## Interface %s ##' % (interface_name))
+        print('\n#### Methods ####')
         for k, v in sorted(md['methods'].items()):
-            print '* %s ' % k
+            print('* %s ' % k)
 
-            if len(v['args'].keys()) == 0:
-                print '  * Arguments (None)'
+            if len(list(v['args'].keys())) == 0:
+                print('  * Arguments (None)')
             else:
                 # These need to be in the order supplied
-                print '  * Arguments'
-                for arg_name, arg_type in v['args'].items():
-                    print '      * %s (%s)' % \
-                          (arg_name, type_to_human(arg_type))
-            print '  * Returns'
-            print '      *', type_to_human(v['return_val'])
-        print '\n#### Properties ####'
+                print('  * Arguments')
+                for arg_name, arg_type in list(v['args'].items()):
+                    print('      * %s (%s)' % \
+                          (arg_name, type_to_human(arg_type)))
+            print('  * Returns')
+            print('      * %s' % (type_to_human(v['return_val'])))
+        print('\n#### Properties ####')
         for p, t in sorted(md['properties'].items()):
-            print '* %s (%s)' % (p, type_to_human(t['prop_type']))
+            print('* %s (%s)' % (p, type_to_human(t['prop_type'])))
 
 
 def get_methods(et_methods):
@@ -192,8 +192,8 @@ def _get_doc():
 
     objects = manager.GetManagedObjects()
 
-    for object_path, val in objects.items():
-        keys = [k for k in val.keys() if k[0:len(INT)] == INT]
+    for object_path, val in list(objects.items()):
+        keys = [k for k in list(val.keys()) if k[0:len(INT)] == INT]
 
         for k in keys:
             unique_interfaces[str(k)] = dict(object_path=object_path)

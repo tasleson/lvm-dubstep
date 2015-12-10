@@ -13,7 +13,7 @@
 #
 # Copyright 2015, Tony Asleson <tasleson@redhat.com>
 
-import cfg
+from . import cfg
 
 
 def common(retrieve, o_type, search_keys,
@@ -53,7 +53,7 @@ def common(retrieve, o_type, search_keys,
         object_path = None
 
     if refresh:
-        for k in existing_paths.keys():
+        for k in list(existing_paths.keys()):
             cfg.om.remove_object(cfg.om.get_by_path(k), True)
             num_changes += 1
 

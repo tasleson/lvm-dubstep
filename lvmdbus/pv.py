@@ -13,17 +13,17 @@
 #
 # Copyright 2015, Tony Asleson <tasleson@redhat.com>
 
-from automatedproperties import AutomatedProperties
-import utils
-import cfg
+from .automatedproperties import AutomatedProperties
+from . import utils
+from . import cfg
 import dbus
-from cfg import PV_INTERFACE
-import cmdhandler
-from utils import thin_pool_obj_path_generate, lv_obj_path_generate, \
+from .cfg import PV_INTERFACE
+from . import cmdhandler
+from .utils import thin_pool_obj_path_generate, lv_obj_path_generate, \
     vg_obj_path_generate, n, pv_obj_path_generate
-from loader import common
-from request import RequestEntry
-from state import State
+from .loader import common
+from .request import RequestEntry
+from .state import State
 
 
 def pvs_state_retrieve(selection):
@@ -35,9 +35,9 @@ def pvs_state_retrieve(selection):
             PvState(p["pv_name"], p["pv_uuid"], p["pv_name"],
                     p["pv_fmt"], n(p["pv_size"]), n(p["pv_free"]),
                     n(p["pv_used"]), n(p["dev_size"]), n(p["pv_mda_size"]),
-                    n(p["pv_mda_free"]), long(p["pv_ba_start"]),
+                    n(p["pv_mda_free"]), int(p["pv_ba_start"]),
                     n(p["pv_ba_size"]), n(p["pe_start"]),
-                    long(p["pv_pe_count"]), long(p["pv_pe_alloc_count"]),
+                    int(p["pv_pe_count"]), int(p["pv_pe_alloc_count"]),
                     p["pv_attr"], p["pv_tags"], p["vg_name"], p["vg_uuid"]))
     return rc
 
@@ -201,6 +201,8 @@ class Pv(AutomatedProperties):
                                                      allocation_options)
             if rc == 0:
                 dbo.refresh()
+                # Refresh VG as VG gets a metadata update too
+                cfg.om.get_by_path(dbo.Vg).refresh()
             else:
                 raise dbus.exceptions.DBusException(
                     PV_INTERFACE, 'Exit code %s, stderr = %s' % (str(rc), err))
