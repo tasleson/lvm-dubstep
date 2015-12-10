@@ -15,8 +15,8 @@
 
 import threading
 import gobject
-from job import Job
-import cfg
+from .job import Job
+from . import cfg
 import dbus
 
 

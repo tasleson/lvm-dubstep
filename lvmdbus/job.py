@@ -13,10 +13,10 @@
 #
 # Copyright 2015, Tony Asleson <tasleson@redhat.com>
 
-from automatedproperties import AutomatedProperties
-from utils import job_obj_path_generate
-import cfg
-from cfg import JOB_INTERFACE
+from .automatedproperties import AutomatedProperties
+from .utils import job_obj_path_generate
+from . import cfg
+from .cfg import JOB_INTERFACE
 import dbus
 import threading
 

@@ -17,12 +17,12 @@ from subprocess import Popen, PIPE
 import traceback
 import sys
 import time
-import cfg
+from . import cfg
 import threading
 from itertools import chain
-from utils import pv_dest_ranges
+from .utils import pv_dest_ranges
 
-from lvm_shell_proxy import LVMShellProxy
+from .lvm_shell_proxy import LVMShellProxy
 
 
 SEP = '{|}'
@@ -41,10 +41,10 @@ _t_call = None
 
 
 def _debug_c(cmd, exit_code, out):
-    print 'CMD:', ' '.join(cmd)
-    print("EC = %d" % exit_code)
-    print("STDOUT=\n %s\n" % out[0])
-    print("STDERR=\n %s\n" % out[1])
+    print('CMD:', ' '.join(cmd))
+    print(("EC = %d" % exit_code))
+    print(("STDOUT=\n %s\n" % out[0]))
+    print(("STDERR=\n %s\n" % out[1]))
 
 
 def call_lvm(command, debug=False):
@@ -69,7 +69,7 @@ def call_lvm(command, debug=False):
 
     if process.returncode == 0:
         if out[1] and len(out[1]):
-            print 'WARNING: lvm is out-putting text to STDERR on success!'
+            print('WARNING: lvm is out-putting text to STDERR on success!')
             _debug_c(command, process.returncode, out)
 
     return process.returncode, out[0], out[1]
@@ -77,7 +77,7 @@ def call_lvm(command, debug=False):
 
 def _shell_cfg():
     global _t_call
-    print 'Using lvm shell!'
+    print('Using lvm shell!')
     lvm_shell = LVMShellProxy()
     _t_call = lvm_shell.call_lvm
 
@@ -93,7 +93,7 @@ def set_execution(shell):
     with cmd_lock:
         _t_call = None
         if shell:
-            print 'Using lvm shell!'
+            print('Using lvm shell!')
             lvm_shell = LVMShellProxy()
             _t_call = lvm_shell.call_lvm
         else:
@@ -125,8 +125,11 @@ def _dc(cmd, args):
     return c
 
 
-def parse(out):
+def parse(tout):
     rc = []
+
+    out = tout.decode("utf-8")
+
     for line in out.split('\n'):
         # This line includes separators, so process them
         if SEP in line:
@@ -150,7 +153,7 @@ def parse_column_names(out, column_names):
     rc = []
 
     for i in range(0, len(lines)):
-        d = dict(zip(column_names, lines[i]))
+        d = dict(list(zip(column_names, lines[i])))
         rc.append(d)
 
     return rc
@@ -158,7 +161,7 @@ def parse_column_names(out, column_names):
 
 def options_to_cli_args(options):
     rc = []
-    for k, v in dict(options).items():
+    for k, v in list(dict(options).items()):
         if k.startswith("-"):
             rc.append(k)
         else:
@@ -459,7 +462,7 @@ def pv_contained_lv(device):
                 for pe in pe_ranges:
                     _lv_device(tmp, l[1], device, pe, l[2], l[0])
 
-        for k, v in tmp.items():
+        for k, v in list(tmp.items()):
             data.append((k, v['segs'], v['attrib'], v['uuid']))
 
     return data
@@ -674,7 +677,7 @@ def lv_pv_devices(lv_name):
                 else:
                     _pv_device(tmp, l[1], l[0], l[2])
 
-            for k, v in tmp.items():
+            for k, v in list(tmp.items()):
                 data.append((k, v['ranges'], v['uuid']))
 
     except Exception:
@@ -687,4 +690,4 @@ if __name__ == '__main__':
     pv_data = pv_retrieve()
 
     for p in pv_data:
-        print str(p)
+        print(str(p))

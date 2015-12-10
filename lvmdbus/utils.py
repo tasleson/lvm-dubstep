@@ -24,7 +24,7 @@ import dbus
 import dbus.service
 import dbus.mainloop.glib
 
-import cfg
+from . import cfg
 
 
 def md5(t):
@@ -36,7 +36,7 @@ def md5(t):
 
 def is_numeric(s):
     try:
-        long(s)
+        int(s)
         return True
     except ValueError:
         return False
@@ -62,10 +62,10 @@ def rtype(dbus_type):
 @rtype(dbus.UInt64)
 def n(v):
     if not v:
-        return 0L
+        return 0
     if v.endswith('B'):
-        return long(v[:-1])
-    return long(float(v))
+        return int(v[:-1])
+    return int(float(v))
 
 
 @rtype(dbus.UInt32)
@@ -79,7 +79,7 @@ def n32(v):
 
 # noinspection PyProtectedMember
 def init_class_from_arguments(obj_instance, prefix='_'):
-    for k, v in sys._getframe(1).f_locals.items():
+    for k, v in list(sys._getframe(1).f_locals.items()):
         if k != 'self':
 
             if prefix:
@@ -120,7 +120,7 @@ def get_properties(f, interface=None):
             continue
 
         h = vars(c)
-        for p, value in h.iteritems():
+        for p, value in h.items():
             if isinstance(value, property):
                 # We found a property, see if it has a metadata type
                 key = attribute_type_name(p)
@@ -147,7 +147,7 @@ def get_object_property_diff(o_prop, n_prop):
     """
     rc = {}
 
-    for k, v in o_prop.items():
+    for k, v in list(o_prop.items()):
         #print('Comparing %s:%s to %s:%s' %
         #      (k, str(o_prop[k]), k, str(n_prop[k])))
         if o_prop[k] != n_prop[k]:
@@ -266,9 +266,9 @@ def pprint(msg, *attributes):
         msg = "%d:%d - %s" % (os.getpid(), tid, msg)
 
         if attributes:
-            print color(msg, *attributes)
+            print(color(msg, *attributes))
         else:
-            print msg
+            print(msg)
 
         cfg.stdout_lock.release()
         sys.stdout.flush()
@@ -285,31 +285,31 @@ def handler(signum, frame):
 def pv_obj_path_generate(object_path=None):
     if object_path:
         return object_path
-    return cfg.PV_OBJ_PATH + "/%d" % cfg.pv_id.next()
+    return cfg.PV_OBJ_PATH + "/%d" % next(cfg.pv_id)
 
 
 def vg_obj_path_generate(object_path=None):
     if object_path:
         return object_path
-    return cfg.VG_OBJ_PATH + "/%d" % cfg.vg_id.next()
+    return cfg.VG_OBJ_PATH + "/%d" % next(cfg.vg_id)
 
 
 def lv_obj_path_generate(object_path=None):
     if object_path:
         return object_path
-    return cfg.LV_OBJ_PATH + "/%d" % cfg.lv_id.next()
+    return cfg.LV_OBJ_PATH + "/%d" % next(cfg.lv_id)
 
 
 def thin_pool_obj_path_generate(object_path=None):
     if object_path:
         return object_path
-    return cfg.THIN_POOL_PATH + "/%d" % cfg.thin_id.next()
+    return cfg.THIN_POOL_PATH + "/%d" % next(cfg.thin_id)
 
 
 def job_obj_path_generate(object_path=None):
     if object_path:
         return object_path
-    return cfg.JOB_OBJ_PATH + "/%d" % cfg.job_id.next()
+    return cfg.JOB_OBJ_PATH + "/%d" % next(cfg.job_id)
 
 
 def color(text, *user_styles):

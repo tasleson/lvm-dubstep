@@ -16,12 +16,12 @@
 import threading
 import string
 import subprocess
-import cfg
+from . import cfg
 import time
-from cmdhandler import options_to_cli_args
+from .cmdhandler import options_to_cli_args
 import dbus
-from job import Job, JobState
-from utils import pv_range_append, pv_dest_ranges
+from .job import Job, JobState
+from .utils import pv_range_append, pv_dest_ranges
 
 _rlock = threading.RLock()
 _thread_list = list()
@@ -132,8 +132,8 @@ def move_execute(command, move_job):
     lines_iterator = iter(process.stdout.readline, b"")
     for line in lines_iterator:
         if len(line) > 10:
-            (device, ignore, percentage) = line.split(':')
-            move_job.Percent = round(float(string.strip(percentage)[:-1]), 1)
+            (device, ignore, percentage) = line.decode("utf-8").split(':')
+            move_job.Percent = round(float(percentage.strip()[:-1]), 1)
 
     out = process.communicate()
 
