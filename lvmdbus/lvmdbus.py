@@ -24,7 +24,7 @@ from . import cmdhandler
 import time
 import signal
 import dbus
-from gi.repository import GObject as gobject
+from gi.repository import GObject
 from .fetch import load
 from .manager import Manager
 from .pvmover import pv_move_reaper
@@ -65,7 +65,7 @@ def main():
             pass
 
     dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
-    gobject.threads_init()
+    GObject.threads_init()
     dbus.mainloop.glib.threads_init()
     cfg.bus = dbus.SystemBus()
     # The base name variable needs to exist for things to work.
@@ -82,7 +82,7 @@ def main():
     thread_list.append(threading.Thread(target=process_request))
 
     load()
-    cfg.loop = gobject.MainLoop()
+    cfg.loop = GObject.MainLoop()
 
     for process in thread_list:
         process.damon = True
