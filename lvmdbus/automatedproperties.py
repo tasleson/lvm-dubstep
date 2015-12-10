@@ -19,7 +19,7 @@ from .utils import get_properties, add_properties, get_object_property_diff
 from .state import State
 
 
-# noinspection PyPep8Naming
+# noinspection PyPep8Naming,PyUnresolvedReferences
 class AutomatedProperties(dbus.service.Object):
     """
     This class implements the needed interfaces for:

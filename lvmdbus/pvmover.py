@@ -14,7 +14,6 @@
 # Copyright 2015, Tony Asleson <tasleson@redhat.com>
 
 import threading
-import string
 import subprocess
 from . import cfg
 import time

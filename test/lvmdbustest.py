@@ -16,6 +16,7 @@
 # Copyright 2015, Tony Asleson <tasleson@redhat.com>
 
 import dbus
+# noinspection PyUnresolvedReferences
 from dbus.mainloop.glib import DBusGMainLoop
 import unittest
 import sys
@@ -104,6 +105,7 @@ def set_execution(lvmshell):
     lvm_manager.UseLvmShell(lvmshell)
 
 
+# noinspection PyUnresolvedReferences
 class TestDbusService(unittest.TestCase):
     def setUp(self):
         # Because of the sensitive nature of running LVM tests we will only

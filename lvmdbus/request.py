@@ -14,6 +14,7 @@
 # Copyright 2015, Tony Asleson <tasleson@redhat.com>
 
 import threading
+# noinspection PyUnresolvedReferences
 from gi.repository import GObject
 from .job import Job
 from . import cfg

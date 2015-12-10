@@ -1,6 +1,7 @@
 #!/bin/env python
 import xml.etree.ElementTree as Et
 import dbus
+# noinspection PyUnresolvedReferences
 from dbus.mainloop.glib import DBusGMainLoop
 import pprint
 import collections
@@ -121,7 +122,7 @@ def ouput_interfaces(interfaces):
                 # These need to be in the order supplied
                 print('  * Arguments')
                 for arg_name, arg_type in list(v['args'].items()):
-                    print('      * %s (%s)' % \
+                    print('      * %s (%s)' %
                           (arg_name, type_to_human(arg_type)))
             print('  * Returns')
             print('      * %s' % (type_to_human(v['return_val'])))

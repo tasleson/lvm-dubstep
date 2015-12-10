@@ -24,6 +24,7 @@ from . import cmdhandler
 import time
 import signal
 import dbus
+# noinspection PyUnresolvedReferences
 from gi.repository import GObject
 from .fetch import load
 from .manager import Manager
