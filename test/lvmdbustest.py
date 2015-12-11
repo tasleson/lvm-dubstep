@@ -172,7 +172,7 @@ def get_objects():
 
     for object_path, val in list(objects.items()):
         for interface, props in list(val.items()):
-            o = RemoteObject(bus, object_path, interface, props)
+            o = ClientProxy(bus, object_path, interface, props)
             rc[interface].append(o)
 
     return rc, bus
@@ -205,7 +205,7 @@ class TestDbusService(unittest.TestCase):
 
         self.pvs = []
         for p in self.objs[PV_INT]:
-            self.pvs.append(p.Name)
+            self.pvs.append(p.Pv.Name)
 
     def tearDown(self):
         # If we get here it means we passed setUp, so lets remove anything
@@ -213,7 +213,7 @@ class TestDbusService(unittest.TestCase):
         self.objs, self.bus = get_objects()
         for v in self.objs[VG_INT]:
             #print "DEBUG: Removing VG= ", v.Uuid, v.Name
-            v.Remove(-1, {})
+            v.Vg.Remove(-1, {})
 
         # Check to make sure the PVs we had to start exist, else re-create
         # them
@@ -221,7 +221,7 @@ class TestDbusService(unittest.TestCase):
             for p in self.pvs:
                 found = False
                 for pc in self.objs[PV_INT]:
-                    if pc.Name == p:
+                    if pc.Pv.Name == p:
                         found = True
                         break
 
@@ -230,7 +230,7 @@ class TestDbusService(unittest.TestCase):
                     self._pv_create(p)
 
     def _pv_create(self, device):
-        pv_path = self.objs[MANAGER_INT][0].PvCreate(device, -1, {})[0]
+        pv_path = self.objs[MANAGER_INT][0].Manager.PvCreate(device, -1, {})[0]
         self.assertTrue(pv_path is not None and len(pv_path) > 0)
         return pv_path
 
@@ -238,43 +238,43 @@ class TestDbusService(unittest.TestCase):
         return self.objs[MANAGER_INT][0]
 
     def _refresh(self):
-        return self._manager().Refresh()
+        return self._manager().Manager.Refresh()
 
     def test_refresh(self):
         rc = self._refresh()
         self.assertEqual(rc, 0)
 
     def test_version(self):
-        rc = self.objs[MANAGER_INT][0].Version
+        rc = self.objs[MANAGER_INT][0].Manager.Version
         self.assertTrue(rc is not None and len(rc) > 0)
         self.assertEqual(self._refresh(), 0)
 
     def _vg_create(self, pv_paths=None):
 
         if not pv_paths:
-            pv_paths = [self.objs[PV_INT][0].object_path]
+            pv_paths = [self.objs[PV_INT][0].Pv.object_path]
 
         vg_name = rs(8, '_vg')
 
-        vg_path = self.objs[MANAGER_INT][0].VgCreate(
+        vg_path = self.objs[MANAGER_INT][0].Manager.VgCreate(
             vg_name,
             pv_paths,
             -1,
             {})[0]
         self.assertTrue(vg_path is not None and len(vg_path) > 0)
-        return RemoteObject(self.bus, vg_path, VG_INT)
+        return ClientProxy(self.bus, vg_path)
 
     def test_vg_create(self):
         self._vg_create()
         self.assertEqual(self._refresh(), 0)
 
     def test_vg_delete(self):
-        vg = self._vg_create()
+        vg = self._vg_create().Vg
         vg.Remove(-1, {})
         self.assertEqual(self._refresh(), 0)
 
     def _pv_remove(self, pv):
-        rc = pv.Remove(-1, {})
+        rc = pv.Pv.Remove(-1, {})
         return rc
 
     def test_pv_remove_add(self):
@@ -286,19 +286,19 @@ class TestDbusService(unittest.TestCase):
         self.assertEqual(self._refresh(), 0)
 
         # Add it back
-        rc = self._pv_create(target.Name)[0]
+        rc = self._pv_create(target.Pv.Name)[0]
         self.assertTrue(rc == '/')
         self.assertEqual(self._refresh(), 0)
 
     def _lookup(self, lvm_id):
-        return self.objs[MANAGER_INT][0].LookUpByLvmId(lvm_id)
+        return self.objs[MANAGER_INT][0].Manager.LookUpByLvmId(lvm_id)
 
     def test_lookup_by_lvm_id(self):
         # For the moment lets just lookup what we know about which is PVs
         # When we start testing VGs and LVs we will test lookups for those
         # during those unit tests
         for p in self.objs[PV_INT]:
-            rc = self._lookup(p.Name)
+            rc = self._lookup(p.Pv.Name)
             self.assertTrue(rc is not None and rc != '/')
 
         # Search for something which doesn't exist
@@ -313,8 +313,8 @@ class TestDbusService(unittest.TestCase):
             pv_initial = self.objs[PV_INT][0]
             pv_next = self.objs[PV_INT][1]
 
-            vg = self._vg_create([pv_initial.object_path])
-            path = vg.Extend([pv_next.object_path], -1, {})
+            vg = self._vg_create([pv_initial.Pv.object_path]).Vg
+            path = vg.Extend([pv_next.Pv.object_path], -1, {})
             self.assertTrue(path == '/')
             self.assertEqual(self._refresh(), 0)
 
@@ -324,8 +324,8 @@ class TestDbusService(unittest.TestCase):
 
         if len(self.objs[PV_INT]) >= 2:
             vg = self._vg_create(
-                [self.objs[PV_INT][0].object_path,
-                 self.objs[PV_INT][1].object_path])
+                [self.objs[PV_INT][0].Pv.object_path,
+                 self.objs[PV_INT][1].Pv.object_path]).Vg
 
             path = vg.Reduce(False, [vg.Pvs[0]], -1, {})
             self.assertTrue(path == '/')
@@ -333,7 +333,7 @@ class TestDbusService(unittest.TestCase):
 
     # noinspection PyUnresolvedReferences
     def test_vg_rename(self):
-        vg = self._vg_create()
+        vg = self._vg_create().Vg
         path = vg.Rename('renamed_' + vg.Name, -1, {})
         self.assertTrue(path == '/')
         self.assertEqual(self._refresh(), 0)
@@ -345,14 +345,14 @@ class TestDbusService(unittest.TestCase):
         self.assertTrue(vg)
 
         if path:
-            lv = RemoteObject(self.bus, path, LV_INT)
+            lv = ClientProxy(self.bus, path)
             # TODO verify object properties
 
         self.assertEqual(self._refresh(), 0)
         return lv
 
     def test_lv_create(self):
-        vg = self._vg_create()
+        vg = self._vg_create().Vg
         self._test_lv_create(vg.LvCreate,
                              (rs(8, '_lv'), 1024 * 1024 * 4,
                               dbus.Array([], '(oii)'), -1, {}),
@@ -360,7 +360,7 @@ class TestDbusService(unittest.TestCase):
 
     def test_lv_create_linear(self):
 
-        vg = self._vg_create()
+        vg = self._vg_create().Vg
         self._test_lv_create(vg.LvCreateLinear,
                              (rs(8, '_lv'), 1024 * 1024 * 4, False, -1, {}),
                              vg)
@@ -368,9 +368,9 @@ class TestDbusService(unittest.TestCase):
     def test_lv_create_striped(self):
         pv_paths = []
         for pp in self.objs[PV_INT]:
-            pv_paths.append(pp.object_path)
+            pv_paths.append(pp.Pv.object_path)
 
-        vg = self._vg_create(pv_paths)
+        vg = self._vg_create(pv_paths).Vg
         self._test_lv_create(vg.LvCreateStriped,
                              (rs(8, '_lv'), 1024 * 1024 * 4, 2, 8, False,
                               -1, {}), vg)
@@ -378,18 +378,18 @@ class TestDbusService(unittest.TestCase):
     def test_lv_create_mirror(self):
         pv_paths = []
         for pp in self.objs[PV_INT]:
-            pv_paths.append(pp.object_path)
+            pv_paths.append(pp.Pv.object_path)
 
-        vg = self._vg_create(pv_paths)
+        vg = self._vg_create(pv_paths).Vg
         self._test_lv_create(vg.LvCreateMirror,
                              (rs(8, '_lv'), 1024 * 1024 * 4, 2, -1, {}), vg)
 
     def test_lv_create_raid(self):
         pv_paths = []
         for pp in self.objs[PV_INT]:
-            pv_paths.append(pp.object_path)
+            pv_paths.append(pp.Pv.object_path)
 
-        vg = self._vg_create(pv_paths)
+        vg = self._vg_create(pv_paths).Vg
         self._test_lv_create(vg.LvCreateRaid,
                              (rs(8, '_lv'), 'raid4',
                               1024 * 1024 * 16, 2, 8, -1, {}), vg)
@@ -397,9 +397,9 @@ class TestDbusService(unittest.TestCase):
     def _create_lv(self, thinpool=False):
         pv_paths = []
         for pp in self.objs[PV_INT]:
-            pv_paths.append(pp.object_path)
+            pv_paths.append(pp.Pv.object_path)
 
-        vg = self._vg_create(pv_paths)
+        vg = self._vg_create(pv_paths).Vg
         return self._test_lv_create(
             vg.LvCreateLinear,
             (rs(8, '_lv'), 1024 * 1024 * 128, thinpool, -1, {}), vg)
@@ -409,14 +409,14 @@ class TestDbusService(unittest.TestCase):
 
     def test_lv_rename(self):
         # Rename a regular LV
-        lv = self._create_lv()
+        lv = self._create_lv().Lv
         lv.Rename('renamed_' + lv.Name, -1, {})
         self.assertEqual(self._refresh(), 0)
 
     def test_lv_thinpool_rename(self):
         # Rename a thin pool
-        thin_pool = self._create_lv(True)
-        thin_pool.Rename('renamed_' + thin_pool.Name, -1, {})
+        tp = self._create_lv(True)
+        tp.Lv.Rename('renamed_' + tp.Lv.Name, -1, {})
         self.assertEqual(self._refresh(), 0)
 
     # noinspection PyUnresolvedReferences
@@ -425,27 +425,24 @@ class TestDbusService(unittest.TestCase):
 
         # This returns a LV with the LV interface, need to get a proxy for
         # thinpool interface too
-        lv_pool = self._create_lv(True)
+        tp = self._create_lv(True)
 
-        thin_pool = RemoteObject(self.bus, lv_pool.object_path, THINPOOL_INT)
-
-        thin_path = thin_pool.LvCreate(
+        thin_path = tp.ThinPool.LvCreate(
             rs(10, '_thin_lv'), 1024 * 1024 * 10, -1, {})[0]
 
-        lv = RemoteObject(self.bus, thin_path, LV_INT)
-
+        lv = ClientProxy(self.bus, thin_path).Lv
         rc = lv.Rename('rename_test' + lv.Name, -1, {})
         self.assertTrue(rc == '/')
         self.assertEqual(self._refresh(), 0)
 
     def test_lv_remove(self):
-        lv = self._create_lv()
+        lv = self._create_lv().Lv
         rc = lv.Remove(-1, {})
         self.assertTrue(rc == '/')
         self.assertEqual(self._refresh(), 0)
 
     def test_lv_snapshot(self):
-        lv = self._create_lv()
+        lv = self._create_lv().Lv
         ss_name = 'ss_' + lv.Name
 
         # Test waiting to complete
@@ -453,7 +450,7 @@ class TestDbusService(unittest.TestCase):
         self.assertTrue(ss != '/')
         self.assertTrue(job == '/')
 
-        snapshot = RemoteObject(self.bus, ss, LV_INT)
+        snapshot = ClientProxy(self.bus, ss).Lv
         self.assertTrue(snapshot.Name == ss_name)
 
         self.assertEqual(self._refresh(), 0)
@@ -471,7 +468,7 @@ class TestDbusService(unittest.TestCase):
         import time
         rc = None
         while True:
-            j = RemoteObject(self.bus, j_path, JOB_INT)
+            j = ClientProxy(self.bus, j_path).Job
             if j.Complete:
                 print('Done!')
                 (ec, error_msg) = j.GetError
@@ -493,7 +490,7 @@ class TestDbusService(unittest.TestCase):
         return rc
 
     def test_lv_resize(self):
-        lv = self._create_lv()
+        lv = self._create_lv().Lv
 
         for size in [lv.SizeBytes + 4194304, lv.SizeBytes - 4194304,
                      lv.SizeBytes + 2048, lv.SizeBytes - 2048, lv.SizeBytes]:
@@ -513,7 +510,7 @@ class TestDbusService(unittest.TestCase):
                 self.assertTrue(lv.SizeBytes <= prev)
 
     def test_lv_move(self):
-        lv = self._create_lv()
+        lv = self._create_lv().Lv
 
         pv_path_move = str(lv.Devices[0][0])
 
@@ -528,7 +525,7 @@ class TestDbusService(unittest.TestCase):
                         (pv_path_move, new_pv))
 
     def test_lv_activate_deactivate(self):
-        lv = self._create_lv()
+        lv = self._create_lv().Lv
         lv.update()
 
         lv.Deactivate(0, -1, {})
@@ -549,10 +546,10 @@ class TestDbusService(unittest.TestCase):
             self.assertEqual(self._refresh(), 0)
 
     def test_move(self):
-        lv = self._create_lv()
+        lv = self._create_lv().Lv
 
         # Test moving without being LV specific
-        vg = RemoteObject(self.bus, lv.Vg, VG_INT)
+        vg = ClientProxy(self.bus, lv.Vg).Vg
         pv_to_move = str(lv.Devices[0][0])
         job = vg.Move(pv_to_move, (0, 0), dbus.Array([], '(oii)'), 0, {})
         self._wait_for_job(job)
@@ -571,7 +568,7 @@ class TestDbusService(unittest.TestCase):
                 dst = p
 
         # Fetch the destination
-        pv = RemoteObject(self.bus, dst, PV_INT)
+        pv = ClientProxy(self.bus, dst).Pv
 
         # Test range, move it to the middle of the new destination and blocking
         # blocking for it to complete
@@ -583,12 +580,12 @@ class TestDbusService(unittest.TestCase):
     def test_job_handling(self):
         pv_paths = []
         for pp in self.objs[PV_INT]:
-            pv_paths.append(pp.object_path)
+            pv_paths.append(pp.Pv.object_path)
 
         vg_name = rs(8, '_vg')
 
         # Test getting a job right away
-        vg_path, vg_job = self.objs[MANAGER_INT][0].VgCreate(
+        vg_path, vg_job = self.objs[MANAGER_INT][0].Manager.VgCreate(
             vg_name, pv_paths,
             0, {})
 
@@ -601,13 +598,13 @@ class TestDbusService(unittest.TestCase):
         rc = False
         pv_paths = []
         for pp in self.objs[PV_INT]:
-            pv_paths.append(pp.object_path)
+            pv_paths.append(pp.Pv.object_path)
 
         # In small configurations lvm is pretty snappy, so lets create a VG
         # add a number of LVs and then remove the VG and all the contained
         # LVs which appears to consistently run a little slow.
 
-        vg = self._vg_create(pv_paths)
+        vg = self._vg_create(pv_paths).Vg
 
         for i in range(0, num_lvs):
             obj_path, job = vg.LvCreateLinear(rs(8, "_lv"),
@@ -658,13 +655,13 @@ class TestDbusService(unittest.TestCase):
 
         pv_paths = []
         for pp in self.objs[PV_INT]:
-            pv_paths.append(pp.object_path)
+            pv_paths.append(pp.Pv.object_path)
 
-        vg = self._vg_create(pv_paths)
+        vg = self._vg_create(pv_paths).Vg
 
         # Get the PVs
         for p in vg.Pvs:
-            pvs.append(RemoteObject(self.bus, p, PV_INT))
+            pvs.append(ClientProxy(self.bus, p).Pv)
 
         rc = vg.PvTagsAdd(vg.Pvs, ['hello', 'world'], -1, {})
         self.assertTrue(rc == '/')
@@ -679,7 +676,7 @@ class TestDbusService(unittest.TestCase):
             self.assertTrue([] == p.Tags)
 
     def test_vg_tags(self):
-        vg = self._vg_create()
+        vg = self._vg_create().Vg
 
         t = ['Testing', 'tags']
 
@@ -691,11 +688,11 @@ class TestDbusService(unittest.TestCase):
         self.assertTrue([] == vg.Tags)
 
     def test_lv_tags(self):
-        vg = self._vg_create()
+        vg = self._vg_create().Vg
         lv = self._test_lv_create(
             vg.LvCreateLinear,
             (rs(8, '_lv'), 1024 * 1024 * 4, False, -1, {}),
-            vg)
+            vg).Lv
 
         t = ['Testing', 'tags']
 
@@ -707,7 +704,7 @@ class TestDbusService(unittest.TestCase):
         self.assertTrue([] == lv.Tags)
 
     def test_vg_allocation_policy_set(self):
-        vg = self._vg_create()
+        vg = self._vg_create().Vg
 
         for p in ['anywhere', 'contiguous', 'cling', 'normal']:
             rc = vg.AllocationPolicySet(p, -1, {})
@@ -718,7 +715,7 @@ class TestDbusService(unittest.TestCase):
             self.assertTrue(prop)
 
     def test_vg_max_pv(self):
-        vg = self._vg_create()
+        vg = self._vg_create().Vg
 
         # BZ: https://bugzilla.redhat.com/show_bug.cgi?id=1280496
         # TODO: Add a test back for larger values here when bug is resolved
@@ -730,7 +727,7 @@ class TestDbusService(unittest.TestCase):
                             (str(p), str(vg.MaxPv)))
 
     def test_vg_max_lv(self):
-        vg = self._vg_create()
+        vg = self._vg_create().Vg
 
         # BZ: https://bugzilla.redhat.com/show_bug.cgi?id=1280496
         # TODO: Add a test back for larger values here when bug is resolved
@@ -748,7 +745,7 @@ class TestDbusService(unittest.TestCase):
         print("\nSkipping Vg.UuidGenerate until BZ: 1264169 resolved\n")
 
         if False:
-            vg = self._vg_create()
+            vg = self._vg_create().Vg
             prev_uuid = vg.Uuid
             rc = vg.UuidGenerate(-1, {})
             self.assertEqual(rc, '/')
@@ -757,7 +754,7 @@ class TestDbusService(unittest.TestCase):
                             (vg.Uuid, prev_uuid))
 
     def test_vg_activate_deactivate(self):
-        vg = self._vg_create()
+        vg = self._vg_create().Vg
         self._test_lv_create(
             vg.LvCreateLinear,
             (rs(8, '_lv'), 1024 * 1024 * 4, False, -1, {}),
@@ -780,8 +777,7 @@ class TestDbusService(unittest.TestCase):
         self.assertTrue(len(self.objs[PV_INT]) > 0)
 
         if len(self.objs[PV_INT]) > 0:
-            pv = RemoteObject(self.bus, self.objs[PV_INT][0].object_path,
-                              PV_INT)
+            pv = ClientProxy(self.bus, self.objs[PV_INT][0].Pv.object_path).Pv
 
             original_size = pv.SizeBytes
 
@@ -801,12 +797,11 @@ class TestDbusService(unittest.TestCase):
 
         pv_paths = []
         for pp in self.objs[PV_INT]:
-            pv_paths.append(pp.object_path)
+            pv_paths.append(pp.Pv.object_path)
 
-        vg = self._vg_create(pv_paths)
+        vg = self._vg_create(pv_paths).Vg
 
-        pv = RemoteObject(self.bus, vg.Pvs[0],
-                              PV_INT)
+        pv = ClientProxy(self.bus, vg.Pvs[0]).Pv
 
         pv.AllocationEnabled(False, -1, {})
         pv.update()
@@ -825,7 +820,7 @@ class TestDbusService(unittest.TestCase):
     def test_pv_scan(self):
         devices = self._get_devices()
 
-        mgr = self._manager()
+        mgr = self._manager().Manager
 
         self.assertEqual(mgr.PvScan(False, True,
                                     dbus.Array([], 's'),
