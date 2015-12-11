@@ -25,6 +25,8 @@ import string
 import functools
 import time
 import pyudev
+import xml.etree.ElementTree as Et
+from collections import OrderedDict
 
 
 BUSNAME = "com.redhat.lvmdbus1"
@@ -42,6 +44,66 @@ def rs(length, suffix):
                    for _ in range(length)) + suffix
 
 bus = dbus.SystemBus(mainloop=DBusGMainLoop())
+
+
+class DbusIntrospection(object):
+
+    @staticmethod
+    def introspect(xml_representation):
+        interfaces = {}
+
+        root = Et.fromstring(xml_representation)
+
+        for c in root:
+            if c.tag == "interface":
+                in_f = c.attrib['name']
+                interfaces[in_f] = \
+                    dict(methods=OrderedDict(), properties={})
+                for nested in c:
+                    if nested.tag == "method":
+                        mn = nested.attrib['name']
+                        interfaces[in_f]['methods'][mn] = OrderedDict()
+
+                        for arg in nested:
+                            if arg.tag == 'arg':
+                                arg_dir = arg.attrib['direction']
+                                if arg_dir == 'in':
+                                    n = arg.attrib['name']
+                                else:
+                                    n = None
+
+                                arg_type = arg.attrib['type']
+
+                                if n:
+                                    v = dict(name=mn,
+                                             a_dir=arg_dir,
+                                             a_type=arg_type)
+                                    interfaces[in_f]['methods'][mn][n] = v
+
+                    elif nested.tag == 'property':
+                        pn = nested.attrib['name']
+                        p_access = nested.attrib['access']
+                        p_type = nested.attrib['type']
+
+                        interfaces[in_f]['properties'][pn] = \
+                            dict(p_access=p_access, p_type=p_type)
+                    else:
+                        pass
+
+        # print('Interfaces...')
+        # for k, v in list(interfaces.items()):
+        #     print('Interface %s' % k)
+        #     if v['methods']:
+        #         for m, args in list(v['methods'].items()):
+        #             print('    method: %s' % m)
+        #             for a, aa in args.items():
+        #                 print('         method arg: %s' % (a))
+        #     if v['properties']:
+        #         for p, d in list(v['properties'].items()):
+        #             print('    Property: %s' % (p))
+        # print('End interfaces')
+
+        return interfaces
 
 
 class RemoteObject(object):
