@@ -142,6 +142,24 @@ class RemoteObject(object):
         self._set_props()
 
 
+class ClientProxy(object):
+    def __init__(self, specified_bus, object_path, interface=None, props=None):
+        i = dbus.Interface(specified_bus.get_object(
+            BUSNAME, object_path), 'org.freedesktop.DBus.Introspectable')
+        intro_spect = DbusIntrospection.introspect(i.Introspect())
+
+        for k in intro_spect.keys():
+            sn = k.split('.')[-1:][0]
+            #print('Client proxy has interface: %s %s' % (k, sn))
+
+            if interface and interface == k and props is not None:
+                ro = RemoteObject(specified_bus, object_path, k, props)
+            else:
+                ro = RemoteObject(specified_bus, object_path, k)
+
+            setattr(self, sn, ro)
+
+
 def get_objects():
     rc = {MANAGER_INT: [], PV_INT: [], VG_INT: [], LV_INT: [],
           THINPOOL_INT: [], JOB_INT: []}
