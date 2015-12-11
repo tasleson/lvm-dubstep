@@ -159,6 +159,8 @@ class ClientProxy(object):
 
             setattr(self, sn, ro)
 
+        self.object_path = object_path
+
 
 def get_objects():
     rc = {MANAGER_INT: [], PV_INT: [], VG_INT: [], LV_INT: [],
@@ -252,7 +254,7 @@ class TestDbusService(unittest.TestCase):
     def _vg_create(self, pv_paths=None):
 
         if not pv_paths:
-            pv_paths = [self.objs[PV_INT][0].Pv.object_path]
+            pv_paths = [self.objs[PV_INT][0].object_path]
 
         vg_name = rs(8, '_vg')
 
@@ -313,8 +315,8 @@ class TestDbusService(unittest.TestCase):
             pv_initial = self.objs[PV_INT][0]
             pv_next = self.objs[PV_INT][1]
 
-            vg = self._vg_create([pv_initial.Pv.object_path]).Vg
-            path = vg.Extend([pv_next.Pv.object_path], -1, {})
+            vg = self._vg_create([pv_initial.object_path]).Vg
+            path = vg.Extend([pv_next.object_path], -1, {})
             self.assertTrue(path == '/')
             self.assertEqual(self._refresh(), 0)
 
@@ -324,8 +326,8 @@ class TestDbusService(unittest.TestCase):
 
         if len(self.objs[PV_INT]) >= 2:
             vg = self._vg_create(
-                [self.objs[PV_INT][0].Pv.object_path,
-                 self.objs[PV_INT][1].Pv.object_path]).Vg
+                [self.objs[PV_INT][0].object_path,
+                 self.objs[PV_INT][1].object_path]).Vg
 
             path = vg.Reduce(False, [vg.Pvs[0]], -1, {})
             self.assertTrue(path == '/')
@@ -368,7 +370,7 @@ class TestDbusService(unittest.TestCase):
     def test_lv_create_striped(self):
         pv_paths = []
         for pp in self.objs[PV_INT]:
-            pv_paths.append(pp.Pv.object_path)
+            pv_paths.append(pp.object_path)
 
         vg = self._vg_create(pv_paths).Vg
         self._test_lv_create(vg.LvCreateStriped,
@@ -378,7 +380,7 @@ class TestDbusService(unittest.TestCase):
     def test_lv_create_mirror(self):
         pv_paths = []
         for pp in self.objs[PV_INT]:
-            pv_paths.append(pp.Pv.object_path)
+            pv_paths.append(pp.object_path)
 
         vg = self._vg_create(pv_paths).Vg
         self._test_lv_create(vg.LvCreateMirror,
@@ -387,7 +389,7 @@ class TestDbusService(unittest.TestCase):
     def test_lv_create_raid(self):
         pv_paths = []
         for pp in self.objs[PV_INT]:
-            pv_paths.append(pp.Pv.object_path)
+            pv_paths.append(pp.object_path)
 
         vg = self._vg_create(pv_paths).Vg
         self._test_lv_create(vg.LvCreateRaid,
@@ -397,7 +399,7 @@ class TestDbusService(unittest.TestCase):
     def _create_lv(self, thinpool=False):
         pv_paths = []
         for pp in self.objs[PV_INT]:
-            pv_paths.append(pp.Pv.object_path)
+            pv_paths.append(pp.object_path)
 
         vg = self._vg_create(pv_paths).Vg
         return self._test_lv_create(
@@ -580,7 +582,7 @@ class TestDbusService(unittest.TestCase):
     def test_job_handling(self):
         pv_paths = []
         for pp in self.objs[PV_INT]:
-            pv_paths.append(pp.Pv.object_path)
+            pv_paths.append(pp.object_path)
 
         vg_name = rs(8, '_vg')
 
@@ -598,7 +600,7 @@ class TestDbusService(unittest.TestCase):
         rc = False
         pv_paths = []
         for pp in self.objs[PV_INT]:
-            pv_paths.append(pp.Pv.object_path)
+            pv_paths.append(pp.object_path)
 
         # In small configurations lvm is pretty snappy, so lets create a VG
         # add a number of LVs and then remove the VG and all the contained
@@ -655,7 +657,7 @@ class TestDbusService(unittest.TestCase):
 
         pv_paths = []
         for pp in self.objs[PV_INT]:
-            pv_paths.append(pp.Pv.object_path)
+            pv_paths.append(pp.object_path)
 
         vg = self._vg_create(pv_paths).Vg
 
@@ -777,7 +779,7 @@ class TestDbusService(unittest.TestCase):
         self.assertTrue(len(self.objs[PV_INT]) > 0)
 
         if len(self.objs[PV_INT]) > 0:
-            pv = ClientProxy(self.bus, self.objs[PV_INT][0].Pv.object_path).Pv
+            pv = ClientProxy(self.bus, self.objs[PV_INT][0].object_path).Pv
 
             original_size = pv.SizeBytes
 
@@ -797,7 +799,7 @@ class TestDbusService(unittest.TestCase):
 
         pv_paths = []
         for pp in self.objs[PV_INT]:
-            pv_paths.append(pp.Pv.object_path)
+            pv_paths.append(pp.object_path)
 
         vg = self._vg_create(pv_paths).Vg
 
