@@ -137,9 +137,8 @@ class Lv(AutomatedProperties):
 
     # noinspection PyUnusedLocal,PyPep8Naming
     def __init__(self, object_path, object_state):
-        super(Lv, self).__init__(object_path, LV_INTERFACE,
-                                 lvs_state_retrieve)
-        utils.init_class_from_arguments(self)
+        super(Lv, self).__init__(object_path, lvs_state_retrieve)
+        self.set_interface(LV_INTERFACE)
         self.state = object_state
 
     def signal_vg_pv_changes(self):
@@ -460,6 +459,11 @@ class Lv(AutomatedProperties):
 
 # noinspection PyPep8Naming
 class LvPoolInherit(Lv):
+
+    def __init__(self, object_path, object_state):
+        super(LvPoolInherit, self).__init__(object_path, object_state)
+        self.set_interface(THIN_POOL_INTERFACE)
+
     @staticmethod
     def _lv_create(lv_uuid, lv_name, name, size_bytes, create_options):
         # Make sure we have a dbus object representing it

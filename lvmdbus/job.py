@@ -118,7 +118,9 @@ class Job(AutomatedProperties):
     _GetError_type = '(is)'
 
     def __init__(self, request, job_state=None):
-        super(Job, self).__init__(job_obj_path_generate(), JOB_INTERFACE)
+        super(Job, self).__init__(job_obj_path_generate())
+        self.set_interface(JOB_INTERFACE)
+
         if job_state:
             self.state = job_state
         else:

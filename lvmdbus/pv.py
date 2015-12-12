@@ -127,7 +127,8 @@ class Pv(AutomatedProperties):
 
     # noinspection PyUnusedLocal,PyPep8Naming
     def __init__(self, object_path, state_obj):
-        super(Pv, self).__init__(object_path, PV_INTERFACE, pvs_state_retrieve)
+        super(Pv, self).__init__(object_path, pvs_state_retrieve)
+        self.set_interface(PV_INTERFACE)
         self.state = state_obj
 
     @staticmethod

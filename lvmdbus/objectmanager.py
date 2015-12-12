@@ -29,7 +29,7 @@ class ObjectManager(AutomatedProperties):
 
     def __init__(self, object_path, interface):
         super(ObjectManager, self).__init__(object_path, interface)
-        self._ap_interface = interface
+        self.set_interface(interface)
         self._ap_o_path = object_path
         self._objects = {}
         self._id_to_object_path = {}
@@ -144,7 +144,7 @@ class ObjectManager(AutomatedProperties):
         with self.rlock:
             # Store off the object path and the interface first
             path = dbus_object.dbus_object_path()
-            interfaces = dbus_object.interface(True)
+            interfaces = dbus_object.interface()
 
             #print 'UN-Registering object path %s for %s' % \
             #      (path, dbus_object.lvm_id)

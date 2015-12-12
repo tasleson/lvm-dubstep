@@ -30,9 +30,9 @@ class AutomatedProperties(dbus.service.Object):
 
     DBUS_INTERFACE = ''
 
-    def __init__(self, object_path, interface, search_method=None):
+    def __init__(self, object_path, search_method=None):
         dbus.service.Object.__init__(self, cfg.bus, object_path)
-        self._ap_interface = interface
+        self._ap_interface = []
         self._ap_o_path = object_path
         self._ap_search_method = search_method
         self.state = None
@@ -48,9 +48,27 @@ class AutomatedProperties(dbus.service.Object):
 
         return self._ap_o_path, props
 
+    def set_interface(self, interface):
+        """
+        With inheritance we can't easily tell what interfaces a class provides
+        so we will have each class that implements an interface tell the
+        base AutomatedProperties what it is they do provide.  This is kind of
+        clunky and perhaps we can figure out a better way to do this later.
+        :param interface:       An interface the object supports
+        :return:
+        """
+        if interface not in self._ap_interface:
+            self._ap_interface.append(interface)
+
     # noinspection PyUnusedLocal
     def interface(self, all_interfaces=False):
-        return [self._ap_interface]
+        if all_interfaces:
+            cpy = list(self._ap_interface)
+            cpy.extend(["org.freedesktop.DBus.Introspectable",
+                        "org.freedesktop.DBus.Properties"])
+            return cpy
+
+        return self._ap_interface
 
     # Properties
     # noinspection PyUnusedLocal
@@ -67,9 +85,13 @@ class AutomatedProperties(dbus.service.Object):
     @dbus.service.method(dbus_interface=dbus.PROPERTIES_IFACE,
                          in_signature='s', out_signature='a{sv}')
     def GetAll(self, interface_name):
-        # TODO Add the ability to verify that this object supports this
-        # interface.
-        return get_properties(self, interface_name)[1]
+        if interface_name in self.interface(True):
+            # Using introspection, lets build this dynamically
+            return get_properties(self, interface_name)[1]
+        raise dbus.exceptions.DBusException(
+            self._ap_interface,
+            'The object %s does not implement the %s interface'
+            % (self.__class__, interface_name))
 
     @dbus.service.method(dbus_interface=dbus.PROPERTIES_IFACE,
                          in_signature='ssv')
@@ -85,7 +107,11 @@ class AutomatedProperties(dbus.service.Object):
     def Introspect(self):
         r = dbus.service.Object.Introspect(self, self._ap_o_path, cfg.bus)
         # Look at the properties in the class
-        return add_properties(r, self._ap_interface, get_properties(self)[0])
+
+        for int_f in self.interface():
+            r = add_properties(r, int_f, get_properties(self)[0])
+
+        return r
 
     @dbus.service.signal(dbus_interface=dbus.PROPERTIES_IFACE,
                          signature='sa{sv}as')
@@ -145,6 +171,7 @@ class AutomatedProperties(dbus.service.Object):
         changed = get_object_property_diff(o_prop, n_prop)
 
         if changed:
-            self.PropertiesChanged(self._ap_interface, changed, [])
+            for intf in self.interface():
+                self.PropertiesChanged(intf, changed, [])
             num_changed += 1
         return num_changed

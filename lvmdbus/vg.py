@@ -138,7 +138,8 @@ class Vg(AutomatedProperties):
 
     # noinspection PyUnusedLocal,PyPep8Naming
     def __init__(self, object_path, object_state):
-        super(Vg, self).__init__(object_path, VG_INTERFACE, vgs_state_retrieve)
+        super(Vg, self).__init__(object_path, vgs_state_retrieve)
+        self.set_interface(VG_INTERFACE)
         self._object_path = object_path
         self.state = object_state
 

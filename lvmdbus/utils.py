@@ -170,15 +170,17 @@ def add_properties(xml, interface, props):
     """
     root = Et.fromstring(xml)
 
-    for c in root:
-        # print c.attrib['name']
-        if c.attrib['name'] == interface:
-            for p in props:
-                temp = '<property type="%s" name="%s" access="%s"/>\n' % \
-                       (p['p_t'], p['p_name'], p['p_access'])
-                c.append(Et.fromstring(temp))
+    if props:
 
-            return Et.tostring(root, encoding='utf8')
+        for c in root:
+            # print c.attrib['name']
+            if c.attrib['name'] == interface:
+                for p in props:
+                    temp = '<property type="%s" name="%s" access="%s"/>\n' % \
+                           (p['p_t'], p['p_name'], p['p_access'])
+                    c.append(Et.fromstring(temp))
+
+        return Et.tostring(root, encoding='utf8')
     return xml
 
 

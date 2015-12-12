@@ -31,7 +31,8 @@ class Manager(AutomatedProperties):
     _Version_type = "t"
 
     def __init__(self, object_path):
-        super(Manager, self).__init__(object_path, MANAGER_INTERFACE)
+        super(Manager, self).__init__(object_path)
+        self.set_interface(MANAGER_INTERFACE)
 
     @property
     def Version(self):
