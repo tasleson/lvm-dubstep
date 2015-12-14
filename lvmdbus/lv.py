@@ -117,23 +117,22 @@ class LvState(State):
 
 
 # noinspection PyPep8Naming
-@utils.dbus_property('Uuid', 's')
-@utils.dbus_property('Name', 's')
-@utils.dbus_property('Path', 's')
-@utils.dbus_property('SizeBytes', 't')
-@utils.dbus_property('DataPercent', 'u')
-@utils.dbus_property('SegType', 'as')
-@utils.dbus_property('Vg', 'o')
-@utils.dbus_property('OriginLv', 'o')
-@utils.dbus_property('PoolLv', 'o')
-@utils.dbus_property('Devices', "a(oa(tts))")
+@utils.dbus_property(LV_INTERFACE, 'Uuid', 's')
+@utils.dbus_property(LV_INTERFACE, 'Name', 's')
+@utils.dbus_property(LV_INTERFACE, 'Path', 's')
+@utils.dbus_property(LV_INTERFACE, 'SizeBytes', 't')
+@utils.dbus_property(LV_INTERFACE, 'DataPercent', 'u')
+@utils.dbus_property(LV_INTERFACE, 'SegType', 'as')
+@utils.dbus_property(LV_INTERFACE, 'Vg', 'o')
+@utils.dbus_property(LV_INTERFACE, 'OriginLv', 'o')
+@utils.dbus_property(LV_INTERFACE, 'PoolLv', 'o')
+@utils.dbus_property(LV_INTERFACE, 'Devices', "a(oa(tts))")
 class Lv(AutomatedProperties):
     DBUS_INTERFACE = LV_INTERFACE
-    _Tags_type = "as"
-    _IsThinVolume_type = "b"
-    _IsThinPool_type = "b"
-    _Active_type = "b"
-    #_SegType_type = "as"
+    _Tags_meta = ("as", LV_INTERFACE)
+    _IsThinVolume_meta = ("b", LV_INTERFACE)
+    _IsThinPool_meta = ("b", LV_INTERFACE)
+    _Active_meta = ("b", LV_INTERFACE)
 
     # noinspection PyUnusedLocal,PyPep8Naming
     def __init__(self, object_path, object_state):

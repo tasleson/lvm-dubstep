@@ -98,32 +98,32 @@ class PvState(State):
 
 
 # noinspection PyPep8Naming
-@utils.dbus_property('Uuid', 's')               # PV UUID/pv_uuid
-@utils.dbus_property('Name', 's')               # PV/pv_name
-@utils.dbus_property('Fmt', 's')                # Fmt/pv_fmt
-@utils.dbus_property('SizeBytes', 't')          # PSize/pv_size
-@utils.dbus_property('FreeBytes', 't')          # PFree/pv_free
-@utils.dbus_property('UsedBytes', 't')          # Used/pv_used
-@utils.dbus_property('DevSizeBytes', 't')       # DevSize/dev_size
-@utils.dbus_property('MdaSizeBytes', 't')       # PMdaSize/pv_mda_size
-@utils.dbus_property('MdaFreeBytes', 't')       # PMdaFree/pv_mda_free
-@utils.dbus_property('BaStart', 't')            # BA start/pv_ba_start
-@utils.dbus_property('BaSizeBytes', 't')        # BA size/pv_ba_size
-@utils.dbus_property('PeStart', 't')            # 1st PE/pe_start
-@utils.dbus_property('PeCount', 't')            # PE/pv_pe_count
-@utils.dbus_property('PeAllocCount', 't')       # Alloc/pv_pe_alloc_count
+@utils.dbus_property(PV_INTERFACE, 'Uuid', 's')     # PV UUID/pv_uuid
+@utils.dbus_property(PV_INTERFACE, 'Name', 's')     # PV/pv_name
+@utils.dbus_property(PV_INTERFACE, 'Fmt', 's')      # Fmt/pv_fmt
+@utils.dbus_property(PV_INTERFACE, 'SizeBytes', 't')     # PSize/pv_size
+@utils.dbus_property(PV_INTERFACE, 'FreeBytes', 't')     # PFree/pv_free
+@utils.dbus_property(PV_INTERFACE, 'UsedBytes', 't')     # Used/pv_used
+@utils.dbus_property(PV_INTERFACE, 'DevSizeBytes', 't')  # DevSize/dev_size
+@utils.dbus_property(PV_INTERFACE, 'MdaSizeBytes', 't')  # PMdaSize/pv_mda_size
+@utils.dbus_property(PV_INTERFACE, 'MdaFreeBytes', 't')  # PMdaFree/pv_mda_free
+@utils.dbus_property(PV_INTERFACE, 'BaStart', 't')       # BA start/pv_ba_start
+@utils.dbus_property(PV_INTERFACE, 'BaSizeBytes', 't')   # BA size/pv_ba_size
+@utils.dbus_property(PV_INTERFACE, 'PeStart', 't')       # 1st PE/pe_start
+@utils.dbus_property(PV_INTERFACE, 'PeCount', 't')       # PE/pv_pe_count
+@utils.dbus_property(PV_INTERFACE, 'PeAllocCount', 't')  # PE Allocation count
 class Pv(AutomatedProperties):
     DBUS_INTERFACE = PV_INTERFACE
 
     # For properties that we need custom handlers we need these, otherwise
     # we won't get our introspection data
-    _Tags_type = "as"
-    _PeSegments_type = "a(tt)"
-    _Exportable_type = "b"
-    _Allocatable_type = "b"
-    _Missing_type = "b"
-    _Lv_type = "a(oa(tt))"
-    _Vg_type = "o"
+    _Tags_meta = ("as", PV_INTERFACE)
+    _PeSegments_meta = ("a(tt)", PV_INTERFACE)
+    _Exportable_meta = ("b", PV_INTERFACE)
+    _Allocatable_meta = ("b", PV_INTERFACE)
+    _Missing_meta = ("b", PV_INTERFACE)
+    _Lv_meta = ("a(oa(tt))", PV_INTERFACE)
+    _Vg_meta = ("o", PV_INTERFACE)
 
     # noinspection PyUnusedLocal,PyPep8Naming
     def __init__(self, object_path, state_obj):

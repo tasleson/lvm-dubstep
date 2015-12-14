@@ -101,40 +101,40 @@ class VgState(State):
 
 
 # noinspection PyPep8Naming
-@utils.dbus_property('Uuid', 's')
-@utils.dbus_property('Name', 's')
-@utils.dbus_property('Fmt', 's')
-@utils.dbus_property('SizeBytes', 't', 0)
-@utils.dbus_property('FreeBytes', 't', 0)
-@utils.dbus_property('SysId', 's')
-@utils.dbus_property('ExtentSizeBytes', 't')
-@utils.dbus_property('ExtentCount', 't')
-@utils.dbus_property('FreeCount', 't')
-@utils.dbus_property('Profile', 's')
-@utils.dbus_property('MaxLv', 't')
-@utils.dbus_property('MaxPv', 't')
-@utils.dbus_property('PvCount', 't')
-@utils.dbus_property('LvCount', 't')
-@utils.dbus_property('SnapCount', 't')
-@utils.dbus_property('Seqno', 't')
-@utils.dbus_property('MdaCount', 't')
-@utils.dbus_property('MdaFree', 't')
-@utils.dbus_property('MdaSizeBytes', 't')
-@utils.dbus_property('MdaUsedCount', 't')
+@utils.dbus_property(VG_INTERFACE, 'Uuid', 's')
+@utils.dbus_property(VG_INTERFACE, 'Name', 's')
+@utils.dbus_property(VG_INTERFACE, 'Fmt', 's')
+@utils.dbus_property(VG_INTERFACE, 'SizeBytes', 't', 0)
+@utils.dbus_property(VG_INTERFACE, 'FreeBytes', 't', 0)
+@utils.dbus_property(VG_INTERFACE, 'SysId', 's')
+@utils.dbus_property(VG_INTERFACE, 'ExtentSizeBytes', 't')
+@utils.dbus_property(VG_INTERFACE, 'ExtentCount', 't')
+@utils.dbus_property(VG_INTERFACE, 'FreeCount', 't')
+@utils.dbus_property(VG_INTERFACE, 'Profile', 's')
+@utils.dbus_property(VG_INTERFACE, 'MaxLv', 't')
+@utils.dbus_property(VG_INTERFACE, 'MaxPv', 't')
+@utils.dbus_property(VG_INTERFACE, 'PvCount', 't')
+@utils.dbus_property(VG_INTERFACE, 'LvCount', 't')
+@utils.dbus_property(VG_INTERFACE, 'SnapCount', 't')
+@utils.dbus_property(VG_INTERFACE, 'Seqno', 't')
+@utils.dbus_property(VG_INTERFACE, 'MdaCount', 't')
+@utils.dbus_property(VG_INTERFACE, 'MdaFree', 't')
+@utils.dbus_property(VG_INTERFACE, 'MdaSizeBytes', 't')
+@utils.dbus_property(VG_INTERFACE, 'MdaUsedCount', 't')
 class Vg(AutomatedProperties):
     DBUS_INTERFACE = VG_INTERFACE
-    _Tags_type = "as"
-    _Pvs_type = "ao"
-    _Lvs_type = "ao"
-    _Writeable_type = "b"
-    _Readable_type = "b"
-    _Exportable_type = 'b'
-    _Partial_type = 'b'
-    _AllocContiguous_type = 'b'
-    _AllocCling_type = 'b'
-    _AllocNormal_type = 'b'
-    _AllocAnywhere_type = 'b'
-    _Clustered_type = 'b'
+    _Tags_meta = ("as", VG_INTERFACE)
+    _Pvs_meta = ("ao", VG_INTERFACE)
+    _Lvs_meta = ("ao", VG_INTERFACE)
+    _Writeable_meta = ("b", VG_INTERFACE)
+    _Readable_meta = ("b", VG_INTERFACE)
+    _Exportable_meta = ('b', VG_INTERFACE)
+    _Partial_meta = ('b', VG_INTERFACE)
+    _AllocContiguous_meta = ('b', VG_INTERFACE)
+    _AllocCling_meta = ('b', VG_INTERFACE)
+    _AllocNormal_meta = ('b', VG_INTERFACE)
+    _AllocAnywhere_meta = ('b', VG_INTERFACE)
+    _Clustered_meta = ('b', VG_INTERFACE)
 
     # noinspection PyUnusedLocal,PyPep8Naming
     def __init__(self, object_path, object_state):

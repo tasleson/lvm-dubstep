@@ -28,7 +28,7 @@ from .refresh import event_add
 # noinspection PyPep8Naming
 class Manager(AutomatedProperties):
     DBUS_INTERFACE = MANAGER_INTERFACE
-    _Version_type = "t"
+    _Version_meta = ("t", MANAGER_INTERFACE)
 
     def __init__(self, object_path):
         super(Manager, self).__init__(object_path)

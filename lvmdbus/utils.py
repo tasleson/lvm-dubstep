@@ -131,7 +131,7 @@ def get_properties(f, interface=None):
                     if getattr(f.__class__, p).fset:
                         access += 'write'
 
-                    result.append(dict(p_t=getattr(f, key), p_name=p,
+                    result.append(dict(p_t=getattr(f, key)[0], p_name=p,
                                        p_access=access))
                     h_rc[p] = getattr(f, p)
     return result, h_rc
@@ -190,7 +190,7 @@ def attribute_type_name(name):
     :param name:
     :return:
     """
-    return "_%s_type" % name
+    return "_%s_meta" % name
 
 
 _type_map = dict(s=dbus.String,
@@ -221,13 +221,14 @@ def _dbus_type(t, value):
     return _type_map.get(t, _pass_through)(value)
 
 
-def dbus_property(name, dbus_type, doc=None):
+def dbus_property(interface_name, name, dbus_type, doc=None):
     """
     Creates the get/set properties for the given name.  It assumes that the
     actual attribute is '_' + name and the attribute metadata is stuffed in
     _name_type.
 
     There is probably a better way todo this.
+    :param interface_name:  Dbus interface this property is associated with
     :param name:            Name of property
     :param dbus_type:       dbus string type eg. s,t,i,x
     :param doc:             Python __doc__ for the property
@@ -236,13 +237,13 @@ def dbus_property(name, dbus_type, doc=None):
     attribute_name = '_' + name
 
     def getter(self):
-        t = getattr(self, attribute_name + '_type')
+        t = getattr(self, attribute_name + '_meta')[0]
         return _dbus_type(t, getattr(self.state, attribute_name[1:]))
 
     prop = property(getter, None, None, doc)
 
     def decorator(cls):
-        setattr(cls, attribute_name + '_type', dbus_type)
+        setattr(cls, attribute_name + '_meta', (dbus_type, interface_name))
         setattr(cls, name, prop)
         return cls
 

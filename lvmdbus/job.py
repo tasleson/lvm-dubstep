@@ -112,10 +112,10 @@ class JobState(object):
 # noinspection PyPep8Naming
 class Job(AutomatedProperties):
     DBUS_INTERFACE = JOB_INTERFACE
-    _Percent_type = 'y'
-    _Complete_type = 'b'
-    _Result_type = 'o'
-    _GetError_type = '(is)'
+    _Percent_meta = ('y', JOB_INTERFACE)
+    _Complete_meta = ('b', JOB_INTERFACE)
+    _Result_meta = ('o', JOB_INTERFACE)
+    _GetError_meta = ('(is)', JOB_INTERFACE)
 
     def __init__(self, request, job_state=None):
         super(Job, self).__init__(job_obj_path_generate())
