@@ -87,7 +87,10 @@ class AutomatedProperties(dbus.service.Object):
     def GetAll(self, interface_name):
         if interface_name in self.interface(True):
             # Using introspection, lets build this dynamically
-            return get_properties(self, interface_name)[1]
+            properties = get_properties(self)
+            if interface_name in properties:
+                return properties[interface_name][1]
+            return {}
         raise dbus.exceptions.DBusException(
             self._ap_interface,
             'The object %s does not implement the %s interface'
@@ -107,9 +110,10 @@ class AutomatedProperties(dbus.service.Object):
     def Introspect(self):
         r = dbus.service.Object.Introspect(self, self._ap_o_path, cfg.bus)
         # Look at the properties in the class
+        props = get_properties(self)
 
-        for int_f in self.interface():
-            r = add_properties(r, int_f, get_properties(self)[0])
+        for int_f, v in props.items():
+            r = add_properties(r, int_f, v[0])
 
         return r
 
@@ -164,14 +168,14 @@ class AutomatedProperties(dbus.service.Object):
         # TODO: We need to add locking to prevent concurrent access to the
         # properties so that a client is not accessing while we are
         # replacing.
-        o_prop = get_properties(self)[1]
+        o_prop = get_properties(self)
         self.state = new_state
-        n_prop = get_properties(self)[1]
+        n_prop = get_properties(self)
 
         changed = get_object_property_diff(o_prop, n_prop)
 
         if changed:
-            for intf in self.interface():
-                self.PropertiesChanged(intf, changed, [])
+            for int_f, v in changed.items():
+                self.PropertiesChanged(int_f, v, [])
             num_changed += 1
         return num_changed

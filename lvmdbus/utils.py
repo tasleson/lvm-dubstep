@@ -97,27 +97,20 @@ def init_class_from_arguments(obj_instance, prefix='_'):
                 setattr(obj_instance, nt, v)
 
 
-def get_properties(f, interface=None):
+def get_properties(f):
     """
     Walks through an object instance or it's parent class(es) and determines
     which attributes are properties and if they were created to be used for
     dbus.
     :param f:   Object to inspect
-    :param interface: The interface we are seeking properties for
-    :return:    A tuple:
+    :return:    A dictionary of tuples with each tuple being:
                 0 = An array of dicts with the keys being: p_t, p_name,
                 p_access(type, name, access)
                 1 = Hash of property names and current value
     """
-    result = []
-    h_rc = {}
+    interfaces = dict()
 
     for c in inspect.getmro(f.__class__):
-        try:
-            if interface is not None and c.DBUS_INTERFACE != interface:
-                continue
-        except AttributeError:
-            continue
 
         h = vars(c)
         for p, value in h.items():
@@ -125,16 +118,25 @@ def get_properties(f, interface=None):
                 # We found a property, see if it has a metadata type
                 key = attribute_type_name(p)
                 if key in h:
+                    interface = h[key][1]
+
+                    if interface not in interfaces:
+                        interfaces[interface] = ([], {})
+
                     access = ''
                     if getattr(f.__class__, p).fget:
                         access += 'read'
                     if getattr(f.__class__, p).fset:
                         access += 'write'
 
-                    result.append(dict(p_t=getattr(f, key)[0], p_name=p,
-                                       p_access=access))
-                    h_rc[p] = getattr(f, p)
-    return result, h_rc
+                    interfaces[interface][0].append(
+                        dict(p_t=getattr(f, key)[0],
+                             p_name=p,
+                             p_access=access))
+
+                    interfaces[interface][1][p] = getattr(f, p)
+
+    return interfaces
 
 
 def get_object_property_diff(o_prop, n_prop):
@@ -147,15 +149,17 @@ def get_object_property_diff(o_prop, n_prop):
     """
     rc = {}
 
-    for k, v in list(o_prop.items()):
-        #print('Comparing %s:%s to %s:%s' %
-        #      (k, str(o_prop[k]), k, str(n_prop[k])))
-        if o_prop[k] != n_prop[k]:
-            rc[k] = n_prop[k]
-            # If the values aren't sorted the same, we get bogus differences.
-            # Using this to tell the difference.
-            # print('DEBUG: get_object_property_diff %s:%s to %s:%s' %
-            #       (k, str(o_prop[k]), k, str(n_prop[k])))
+    for intf_k, intf_v in o_prop.items():
+        for k, v in list(intf_v[1].items()):
+            #print('Comparing %s:%s to %s:%s' %
+            #      (k, o_prop[intf_k][1][k], k, str(n_prop[intf_k][1][k])))
+            if o_prop[intf_k][1][k] != n_prop[intf_k][1][k]:
+                new_value = n_prop[intf_k][1][k]
+
+                if intf_k not in rc:
+                    rc[intf_k] = dict()
+
+                rc[intf_k][k] = new_value
     return rc
 
 
