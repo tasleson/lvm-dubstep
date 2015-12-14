@@ -113,7 +113,6 @@ class PvState(State):
 @utils.dbus_property(PV_INTERFACE, 'PeCount', 't')       # PE/pv_pe_count
 @utils.dbus_property(PV_INTERFACE, 'PeAllocCount', 't')  # PE Allocation count
 class Pv(AutomatedProperties):
-    DBUS_INTERFACE = PV_INTERFACE
 
     # For properties that we need custom handlers we need these, otherwise
     # we won't get our introspection data

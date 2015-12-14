@@ -128,7 +128,6 @@ class LvState(State):
 @utils.dbus_property(LV_INTERFACE, 'PoolLv', 'o')
 @utils.dbus_property(LV_INTERFACE, 'Devices', "a(oa(tts))")
 class Lv(AutomatedProperties):
-    DBUS_INTERFACE = LV_INTERFACE
     _Tags_meta = ("as", LV_INTERFACE)
     _IsThinVolume_meta = ("b", LV_INTERFACE)
     _IsThinPool_meta = ("b", LV_INTERFACE)

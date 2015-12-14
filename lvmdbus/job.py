@@ -111,7 +111,6 @@ class JobState(object):
 
 # noinspection PyPep8Naming
 class Job(AutomatedProperties):
-    DBUS_INTERFACE = JOB_INTERFACE
     _Percent_meta = ('y', JOB_INTERFACE)
     _Complete_meta = ('b', JOB_INTERFACE)
     _Result_meta = ('o', JOB_INTERFACE)

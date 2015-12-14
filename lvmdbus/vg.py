@@ -122,7 +122,6 @@ class VgState(State):
 @utils.dbus_property(VG_INTERFACE, 'MdaSizeBytes', 't')
 @utils.dbus_property(VG_INTERFACE, 'MdaUsedCount', 't')
 class Vg(AutomatedProperties):
-    DBUS_INTERFACE = VG_INTERFACE
     _Tags_meta = ("as", VG_INTERFACE)
     _Pvs_meta = ("ao", VG_INTERFACE)
     _Lvs_meta = ("ao", VG_INTERFACE)

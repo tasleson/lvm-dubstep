@@ -28,8 +28,6 @@ class AutomatedProperties(dbus.service.Object):
     Other classes inherit from it to get the same behavior
     """
 
-    DBUS_INTERFACE = ''
-
     def __init__(self, object_path, search_method=None):
         dbus.service.Object.__init__(self, cfg.bus, object_path)
         self._ap_interface = []
