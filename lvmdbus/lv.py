@@ -19,7 +19,7 @@ from .utils import vg_obj_path_generate, thin_pool_obj_path_generate
 import dbus
 from . import cmdhandler
 from . import cfg
-from .cfg import LV_INTERFACE, THIN_POOL_INTERFACE
+from .cfg import LV_INTERFACE, THIN_POOL_INTERFACE, SNAPSHOT_INTERFACE
 from .request import RequestEntry
 from .utils import lv_obj_path_generate, n, n32
 from .loader import common
@@ -45,7 +45,7 @@ def lvs_state_retrieve(selection):
 def load_lvs(lv_name=None, object_path=None, refresh=False):
     # noinspection PyUnresolvedReferences
     return common(lvs_state_retrieve,
-                  (Lv, LvPoolInherit),
+                  (Lv, LvPoolInherit, LvSnapShot),
                   lv_name, object_path, refresh)
 
 
@@ -110,10 +110,12 @@ class LvState(State):
             path = cfg.om.get_object_path_by_lvm_id(
                 self.Uuid, self.lvm_id, lv_obj_path_generate)
 
-        if self.Attr[0] != 't':
-            return Lv(path, self)
-        else:
+        if self.Attr[0] == 't':
             return LvPoolInherit(path, self)
+        elif self.OriginLv != '/':
+            return LvSnapShot(path, self)
+        else:
+            return Lv(path, self)
 
 
 # noinspection PyPep8Naming
@@ -496,4 +498,45 @@ class LvPoolInherit(Lv):
         r = RequestEntry(tmo, LvPoolInherit._lv_create,
                          (self.Uuid, self.lvm_id, name,
                           size_bytes, create_options), cb, cbe)
+        cfg.worker_q.put(r)
+
+
+# noinspection PyPep8Naming
+class LvSnapShot(Lv):
+
+    def __init__(self, object_path, object_state):
+        super(LvSnapShot, self).__init__(object_path, object_state)
+        self.set_interface(SNAPSHOT_INTERFACE)
+
+    @staticmethod
+    def _lv_merge(lv_uuid, lv_name, merge_options):
+        # Make sure we have a dbus object representing it
+        dbo = cfg.om.get_by_uuid_lvm_id(lv_uuid, lv_name)
+
+        if dbo:
+            rc, out, err = cmdhandler.lv_merge(dbo.lvm_id, merge_options)
+            if rc == 0:
+
+                # Refresh the VG and the PVs and delete the LV that was just
+                # merged
+                dbo.signal_vg_pv_changes()
+                cfg.om.remove_object(dbo, True)
+                return "/"
+            else:
+                raise dbus.exceptions.DBusException(
+                    LV_INTERFACE,
+                    'Exit code %s, stderr = %s' % (str(rc), err))
+        else:
+            raise dbus.exceptions.DBusException(
+                LV_INTERFACE, 'LV with uuid %s and name %s not present!' %
+                (lv_uuid, lv_name))
+
+    @dbus.service.method(dbus_interface=SNAPSHOT_INTERFACE,
+                         in_signature='ia{sv}',
+                         out_signature='o',
+                         async_callbacks=('cb', 'cbe'))
+    def Merge(self, tmo, merge_options, cb, cbe):
+        r = RequestEntry(tmo, LvSnapShot._lv_merge,
+                         (self.Uuid, self.lvm_id, merge_options), cb, cbe,
+                         return_tuple=False)
         cfg.worker_q.put(r)

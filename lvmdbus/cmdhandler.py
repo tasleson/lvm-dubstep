@@ -365,6 +365,13 @@ def lv_lv_create(lv_full_name, create_options, name, size_bytes):
     return call(cmd)
 
 
+def lv_merge(lv_full_name, merge_options):
+    cmd = ['lvconvert', '--merge']
+    cmd.extend(options_to_cli_args(merge_options))
+    cmd.append(lv_full_name)
+    return call(cmd)
+
+
 def pv_segments(device):
     r = []
     rc, out, err = call(_dc('pvs', ['-o', 'pvseg_all', device]))

@@ -36,6 +36,7 @@ PV_INT = BUSNAME + ".Pv"
 VG_INT = BUSNAME + ".Vg"
 LV_INT = BUSNAME + ".Lv"
 THINPOOL_INT = BUSNAME + ".ThinPool"
+SNAPSHOT_INT = BUSNAME + ".Snapshot"
 JOB_INT = BUSNAME + ".Job"
 
 
@@ -164,7 +165,7 @@ class ClientProxy(object):
 
 def get_objects():
     rc = {MANAGER_INT: [], PV_INT: [], VG_INT: [], LV_INT: [],
-          THINPOOL_INT: [], JOB_INT: []}
+          THINPOOL_INT: [], JOB_INT: [], SNAPSHOT_INT: []}
 
     manager = dbus.Interface(bus.get_object(
         BUSNAME, "/com/redhat/lvmdbus1"),
@@ -859,6 +860,32 @@ class TestDbusService(unittest.TestCase):
 
         self.assertEqual(self._refresh(), 0)
 
+    def test_snapshot_merge(self):
+        # Create a non-thin LV and merge it
+        lv = self._create_lv().Lv
+        ss_name = lv.Name + '_snap'
+        snapshot_path = lv.Snapshot(ss_name, 1024 * 1024 * 4, -1, {})[0]
+        ss = ClientProxy(self.bus, snapshot_path)
+        job_path = ss.Snapshot.Merge(0, {})
+
+        self.assertTrue(job_path != '/')
+        self._wait_for_job(job_path)
+
+    def test_snapshot_merge_thin(self):
+        # Create a thin LV, snapshot it and merge it
+        tp = self._create_lv(True)
+
+        thin_path = tp.ThinPool.LvCreate(
+            rs(10, '_thin_lv'), 1024 * 1024 * 10, -1, {})[0]
+
+        lv = ClientProxy(self.bus, thin_path).Lv
+
+        ss_name = lv.Name + '_snap'
+        snapshot_path = lv.Snapshot(ss_name, 0, -1, {})[0]
+        ss = ClientProxy(self.bus, snapshot_path)
+        job_path = ss.Snapshot.Merge(0, {})
+        self.assertTrue(job_path != '/')
+        self._wait_for_job(job_path)
 
 if __name__ == '__main__':
     # Test forking & exec new each time
