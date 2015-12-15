@@ -45,7 +45,7 @@ def lvs_state_retrieve(selection):
 def load_lvs(lv_name=None, object_path=None, refresh=False):
     # noinspection PyUnresolvedReferences
     return common(lvs_state_retrieve,
-                  (Lv, LvPoolInherit, LvSnapShot),
+                  (Lv, LvThinPool, LvSnapShot),
                   lv_name, object_path, refresh)
 
 
@@ -111,7 +111,7 @@ class LvState(State):
                 self.Uuid, self.lvm_id, lv_obj_path_generate)
 
         if self.Attr[0] == 't':
-            return LvPoolInherit(path, self)
+            return LvThinPool(path, self)
         elif self.OriginLv != '/':
             return LvSnapShot(path, self)
         else:
@@ -458,10 +458,10 @@ class Lv(AutomatedProperties):
 
 
 # noinspection PyPep8Naming
-class LvPoolInherit(Lv):
+class LvThinPool(Lv):
 
     def __init__(self, object_path, object_state):
-        super(LvPoolInherit, self).__init__(object_path, object_state)
+        super(LvThinPool, self).__init__(object_path, object_state)
         self.set_interface(THIN_POOL_INTERFACE)
 
     @staticmethod
@@ -495,7 +495,7 @@ class LvPoolInherit(Lv):
                          out_signature='(oo)',
                          async_callbacks=('cb', 'cbe'))
     def LvCreate(self, name, size_bytes, tmo, create_options, cb, cbe):
-        r = RequestEntry(tmo, LvPoolInherit._lv_create,
+        r = RequestEntry(tmo, LvThinPool._lv_create,
                          (self.Uuid, self.lvm_id, name,
                           size_bytes, create_options), cb, cbe)
         cfg.worker_q.put(r)
