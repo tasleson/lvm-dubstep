@@ -39,6 +39,8 @@ THINPOOL_INT = BUSNAME + ".ThinPool"
 SNAPSHOT_INT = BUSNAME + ".Snapshot"
 JOB_INT = BUSNAME + ".Job"
 
+THINPOOL_LV_PATH = '/' + THINPOOL_INT.replace('.', '/')
+
 
 def rs(length, suffix):
     return ''.join(random.choice(string.ascii_lowercase)
@@ -419,7 +421,13 @@ class TestDbusService(unittest.TestCase):
     def test_lv_thinpool_rename(self):
         # Rename a thin pool
         tp = self._create_lv(True)
-        tp.Lv.Rename('renamed_' + tp.Lv.Name, -1, {})
+        self.assertTrue(THINPOOL_LV_PATH in tp.object_path,
+                        "%s" % (tp.object_path))
+
+        new_name = 'renamed_' + tp.Lv.Name
+        tp.Lv.Rename(new_name, -1, {})
+        tp.Lv.update()
+        self.assertTrue(tp.Lv.Name == new_name)
         self.assertEqual(self._refresh(), 0)
 
     # noinspection PyUnresolvedReferences

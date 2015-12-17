@@ -105,10 +105,15 @@ class LvState(State):
     def SegType(self):
         return self._segs
 
+    def _object_path_function(self):
+        if self.Attr[0] == 't':
+            return thin_pool_obj_path_generate
+        return lv_obj_path_generate
+
     def create_dbus_object(self, path):
         if not path:
             path = cfg.om.get_object_path_by_lvm_id(
-                self.Uuid, self.lvm_id, lv_obj_path_generate)
+                self.Uuid, self.lvm_id, self._object_path_function())
 
         if self.Attr[0] == 't':
             return LvThinPool(path, self)
