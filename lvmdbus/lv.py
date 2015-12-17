@@ -19,7 +19,8 @@ from .utils import vg_obj_path_generate, thin_pool_obj_path_generate
 import dbus
 from . import cmdhandler
 from . import cfg
-from .cfg import LV_INTERFACE, THIN_POOL_INTERFACE, SNAPSHOT_INTERFACE
+from .cfg import LV_INTERFACE, THIN_POOL_INTERFACE, SNAPSHOT_INTERFACE, \
+    LV_COMMON_INTERFACE
 from .request import RequestEntry
 from .utils import lv_obj_path_generate, n, n32
 from .loader import common
@@ -124,26 +125,26 @@ class LvState(State):
 
 
 # noinspection PyPep8Naming
-@utils.dbus_property(LV_INTERFACE, 'Uuid', 's')
-@utils.dbus_property(LV_INTERFACE, 'Name', 's')
-@utils.dbus_property(LV_INTERFACE, 'Path', 's')
-@utils.dbus_property(LV_INTERFACE, 'SizeBytes', 't')
-@utils.dbus_property(LV_INTERFACE, 'DataPercent', 'u')
-@utils.dbus_property(LV_INTERFACE, 'SegType', 'as')
-@utils.dbus_property(LV_INTERFACE, 'Vg', 'o')
-@utils.dbus_property(LV_INTERFACE, 'OriginLv', 'o')
-@utils.dbus_property(LV_INTERFACE, 'PoolLv', 'o')
-@utils.dbus_property(LV_INTERFACE, 'Devices', "a(oa(tts))")
-class Lv(AutomatedProperties):
-    _Tags_meta = ("as", LV_INTERFACE)
-    _IsThinVolume_meta = ("b", LV_INTERFACE)
-    _IsThinPool_meta = ("b", LV_INTERFACE)
-    _Active_meta = ("b", LV_INTERFACE)
+@utils.dbus_property(LV_COMMON_INTERFACE, 'Uuid', 's')
+@utils.dbus_property(LV_COMMON_INTERFACE, 'Name', 's')
+@utils.dbus_property(LV_COMMON_INTERFACE, 'Path', 's')
+@utils.dbus_property(LV_COMMON_INTERFACE, 'SizeBytes', 't')
+@utils.dbus_property(LV_COMMON_INTERFACE, 'DataPercent', 'u')
+@utils.dbus_property(LV_COMMON_INTERFACE, 'SegType', 'as')
+@utils.dbus_property(LV_COMMON_INTERFACE, 'Vg', 'o')
+@utils.dbus_property(LV_COMMON_INTERFACE, 'OriginLv', 'o')
+@utils.dbus_property(LV_COMMON_INTERFACE, 'PoolLv', 'o')
+@utils.dbus_property(LV_COMMON_INTERFACE, 'Devices', "a(oa(tts))")
+class LvCommon(AutomatedProperties):
+    _Tags_meta = ("as", LV_COMMON_INTERFACE)
+    _IsThinVolume_meta = ("b", LV_COMMON_INTERFACE)
+    _IsThinPool_meta = ("b", LV_COMMON_INTERFACE)
+    _Active_meta = ("b", LV_COMMON_INTERFACE)
 
     # noinspection PyUnusedLocal,PyPep8Naming
     def __init__(self, object_path, object_state):
-        super(Lv, self).__init__(object_path, lvs_state_retrieve)
-        self.set_interface(LV_INTERFACE)
+        super(LvCommon, self).__init__(object_path, lvs_state_retrieve)
+        self.set_interface(LV_COMMON_INTERFACE)
         self.state = object_state
 
     def signal_vg_pv_changes(self):
@@ -154,6 +155,42 @@ class Lv(AutomatedProperties):
 
     def vg_name_lookup(self):
         return self.state.vg_name_lookup()
+
+    @property
+    def Tags(self):
+        return utils.parse_tags(self.state.Tags)
+
+    @property
+    def lvm_id(self):
+        return self.state.lvm_id
+
+    @property
+    def IsThinVolume(self):
+        return self.state.Attr[0] == 'V'
+
+    @property
+    def IsThinPool(self):
+        return self.state.Attr[0] == 't'
+
+    @property
+    def Active(self):
+        return self.state.active == "active"
+
+    @dbus.service.method(dbus_interface=LV_COMMON_INTERFACE,
+                          in_signature='ia{sv}',
+                          out_signature='o')
+    def _Future(self, tmo, open_options):
+        raise dbus.exceptions.DBusException(LV_COMMON_INTERFACE, 'Do not use!')
+
+
+# noinspection PyPep8Naming
+class Lv(LvCommon):
+
+    # noinspection PyUnusedLocal,PyPep8Naming
+    def __init__(self, object_path, object_state):
+        super(Lv, self).__init__(object_path, lvs_state_retrieve)
+        self.set_interface(LV_INTERFACE)
+        self.state = object_state
 
     @staticmethod
     def _remove(lv_uuid, lv_name, remove_options):
@@ -224,26 +261,6 @@ class Lv(AutomatedProperties):
                          (self.Uuid, self.lvm_id, name, rename_options),
                          cb, cbe, False)
         cfg.worker_q.put(r)
-
-    @property
-    def Tags(self):
-        return utils.parse_tags(self.state.Tags)
-
-    @property
-    def lvm_id(self):
-        return self.state.lvm_id
-
-    @property
-    def IsThinVolume(self):
-        return self.state.Attr[0] == 'V'
-
-    @property
-    def IsThinPool(self):
-        return self.state.Attr[0] == 't'
-
-    @property
-    def Active(self):
-        return self.state.active == "active"
 
     @dbus.service.method(dbus_interface=LV_INTERFACE,
                          in_signature='o(tt)a(ott)ia{sv}',
