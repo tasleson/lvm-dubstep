@@ -59,6 +59,7 @@ PV_OBJ_PATH = BASE_OBJ_PATH + '/Pv'
 VG_OBJ_PATH = BASE_OBJ_PATH + '/Vg'
 LV_OBJ_PATH = BASE_OBJ_PATH + '/Lv'
 THIN_POOL_PATH = BASE_OBJ_PATH + "/ThinPool"
+HIDDEN_LV_PATH = BASE_OBJ_PATH + "/HiddenLv"
 MANAGER_OBJ_PATH = BASE_OBJ_PATH + '/Manager'
 JOB_OBJ_PATH = BASE_OBJ_PATH + '/Job'
 
@@ -69,3 +70,4 @@ vg_id = itertools.count()
 lv_id = itertools.count()
 thin_id = itertools.count()
 job_id = itertools.count()
+hidden_lv = itertools.count()

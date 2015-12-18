@@ -313,6 +313,12 @@ def thin_pool_obj_path_generate(object_path=None):
     return cfg.THIN_POOL_PATH + "/%d" % next(cfg.thin_id)
 
 
+def hidden_lv_obj_path_generate(object_path=None):
+    if object_path:
+        return object_path
+    return cfg.HIDDEN_LV_PATH + "/%d" % next(cfg.hidden_lv)
+
+
 def job_obj_path_generate(object_path=None):
     if object_path:
         return object_path

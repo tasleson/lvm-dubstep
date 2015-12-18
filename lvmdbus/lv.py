@@ -15,7 +15,8 @@
 from .automatedproperties import AutomatedProperties
 
 from . import utils
-from .utils import vg_obj_path_generate, thin_pool_obj_path_generate
+from .utils import vg_obj_path_generate, thin_pool_obj_path_generate, \
+    hidden_lv_obj_path_generate
 import dbus
 from . import cmdhandler
 from . import cfg
@@ -46,7 +47,7 @@ def lvs_state_retrieve(selection):
 def load_lvs(lv_name=None, object_path=None, refresh=False):
     # noinspection PyUnresolvedReferences
     return common(lvs_state_retrieve,
-                  (Lv, LvThinPool, LvSnapShot),
+                  (LvCommon, Lv, LvThinPool, LvSnapShot),
                   lv_name, object_path, refresh)
 
 
@@ -106,16 +107,19 @@ class LvState(State):
     def SegType(self):
         return self._segs
 
-    def _object_path_function(self):
-        if self.Attr[0] == 't':
+    def _object_path_create(self):
+        if self.Name[0] == '[':
+            return hidden_lv_obj_path_generate
+        elif self.Attr[0] == 't':
             return thin_pool_obj_path_generate
         return lv_obj_path_generate
 
     def create_dbus_object(self, path):
         if not path:
             path = cfg.om.get_object_path_by_lvm_id(
-                self.Uuid, self.lvm_id, self._object_path_function())
-
+                self.Uuid, self.lvm_id, self._object_path_create())
+        if self.Name[0] == '[':
+            return LvCommon(path, self)
         if self.Attr[0] == 't':
             return LvThinPool(path, self)
         elif self.OriginLv != '/':

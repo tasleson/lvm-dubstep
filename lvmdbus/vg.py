@@ -67,7 +67,9 @@ class VgState(State):
             full_name = "%s/%s" % (self.Name, lv_name)
 
             gen = lv_obj_path_generate
-            if lv_attr[0] == 't':
+            if lv_name[0] == '[':
+                gen = hidden_lv_obj_path_generate
+            elif lv_attr[0] == 't':
                 gen = thin_pool_obj_path_generate
 
             lv_path = cfg.om.get_object_path_by_lvm_id(

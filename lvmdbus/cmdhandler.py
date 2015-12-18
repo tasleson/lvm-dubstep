@@ -632,7 +632,7 @@ def lv_retrieve(lv_name):
                 'origin', 'data_percent',
                'lv_attr', 'lv_tags', 'vg_uuid', 'lv_active']
 
-    cmd = _dc('lvs', ['-o', ','.join(columns)])
+    cmd = _dc('lvs', ['-a', '-o', ','.join(columns)])
 
     if lv_name:
         cmd.extend(lv_name)
