@@ -17,7 +17,7 @@ from . import cfg
 
 
 def common(retrieve, o_type, search_keys,
-                object_path, refresh):
+                object_path, refresh, emit_signal=False):
     num_changes = 0
     existing_paths = []
     rc = []
@@ -48,7 +48,9 @@ def common(retrieve, o_type, search_keys,
                 return_object = False
 
         if return_object:
-            rc.append(o.create_dbus_object(object_path))
+            dbus_object = o.create_dbus_object(object_path)
+            cfg.om.register_object(dbus_object, emit_signal)
+            rc.append(dbus_object)
 
         object_path = None
 

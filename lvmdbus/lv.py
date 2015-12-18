@@ -44,11 +44,11 @@ def lvs_state_retrieve(selection):
     return rc
 
 
-def load_lvs(lv_name=None, object_path=None, refresh=False):
+def load_lvs(lv_name=None, object_path=None, refresh=False, emit_signal=False):
     # noinspection PyUnresolvedReferences
     return common(lvs_state_retrieve,
                   (LvCommon, Lv, LvThinPool, LvSnapShot),
-                  lv_name, object_path, refresh)
+                  lv_name, object_path, refresh, emit_signal)
 
 
 # noinspection PyPep8Naming,PyUnresolvedReferences,PyUnusedLocal
@@ -297,9 +297,8 @@ class Lv(LvCommon):
             if rc == 0:
                 return_path = '/'
                 full_name = "%s/%s" % (dbo.vg_name_lookup(), name)
-                lvs = load_lvs([full_name])[0]
+                lvs = load_lvs([full_name], emit_signal=True)[0]
                 for l in lvs:
-                    cfg.om.register_object(l, True)
                     l.dbus_object_path()
                     return_path = l.dbus_object_path()
 
@@ -502,9 +501,8 @@ class LvThinPool(Lv):
                 lv_name, create_options, name, size_bytes)
             if rc == 0:
                 full_name = "%s/%s" % (dbo.vg_name_lookup(), name)
-                lvs = load_lvs([full_name])[0]
+                lvs = load_lvs([full_name], emit_signal=True)[0]
                 for l in lvs:
-                    cfg.om.register_object(l, True)
                     lv_created = l.dbus_object_path()
             else:
                 raise dbus.exceptions.DBusException(

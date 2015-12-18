@@ -51,9 +51,8 @@ class Manager(AutomatedProperties):
         created_pv = []
         rc, out, err = cmdhandler.pv_create(create_options, [device])
         if rc == 0:
-            pvs = load_pvs([device])[0]
+            pvs = load_pvs([device], emit_signal=True)[0]
             for p in pvs:
-                cfg.om.register_object(p, True)
                 created_pv = p.dbus_object_path()
         else:
             raise dbus.exceptions.DBusException(
@@ -87,9 +86,8 @@ class Manager(AutomatedProperties):
         created_vg = "/"
 
         if rc == 0:
-            vgs = load_vgs([name])[0]
+            vgs = load_vgs([name], emit_signal=True)[0]
             for v in vgs:
-                cfg.om.register_object(v, True)
                 created_vg = v.dbus_object_path()
 
             # For each PV that was involved in this VG create we need to
