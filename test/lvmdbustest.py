@@ -115,10 +115,22 @@ class RemoteObject(object):
     def _set_props(self, props=None):
         #print 'Fetching properties'
         if not props:
-            prop_fetch = dbus.Interface(self.bus.get_object(
-                BUSNAME, self.object_path), 'org.freedesktop.DBus.Properties')
-            props = prop_fetch.GetAll(self.interface)
+            #prop_fetch = dbus.Interface(self.bus.get_object(
+            #    BUSNAME, self.object_path), 'org.freedesktop.DBus.Properties')
 
+            for i in range(0, 3):
+                try:
+                    prop_fetch = dbus.Interface(self.bus.get_object(
+                        BUSNAME, self.object_path),
+                        'org.freedesktop.DBus.Properties')
+                    props = prop_fetch.GetAll(self.interface)
+                    break
+                except dbus.exceptions.DBusException as dbe:
+                    if "GetAll" not in str(dbe):
+                        raise dbe
+                    else:
+                        print("%d DEBUG: %s.GetAll is missing!" %
+                              (i, self.interface))
         if props:
             for kl, vl in list(props.items()):
                 setattr(self, kl, vl)
