@@ -17,7 +17,7 @@ from . import cfg
 
 
 def common(retrieve, o_type, search_keys,
-                object_path, refresh, emit_signal=False):
+                object_path, refresh, emit_signal):
     num_changes = 0
     existing_paths = []
     rc = []

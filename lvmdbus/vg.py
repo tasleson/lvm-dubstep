@@ -535,7 +535,7 @@ class Vg(AutomatedProperties):
             if rc == 0:
                 created_lv = "/"
                 full_name = "%s/%s" % (vg_name, name)
-                lvs = load_lvs([full_name], True)[0]
+                lvs = load_lvs([full_name], emit_signal=True)[0]
                 for l in lvs:
                     created_lv = l.dbus_object_path()
 

@@ -184,6 +184,19 @@ class ObjectManager(AutomatedProperties):
                 return self.get_by_path(self._id_to_object_path[lvm_id])
             return None
 
+    def query_objects_by_lvm_id(self, lvm_id):
+        rc = []
+        with self.rlock:
+            for k, object_path in self._id_to_object_path.items():
+                if str(lvm_id) in str(k):
+                    o = self.get_by_path(object_path)
+                    if o:
+                        rc.append(o)
+                    else:
+                        print("DEBUG: No object for %s" % (k))
+                        traceback.print_stack()
+        return rc
+
     def get_object_path_by_lvm_id(self, uuid, lvm_id, path_create=None,
                                   gen_new=True):
         """

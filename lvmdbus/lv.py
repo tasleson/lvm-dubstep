@@ -189,12 +189,27 @@ class LvCommon(AutomatedProperties):
 
 # noinspection PyPep8Naming
 class Lv(LvCommon):
+    _HiddenLvs_meta = ("ao", LV_INTERFACE)
+
+    def _get_hidden_lv(self):
+        rc = dbus.Array([], "o")
+
+        for o in cfg.om.query_objects_by_lvm_id('[' + self.Name):
+            if o.Vg == self.Vg:
+                rc.append(o.dbus_object_path())
+        return rc
 
     # noinspection PyUnusedLocal,PyPep8Naming
     def __init__(self, object_path, object_state):
-        super(Lv, self).__init__(object_path, lvs_state_retrieve)
+        super(Lv, self).__init__(object_path, object_state)
         self.set_interface(LV_INTERFACE)
         self.state = object_state
+        self._hidden_lvs = self._get_hidden_lv()
+
+    @property
+    def HiddenLvs(self):
+        # We will leverage the object manager for now.
+        return self._hidden_lvs
 
     @staticmethod
     def _remove(lv_uuid, lv_name, remove_options):
