@@ -64,15 +64,18 @@ def call_lvm(command, debug=False):
     process = Popen(command, stdout=PIPE, stderr=PIPE, close_fds=True)
     out = process.communicate()
 
+    stdout_text = bytes(out[0]).decode("utf-8")
+    stderr_text = bytes(out[1]).decode("utf-8")
+
     if debug or process.returncode != 0:
-        _debug_c(command, process.returncode, out)
+        _debug_c(command, process.returncode, (stdout_text, stderr_text))
 
     if process.returncode == 0:
         if out[1] and len(out[1]):
             print('WARNING: lvm is out-putting text to STDERR on success!')
-            _debug_c(command, process.returncode, out)
+            _debug_c(command, process.returncode, (stdout_text, stderr_text))
 
-    return process.returncode, out[0], out[1]
+    return process.returncode, stdout_text, stderr_text
 
 
 def _shell_cfg():
@@ -125,10 +128,8 @@ def _dc(cmd, args):
     return c
 
 
-def parse(tout):
+def parse(out):
     rc = []
-
-    out = tout.decode("utf-8")
 
     for line in out.split('\n'):
         # This line includes separators, so process them
