@@ -13,7 +13,6 @@
 #
 # Copyright 2015, Tony Asleson <tasleson@redhat.com>
 
-from . import cfg
 from .pv import load_pvs
 from .vg import load_vgs
 from .lv import load_lvs
