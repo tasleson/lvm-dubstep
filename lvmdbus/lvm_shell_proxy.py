@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as
@@ -13,13 +13,16 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright 2015, Vratislav Podzimek <vpodzime@redhat.com>
+# Copyright 2015-2016, Vratislav Podzimek <vpodzime@redhat.com>
 
 import subprocess
 import shlex
 from fcntl import fcntl, F_GETFL, F_SETFL
 from os import O_NONBLOCK
-from . import cfg
+from cfg import LVM_CMD
+import traceback
+import sys
+
 
 SHELL_PROMPT = "lvm> "
 
@@ -32,35 +35,23 @@ def _quote_arg(arg):
 
 
 class LVMShellProxy(object):
-    def __init__(self):
-        # run the lvm shell
-        self.lvm_shell = subprocess.Popen(
-            [cfg.LVM_CMD], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE, close_fds=True)
-        flags = fcntl(self.lvm_shell.stdout, F_GETFL)
-        fcntl(self.lvm_shell.stdout, F_SETFL, flags | O_NONBLOCK)
-        flags = fcntl(self.lvm_shell.stderr, F_GETFL)
-        fcntl(self.lvm_shell.stderr, F_SETFL, flags | O_NONBLOCK)
 
-        # wait for the first prompt
+    def _read_until_prompt(self):
         stdout = ""
         while not stdout.endswith(SHELL_PROMPT):
             try:
-                stdout += self.lvm_shell.stdout.read()
+                tmp = self.lvm_shell.stdout.read()
+                if tmp:
+                    stdout += tmp.decode("utf-8")
             except IOError:
                 # nothing written yet
                 pass
 
-    def call_lvm(self, argv, debug=False):
-        # create the command string
-        cmd = " ".join(_quote_arg(arg) for arg in argv)
-        cmd += "\n"
+        # strip the prompt from the STDOUT before returning
+        strip_idx = -1 * len(SHELL_PROMPT)
+        return stdout[:strip_idx]
 
-        # run the command by writing it to the shell's STDIN
-        self.lvm_shell.stdin.write(cmd)
-
-        # read and discard the first line (the shell echoes the command string,
-        # no idea why)
+    def _discard_line(self):
         line = None
         while line is None:
             try:
@@ -69,25 +60,45 @@ class LVMShellProxy(object):
                 # nothing written yet
                 pass
 
-        # read everything from the STDOUT to the next prompt
-        stdout = ""
-        while not stdout.endswith(SHELL_PROMPT):
-            try:
-                stdout += self.lvm_shell.stdout.read()
-            except IOError:
-                # nothing written yet
-                pass
+    def __init__(self):
+        # run the lvm shell
+        self.lvm_shell = subprocess.Popen(
+            [LVM_CMD], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE, close_fds=True)
+        flags = fcntl(self.lvm_shell.stdout, F_GETFL)
+        fcntl(self.lvm_shell.stdout, F_SETFL, flags | O_NONBLOCK)
+        flags = fcntl(self.lvm_shell.stderr, F_GETFL)
+        fcntl(self.lvm_shell.stderr, F_SETFL, flags | O_NONBLOCK)
 
-        # strip the prompt from the STDOUT
-        strip_idx = -1 * len(SHELL_PROMPT)
-        stdout = stdout[:strip_idx]
+        # wait for the first prompt
+        self._read_until_prompt()
+
+    def call_lvm(self, argv, debug=False):
+        # create the command string
+        cmd = " ".join(_quote_arg(arg) for arg in argv)
+        cmd += "\n"
+
+        # run the command by writing it to the shell's STDIN
+        cmd_bytes = bytes(cmd, "utf-8")
+        num_written = self.lvm_shell.stdin.write(cmd_bytes)
+        self.lvm_shell.stdin.flush()
+        assert(num_written == len(cmd_bytes))
+
+        # read and discard the first line (the shell echoes the command string,
+        # no idea why)
+        self._discard_line()
+
+        # read everything from the STDOUT to the next prompt
+        stdout = self._read_until_prompt()
 
         # read everything from STDERR if there's something (we waited for the
         # prompt on STDOUT so there should be all or nothing at this point on
         # STDERR)
         stderr = None
         try:
-            stderr = self.lvm_shell.stderr.read()
+            t_error = self.lvm_shell.stderr.read()
+            if t_error:
+                stderr = t_error.decode("utf-8")
         except IOError:
             # nothing on STDERR
             pass
@@ -120,7 +131,9 @@ if __name__ == "__main__":
                 print(("RET: %d" % ret))
                 print(("OUT:\n%s" % out))
                 print(("ERR:\n%s" % err))
-    except Exception:
+    except EOFError:
         pass
+    except Exception:
+        traceback.print_exc(file=sys.stdout)
     finally:
         print()
