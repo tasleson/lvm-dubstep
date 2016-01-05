@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as
@@ -226,12 +226,12 @@ class Lvmetad(object):
                 req += '''%s =\"%s"\n''' % (k, v)
 
         req += '''token = "filter:0"\n'''
-        self.s.sendall(req)
-        self.s.sendall(self.END)
+        self.s.sendall(bytes(req, "utf-8"))
+        self.s.sendall(bytes(self.END, "utf-8"))
 
         data = ''
         while self.END not in data:
-            data += self.s.recv(1024)
+            data += self.s.recv(1024).decode("utf-8")
 
         with open('/tmp/lvmetad', 'w') as debug:
             debug.write(data)
@@ -244,4 +244,4 @@ class Lvmetad(object):
 if __name__ == '__main__':
     with Lvmetad() as meta:
         everything = meta.all()
-        #print str(everything)
+        print(str(everything))
