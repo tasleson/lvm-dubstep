@@ -24,22 +24,8 @@ def load(refresh=False):
 
     # Go through and load all the PVs, VGs and LVs
 
-    pvs, num_changes = load_pvs(refresh=refresh)
-    num_total_changes += num_changes
-
-    for p in pvs:
-        cfg.om.register_object(p, refresh)
-
-    vgs, num_changes = load_vgs(refresh=refresh)
-    num_total_changes += num_changes
-
-    for v in vgs:
-        cfg.om.register_object(v, refresh)
-
-    lvs, num_changes = load_lvs(refresh=refresh)
-    num_total_changes += num_changes
-
-    for l in lvs:
-        cfg.om.register_object(l, refresh)
+    num_total_changes += load_pvs(refresh=refresh)[1]
+    num_total_changes += load_vgs(refresh=refresh)[1]
+    num_total_changes += load_lvs(refresh=refresh)[1]
 
     return num_total_changes

@@ -42,8 +42,9 @@ def pvs_state_retrieve(selection):
     return rc
 
 
-def load_pvs(device=None, object_path=None, refresh=False):
-    return common(pvs_state_retrieve, (Pv,), device, object_path, refresh)
+def load_pvs(device=None, object_path=None, refresh=False, emit_signal=False):
+    return common(pvs_state_retrieve, (Pv,), device, object_path, refresh,
+                  emit_signal)
 
 
 # noinspection PyUnresolvedReferences

@@ -37,6 +37,7 @@ VG_INT = BUSNAME + ".Vg"
 LV_INT = BUSNAME + ".Lv"
 THINPOOL_INT = BUSNAME + ".ThinPool"
 SNAPSHOT_INT = BUSNAME + ".Snapshot"
+LV_COMMON_INT = BUSNAME + ".LvCommon"
 JOB_INT = BUSNAME + ".Job"
 
 THINPOOL_LV_PATH = '/' + THINPOOL_INT.replace('.', '/')
@@ -114,10 +115,22 @@ class RemoteObject(object):
     def _set_props(self, props=None):
         #print 'Fetching properties'
         if not props:
-            prop_fetch = dbus.Interface(self.bus.get_object(
-                BUSNAME, self.object_path), 'org.freedesktop.DBus.Properties')
-            props = prop_fetch.GetAll(self.interface)
+            #prop_fetch = dbus.Interface(self.bus.get_object(
+            #    BUSNAME, self.object_path), 'org.freedesktop.DBus.Properties')
 
+            for i in range(0, 3):
+                try:
+                    prop_fetch = dbus.Interface(self.bus.get_object(
+                        BUSNAME, self.object_path),
+                        'org.freedesktop.DBus.Properties')
+                    props = prop_fetch.GetAll(self.interface)
+                    break
+                except dbus.exceptions.DBusException as dbe:
+                    if "GetAll" not in str(dbe):
+                        raise dbe
+                    else:
+                        print("%d DEBUG: %s.GetAll is missing!" %
+                              (i, self.interface))
         if props:
             for kl, vl in list(props.items()):
                 setattr(self, kl, vl)
@@ -146,13 +159,18 @@ class RemoteObject(object):
 
 
 class ClientProxy(object):
+
+    @staticmethod
+    def _intf_short_name(nm):
+        return nm.split('.')[-1:][0]
+
     def __init__(self, specified_bus, object_path, interface=None, props=None):
         i = dbus.Interface(specified_bus.get_object(
             BUSNAME, object_path), 'org.freedesktop.DBus.Introspectable')
-        intro_spect = DbusIntrospection.introspect(i.Introspect())
+        self.intro_spect = DbusIntrospection.introspect(i.Introspect())
 
-        for k in intro_spect.keys():
-            sn = k.split('.')[-1:][0]
+        for k in self.intro_spect.keys():
+            sn = ClientProxy._intf_short_name(k)
             #print('Client proxy has interface: %s %s' % (k, sn))
 
             if interface and interface == k and props is not None:
@@ -164,10 +182,16 @@ class ClientProxy(object):
 
         self.object_path = object_path
 
+    def update(self):
+        # Go through all interfaces and update them
+        for int_f in self.intro_spect.keys():
+            sn = ClientProxy._intf_short_name(int_f)
+            getattr(self, sn).update()
+
 
 def get_objects():
     rc = {MANAGER_INT: [], PV_INT: [], VG_INT: [], LV_INT: [],
-          THINPOOL_INT: [], JOB_INT: [], SNAPSHOT_INT: []}
+          THINPOOL_INT: [], JOB_INT: [], SNAPSHOT_INT: [], LV_COMMON_INT: []}
 
     manager = dbus.Interface(bus.get_object(
         BUSNAME, "/com/redhat/lvmdbus1"),
@@ -414,8 +438,8 @@ class TestDbusService(unittest.TestCase):
 
     def test_lv_rename(self):
         # Rename a regular LV
-        lv = self._create_lv().Lv
-        lv.Rename('renamed_' + lv.Name, -1, {})
+        lv = self._create_lv()
+        lv.Lv.Rename('renamed_' + lv.LvCommon.Name, -1, {})
         self.assertEqual(self._refresh(), 0)
 
     def test_lv_thinpool_rename(self):
@@ -424,11 +448,11 @@ class TestDbusService(unittest.TestCase):
         self.assertTrue(THINPOOL_LV_PATH in tp.object_path,
                         "%s" % (tp.object_path))
 
-        new_name = 'renamed_' + tp.Lv.Name
+        new_name = 'renamed_' + tp.LvCommon.Name
         tp.Lv.Rename(new_name, -1, {})
-        tp.Lv.update()
-        self.assertTrue(tp.Lv.Name == new_name)
+        tp.update()
         self.assertEqual(self._refresh(), 0)
+        self.assertEqual(new_name, tp.LvCommon.Name)
 
     # noinspection PyUnresolvedReferences
     def test_lv_on_thin_pool_rename(self):
@@ -441,8 +465,8 @@ class TestDbusService(unittest.TestCase):
         thin_path = tp.ThinPool.LvCreate(
             rs(10, '_thin_lv'), 1024 * 1024 * 10, -1, {})[0]
 
-        lv = ClientProxy(self.bus, thin_path).Lv
-        rc = lv.Rename('rename_test' + lv.Name, -1, {})
+        lv = ClientProxy(self.bus, thin_path)
+        rc = lv.Lv.Rename('rename_test' + lv.LvCommon.Name, -1, {})
         self.assertTrue(rc == '/')
         self.assertEqual(self._refresh(), 0)
 
@@ -453,21 +477,21 @@ class TestDbusService(unittest.TestCase):
         self.assertEqual(self._refresh(), 0)
 
     def test_lv_snapshot(self):
-        lv = self._create_lv().Lv
-        ss_name = 'ss_' + lv.Name
+        lv_p = self._create_lv()
+        ss_name = 'ss_' + lv_p.LvCommon.Name
 
         # Test waiting to complete
-        ss, job = lv.Snapshot(ss_name, 0, -1, {})
+        ss, job = lv_p.Lv.Snapshot(ss_name, 0, -1, {})
         self.assertTrue(ss != '/')
         self.assertTrue(job == '/')
 
-        snapshot = ClientProxy(self.bus, ss).Lv
-        self.assertTrue(snapshot.Name == ss_name)
+        snapshot = ClientProxy(self.bus, ss)
+        self.assertTrue(snapshot.LvCommon.Name == ss_name)
 
         self.assertEqual(self._refresh(), 0)
 
         # Test getting a job returned immediately
-        rc, job = lv.Snapshot('ss2_' + lv.Name, 0, 0, {})
+        rc, job = lv_p.Lv.Snapshot('ss2_' + lv_p.LvCommon.Name, 0, 0, {})
         self.assertTrue(rc == '/')
         self.assertTrue(job != '/')
         self._wait_for_job(job)
@@ -501,13 +525,16 @@ class TestDbusService(unittest.TestCase):
         return rc
 
     def test_lv_resize(self):
-        lv = self._create_lv().Lv
+        lv = self._create_lv()
 
-        for size in [lv.SizeBytes + 4194304, lv.SizeBytes - 4194304,
-                     lv.SizeBytes + 2048, lv.SizeBytes - 2048, lv.SizeBytes]:
+        for size in [lv.LvCommon.SizeBytes + 4194304,
+                     lv.LvCommon.SizeBytes - 4194304,
+                     lv.LvCommon.SizeBytes + 2048,
+                     lv.LvCommon.SizeBytes - 2048,
+                     lv.LvCommon.SizeBytes]:
 
-            prev = lv.SizeBytes
-            rc = lv.Resize(size, dbus.Array([], '(oii)'), -1, {})
+            prev = lv.LvCommon.SizeBytes
+            rc = lv.Lv.Resize(size, dbus.Array([], '(oii)'), -1, {})
 
             self.assertEqual(rc, '/')
             self.assertEqual(self._refresh(), 0)
@@ -515,53 +542,53 @@ class TestDbusService(unittest.TestCase):
             lv.update()
 
             if prev < size:
-                self.assertTrue(lv.SizeBytes > prev)
+                self.assertTrue(lv.LvCommon.SizeBytes > prev)
             else:
                 # We are testing re-sizing to same size too...
-                self.assertTrue(lv.SizeBytes <= prev)
+                self.assertTrue(lv.LvCommon.SizeBytes <= prev)
 
     def test_lv_move(self):
-        lv = self._create_lv().Lv
+        lv = self._create_lv()
 
-        pv_path_move = str(lv.Devices[0][0])
+        pv_path_move = str(lv.LvCommon.Devices[0][0])
 
         # Test moving a specific LV
-        job = lv.Move(pv_path_move, (0, 0), dbus.Array([], '(oii)'), 0, {})
+        job = lv.Lv.Move(pv_path_move, (0, 0), dbus.Array([], '(oii)'), 0, {})
         self._wait_for_job(job)
         self.assertEqual(self._refresh(), 0)
 
         lv.update()
-        new_pv = str(lv.Devices[0][0])
+        new_pv = str(lv.LvCommon.Devices[0][0])
         self.assertTrue(pv_path_move != new_pv, "%s == %s" %
                         (pv_path_move, new_pv))
 
     def test_lv_activate_deactivate(self):
-        lv = self._create_lv().Lv
-        lv.update()
+        lv_p = self._create_lv()
+        lv_p.update()
 
-        lv.Deactivate(0, -1, {})
-        lv.update()
-        self.assertFalse(lv.Active)
+        lv_p.Lv.Deactivate(0, -1, {})
+        lv_p.update()
+        self.assertFalse(lv_p.LvCommon.Active)
         self.assertEqual(self._refresh(), 0)
 
-        lv.Activate(0, -1, {})
+        lv_p.Lv.Activate(0, -1, {})
 
-        lv.update()
-        self.assertTrue(lv.Active)
+        lv_p.update()
+        self.assertTrue(lv_p.LvCommon.Active)
         self.assertEqual(self._refresh(), 0)
 
         # Try control flags
         for i in range(0, 5):
-            lv.Activate(1 << i, -1, {})
-            self.assertTrue(lv.Active)
+            lv_p.Lv.Activate(1 << i, -1, {})
+            self.assertTrue(lv_p.LvCommon.Active)
             self.assertEqual(self._refresh(), 0)
 
     def test_move(self):
-        lv = self._create_lv().Lv
+        lv = self._create_lv()
 
         # Test moving without being LV specific
-        vg = ClientProxy(self.bus, lv.Vg).Vg
-        pv_to_move = str(lv.Devices[0][0])
+        vg = ClientProxy(self.bus, lv.LvCommon.Vg).Vg
+        pv_to_move = str(lv.LvCommon.Devices[0][0])
         job = vg.Move(pv_to_move, (0, 0), dbus.Array([], '(oii)'), 0, {})
         self._wait_for_job(job)
         self.assertEqual(self._refresh(), 0)
@@ -571,7 +598,7 @@ class TestDbusService(unittest.TestCase):
         vg.update()
         lv.update()
 
-        location = lv.Devices[0][0]
+        location = lv.LvCommon.Devices[0][0]
 
         dst = None
         for p in vg.Pvs:
@@ -703,16 +730,16 @@ class TestDbusService(unittest.TestCase):
         lv = self._test_lv_create(
             vg.LvCreateLinear,
             (rs(8, '_lv'), 1024 * 1024 * 4, False, -1, {}),
-            vg).Lv
+            vg)
 
         t = ['Testing', 'tags']
 
-        lv.TagsAdd(t, -1, {})
+        lv.Lv.TagsAdd(t, -1, {})
         lv.update()
-        self.assertTrue(t == lv.Tags)
-        lv.TagsDel(t, -1, {})
+        self.assertTrue(t == lv.LvCommon.Tags)
+        lv.Lv.TagsDel(t, -1, {})
         lv.update()
-        self.assertTrue([] == lv.Tags)
+        self.assertTrue([] == lv.LvCommon.Tags)
 
     def test_vg_allocation_policy_set(self):
         vg = self._vg_create().Vg
@@ -870,9 +897,9 @@ class TestDbusService(unittest.TestCase):
 
     def test_snapshot_merge(self):
         # Create a non-thin LV and merge it
-        lv = self._create_lv().Lv
-        ss_name = lv.Name + '_snap'
-        snapshot_path = lv.Snapshot(ss_name, 1024 * 1024 * 4, -1, {})[0]
+        lv_p = self._create_lv()
+        ss_name = lv_p.LvCommon.Name + '_snap'
+        snapshot_path = lv_p.Lv.Snapshot(ss_name, 1024 * 1024 * 4, -1, {})[0]
         ss = ClientProxy(self.bus, snapshot_path)
         job_path = ss.Snapshot.Merge(0, {})
 
@@ -886,10 +913,10 @@ class TestDbusService(unittest.TestCase):
         thin_path = tp.ThinPool.LvCreate(
             rs(10, '_thin_lv'), 1024 * 1024 * 10, -1, {})[0]
 
-        lv = ClientProxy(self.bus, thin_path).Lv
+        lv_p = ClientProxy(self.bus, thin_path)
 
-        ss_name = lv.Name + '_snap'
-        snapshot_path = lv.Snapshot(ss_name, 0, -1, {})[0]
+        ss_name = lv_p.LvCommon.Name + '_snap'
+        snapshot_path = lv_p.Lv.Snapshot(ss_name, 0, -1, {})[0]
         ss = ClientProxy(self.bus, snapshot_path)
         job_path = ss.Snapshot.Merge(0, {})
         self.assertTrue(job_path != '/')

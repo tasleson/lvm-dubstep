@@ -46,8 +46,10 @@ def vgs_state_retrieve(selection):
     return rc
 
 
-def load_vgs(vg_specific=None, object_path=None, refresh=False):
-    return common(vgs_state_retrieve, (Vg,), vg_specific, object_path, refresh)
+def load_vgs(vg_specific=None, object_path=None, refresh=False,
+             emit_signal=False):
+    return common(vgs_state_retrieve, (Vg,), vg_specific, object_path, refresh,
+                  emit_signal)
 
 
 # noinspection PyPep8Naming,PyUnresolvedReferences,PyUnusedLocal
@@ -67,7 +69,9 @@ class VgState(State):
             full_name = "%s/%s" % (self.Name, lv_name)
 
             gen = lv_obj_path_generate
-            if lv_attr[0] == 't':
+            if lv_name[0] == '[':
+                gen = hidden_lv_obj_path_generate
+            elif lv_attr[0] == 't':
                 gen = thin_pool_obj_path_generate
 
             lv_path = cfg.om.get_object_path_by_lvm_id(
@@ -426,9 +430,8 @@ class Vg(AutomatedProperties):
             if rc == 0:
                 created_lv = "/"
                 full_name = "%s/%s" % (vg_name, name)
-                lvs = load_lvs([full_name])[0]
+                lvs = load_lvs([full_name], emit_signal=True)[0]
                 for l in lvs:
-                    cfg.om.register_object(l, True)
                     created_lv = l.dbus_object_path()
 
                 # Refresh self and all included PVs
@@ -486,9 +489,8 @@ class Vg(AutomatedProperties):
             if rc == 0:
                 created_lv = "/"
                 full_name = "%s/%s" % (vg_name, name)
-                lvs = load_lvs([full_name])[0]
+                lvs = load_lvs([full_name], emit_signal=True)[0]
                 for l in lvs:
-                    cfg.om.register_object(l, True)
                     created_lv = l.dbus_object_path()
 
                 # Refresh self and all included PVs
@@ -533,9 +535,8 @@ class Vg(AutomatedProperties):
             if rc == 0:
                 created_lv = "/"
                 full_name = "%s/%s" % (vg_name, name)
-                lvs = load_lvs([full_name])[0]
+                lvs = load_lvs([full_name], emit_signal=True)[0]
                 for l in lvs:
-                    cfg.om.register_object(l, True)
                     created_lv = l.dbus_object_path()
 
                 # Refresh self and all included PVs
@@ -578,9 +579,8 @@ class Vg(AutomatedProperties):
             if rc == 0:
                 created_lv = "/"
                 full_name = "%s/%s" % (vg_name, name)
-                lvs = load_lvs([full_name])[0]
+                lvs = load_lvs([full_name], emit_signal=True)[0]
                 for l in lvs:
-                    cfg.om.register_object(l, True)
                     created_lv = l.dbus_object_path()
 
                 # Refresh self and all included PVs
@@ -623,9 +623,8 @@ class Vg(AutomatedProperties):
             if rc == 0:
                 created_lv = "/"
                 full_name = "%s/%s" % (vg_name, name)
-                lvs = load_lvs([full_name])[0]
+                lvs = load_lvs([full_name], emit_signal=True)[0]
                 for l in lvs:
-                    cfg.om.register_object(l, True)
                     created_lv = l.dbus_object_path()
 
                 # Refresh self and all included PVs

@@ -15,11 +15,13 @@
 from .automatedproperties import AutomatedProperties
 
 from . import utils
-from .utils import vg_obj_path_generate, thin_pool_obj_path_generate
+from .utils import vg_obj_path_generate, thin_pool_obj_path_generate, \
+    hidden_lv_obj_path_generate
 import dbus
 from . import cmdhandler
 from . import cfg
-from .cfg import LV_INTERFACE, THIN_POOL_INTERFACE, SNAPSHOT_INTERFACE
+from .cfg import LV_INTERFACE, THIN_POOL_INTERFACE, SNAPSHOT_INTERFACE, \
+    LV_COMMON_INTERFACE
 from .request import RequestEntry
 from .utils import lv_obj_path_generate, n, n32
 from .loader import common
@@ -38,15 +40,16 @@ def lvs_state_retrieve(selection):
                                l['vg_uuid'], l['pool_lv_uuid'],
                                 l['pool_lv'], l['origin_uuid'], l['origin'],
                                n32(l['data_percent']), l['lv_attr'],
-                               l['lv_tags'], l['lv_active']))
+                               l['lv_tags'], l['lv_active'], l['data_lv'],
+                                l['metadata_lv']))
     return rc
 
 
-def load_lvs(lv_name=None, object_path=None, refresh=False):
+def load_lvs(lv_name=None, object_path=None, refresh=False, emit_signal=False):
     # noinspection PyUnresolvedReferences
     return common(lvs_state_retrieve,
-                  (Lv, LvThinPool, LvSnapShot),
-                  lv_name, object_path, refresh)
+                  (LvCommon, Lv, LvThinPool, LvSnapShot),
+                  lv_name, object_path, refresh, emit_signal)
 
 
 # noinspection PyPep8Naming,PyUnresolvedReferences,PyUnusedLocal
@@ -78,7 +81,8 @@ class LvState(State):
 
     def __init__(self, Uuid, Name, Path, SizeBytes,
                      vg_name, vg_uuid, pool_lv_uuid, PoolLv,
-                     origin_uuid, OriginLv, DataPercent, Attr, Tags, active):
+                     origin_uuid, OriginLv, DataPercent, Attr, Tags, active,
+                     data_lv, metadata_lv):
         utils.init_class_from_arguments(self, None)
         self._segs = dbus.Array([], signature='s')
 
@@ -105,16 +109,19 @@ class LvState(State):
     def SegType(self):
         return self._segs
 
-    def _object_path_function(self):
-        if self.Attr[0] == 't':
+    def _object_path_create(self):
+        if self.Name[0] == '[':
+            return hidden_lv_obj_path_generate
+        elif self.Attr[0] == 't':
             return thin_pool_obj_path_generate
         return lv_obj_path_generate
 
     def create_dbus_object(self, path):
         if not path:
             path = cfg.om.get_object_path_by_lvm_id(
-                self.Uuid, self.lvm_id, self._object_path_function())
-
+                self.Uuid, self.lvm_id, self._object_path_create())
+        if self.Name[0] == '[':
+            return LvCommon(path, self)
         if self.Attr[0] == 't':
             return LvThinPool(path, self)
         elif self.OriginLv != '/':
@@ -124,26 +131,26 @@ class LvState(State):
 
 
 # noinspection PyPep8Naming
-@utils.dbus_property(LV_INTERFACE, 'Uuid', 's')
-@utils.dbus_property(LV_INTERFACE, 'Name', 's')
-@utils.dbus_property(LV_INTERFACE, 'Path', 's')
-@utils.dbus_property(LV_INTERFACE, 'SizeBytes', 't')
-@utils.dbus_property(LV_INTERFACE, 'DataPercent', 'u')
-@utils.dbus_property(LV_INTERFACE, 'SegType', 'as')
-@utils.dbus_property(LV_INTERFACE, 'Vg', 'o')
-@utils.dbus_property(LV_INTERFACE, 'OriginLv', 'o')
-@utils.dbus_property(LV_INTERFACE, 'PoolLv', 'o')
-@utils.dbus_property(LV_INTERFACE, 'Devices', "a(oa(tts))")
-class Lv(AutomatedProperties):
-    _Tags_meta = ("as", LV_INTERFACE)
-    _IsThinVolume_meta = ("b", LV_INTERFACE)
-    _IsThinPool_meta = ("b", LV_INTERFACE)
-    _Active_meta = ("b", LV_INTERFACE)
+@utils.dbus_property(LV_COMMON_INTERFACE, 'Uuid', 's')
+@utils.dbus_property(LV_COMMON_INTERFACE, 'Name', 's')
+@utils.dbus_property(LV_COMMON_INTERFACE, 'Path', 's')
+@utils.dbus_property(LV_COMMON_INTERFACE, 'SizeBytes', 't')
+@utils.dbus_property(LV_COMMON_INTERFACE, 'DataPercent', 'u')
+@utils.dbus_property(LV_COMMON_INTERFACE, 'SegType', 'as')
+@utils.dbus_property(LV_COMMON_INTERFACE, 'Vg', 'o')
+@utils.dbus_property(LV_COMMON_INTERFACE, 'OriginLv', 'o')
+@utils.dbus_property(LV_COMMON_INTERFACE, 'PoolLv', 'o')
+@utils.dbus_property(LV_COMMON_INTERFACE, 'Devices', "a(oa(tts))")
+class LvCommon(AutomatedProperties):
+    _Tags_meta = ("as", LV_COMMON_INTERFACE)
+    _IsThinVolume_meta = ("b", LV_COMMON_INTERFACE)
+    _IsThinPool_meta = ("b", LV_COMMON_INTERFACE)
+    _Active_meta = ("b", LV_COMMON_INTERFACE)
 
     # noinspection PyUnusedLocal,PyPep8Naming
     def __init__(self, object_path, object_state):
-        super(Lv, self).__init__(object_path, lvs_state_retrieve)
-        self.set_interface(LV_INTERFACE)
+        super(LvCommon, self).__init__(object_path, lvs_state_retrieve)
+        self.set_interface(LV_COMMON_INTERFACE)
         self.state = object_state
 
     def signal_vg_pv_changes(self):
@@ -154,6 +161,57 @@ class Lv(AutomatedProperties):
 
     def vg_name_lookup(self):
         return self.state.vg_name_lookup()
+
+    @property
+    def Tags(self):
+        return utils.parse_tags(self.state.Tags)
+
+    @property
+    def lvm_id(self):
+        return self.state.lvm_id
+
+    @property
+    def IsThinVolume(self):
+        return self.state.Attr[0] == 'V'
+
+    @property
+    def IsThinPool(self):
+        return self.state.Attr[0] == 't'
+
+    @property
+    def Active(self):
+        return self.state.active == "active"
+
+    @dbus.service.method(dbus_interface=LV_COMMON_INTERFACE,
+                          in_signature='ia{sv}',
+                          out_signature='o')
+    def _Future(self, tmo, open_options):
+        raise dbus.exceptions.DBusException(LV_COMMON_INTERFACE, 'Do not use!')
+
+
+# noinspection PyPep8Naming
+class Lv(LvCommon):
+    _HiddenLvs_meta = ("ao", LV_INTERFACE)
+
+    def _get_hidden_lv(self):
+        rc = dbus.Array([], "o")
+
+        for o in cfg.om.query_objects_by_lvm_id('[' + self.Name):
+            if o.Vg == self.Vg:
+                rc.append(o.dbus_object_path())
+        return rc
+
+    # noinspection PyUnusedLocal,PyPep8Naming
+    def __init__(self, object_path, object_state):
+        super(Lv, self).__init__(object_path, object_state)
+        self.set_interface(LV_INTERFACE)
+        self.state = object_state
+        self._hidden_lvs = self._get_hidden_lv()
+
+    @property
+    def HiddenLvs(self):
+        # We will leverage the object manager for now.
+        return self._hidden_lvs
 
     @staticmethod
     def _remove(lv_uuid, lv_name, remove_options):
@@ -225,26 +283,6 @@ class Lv(AutomatedProperties):
                          cb, cbe, False)
         cfg.worker_q.put(r)
 
-    @property
-    def Tags(self):
-        return utils.parse_tags(self.state.Tags)
-
-    @property
-    def lvm_id(self):
-        return self.state.lvm_id
-
-    @property
-    def IsThinVolume(self):
-        return self.state.Attr[0] == 'V'
-
-    @property
-    def IsThinPool(self):
-        return self.state.Attr[0] == 't'
-
-    @property
-    def Active(self):
-        return self.state.active == "active"
-
     @dbus.service.method(dbus_interface=LV_INTERFACE,
                          in_signature='o(tt)a(ott)ia{sv}',
                          out_signature='o')
@@ -276,9 +314,8 @@ class Lv(AutomatedProperties):
             if rc == 0:
                 return_path = '/'
                 full_name = "%s/%s" % (dbo.vg_name_lookup(), name)
-                lvs = load_lvs([full_name])[0]
+                lvs = load_lvs([full_name], emit_signal=True)[0]
                 for l in lvs:
-                    cfg.om.register_object(l, True)
                     l.dbus_object_path()
                     return_path = l.dbus_object_path()
 
@@ -464,10 +501,33 @@ class Lv(AutomatedProperties):
 
 # noinspection PyPep8Naming
 class LvThinPool(Lv):
+    _DataLv_meta = ("o", THIN_POOL_INTERFACE)
+    _MetaDataLv_meta = ("o", THIN_POOL_INTERFACE)
+
+    def _fetch_hidden(self, name):
+        for o in cfg.om.query_objects_by_lvm_id(name):
+            if o.Vg == self.Vg:
+                return o.dbus_object_path()
+        return '/'
+
+    def _get_data_meta(self):
+
+        # Get the data
+        return (self._fetch_hidden(self.state.data_lv),
+                self._fetch_hidden(self.state.metadata_lv))
 
     def __init__(self, object_path, object_state):
         super(LvThinPool, self).__init__(object_path, object_state)
         self.set_interface(THIN_POOL_INTERFACE)
+        self._data_lv, self._metadata_lv = self._get_data_meta()
+
+    @property
+    def DataLv(self):
+        return self._data_lv
+
+    @property
+    def MetaDataLv(self):
+        return self._metadata_lv
 
     @staticmethod
     def _lv_create(lv_uuid, lv_name, name, size_bytes, create_options):
@@ -481,9 +541,8 @@ class LvThinPool(Lv):
                 lv_name, create_options, name, size_bytes)
             if rc == 0:
                 full_name = "%s/%s" % (dbo.vg_name_lookup(), name)
-                lvs = load_lvs([full_name])[0]
+                lvs = load_lvs([full_name], emit_signal=True)[0]
                 for l in lvs:
-                    cfg.om.register_object(l, True)
                     lv_created = l.dbus_object_path()
             else:
                 raise dbus.exceptions.DBusException(
