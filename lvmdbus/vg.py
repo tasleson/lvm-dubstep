@@ -27,6 +27,7 @@ from .loader import common
 from .lv import load_lvs
 from .state import State
 from . import pvmover
+from .utils import round_size
 
 
 def vgs_state_retrieve(selection):
@@ -471,7 +472,7 @@ class Vg(AutomatedProperties):
         """
         r = RequestEntry(tmo, Vg._lv_create,
                          (self.state.Uuid, self.state.lvm_id,
-                          name, size_bytes, pv_dests_and_ranges,
+                          name, round_size(size_bytes), pv_dests_and_ranges,
                           create_options),
                          cb, cbe)
         cfg.worker_q.put(r)
@@ -515,7 +516,7 @@ class Vg(AutomatedProperties):
                        thin_pool, tmo, create_options, cb, cbe):
         r = RequestEntry(tmo, Vg._lv_create_linear,
                          (self.state.Uuid, self.state.lvm_id,
-                          name, size_bytes, thin_pool, create_options),
+                          name, round_size(size_bytes), thin_pool, create_options),
                          cb, cbe)
         cfg.worker_q.put(r)
 
@@ -562,8 +563,8 @@ class Vg(AutomatedProperties):
                         cb, cbe):
         r = RequestEntry(tmo, Vg._lv_create_striped,
                          (self.state.Uuid, self.state.lvm_id, name,
-                          size_bytes, num_stripes, stripe_size_kb, thin_pool,
-                          create_options),
+                          round_size(size_bytes), num_stripes, stripe_size_kb,
+                          thin_pool, create_options),
                          cb, cbe)
         cfg.worker_q.put(r)
 
@@ -606,7 +607,7 @@ class Vg(AutomatedProperties):
                        tmo, create_options, cb, cbe):
         r = RequestEntry(tmo, Vg._lv_create_mirror,
                          (self.state.Uuid, self.state.lvm_id, name,
-                          size_bytes, num_copies,
+                          round_size(size_bytes), num_copies,
                           create_options), cb, cbe)
         cfg.worker_q.put(r)
 
@@ -651,7 +652,8 @@ class Vg(AutomatedProperties):
                      create_options, cb, cbe):
         r = RequestEntry(tmo, Vg._lv_create_raid,
                          (self.state.Uuid, self.state.lvm_id, name,
-                          raid_type, size_bytes, num_stripes, stripe_size_kb,
+                          raid_type, round_size(size_bytes), num_stripes,
+                          stripe_size_kb,
                           create_options), cb, cbe)
         cfg.worker_q.put(r)
 

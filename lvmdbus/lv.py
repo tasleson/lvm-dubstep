@@ -27,6 +27,7 @@ from .utils import lv_obj_path_generate, n, n32
 from .loader import common
 from .state import State
 from . import pvmover
+from .utils import round_size
 
 
 def lvs_state_retrieve(selection):
@@ -405,7 +406,7 @@ class Lv(LvCommon):
         :return: '/' if complete, else job object path
         """
         r = RequestEntry(tmo, Lv._resize,
-                         (self.Uuid, self.lvm_id, new_size_bytes,
+                         (self.Uuid, self.lvm_id, round_size(new_size_bytes),
                           pv_dests_and_ranges,
                           resize_options), cb, cbe, return_tuple=False)
         cfg.worker_q.put(r)
@@ -561,7 +562,7 @@ class LvThinPool(Lv):
     def LvCreate(self, name, size_bytes, tmo, create_options, cb, cbe):
         r = RequestEntry(tmo, LvThinPool._lv_create,
                          (self.Uuid, self.lvm_id, name,
-                          size_bytes, create_options), cb, cbe)
+                          round_size(size_bytes), create_options), cb, cbe)
         cfg.worker_q.put(r)
 
 

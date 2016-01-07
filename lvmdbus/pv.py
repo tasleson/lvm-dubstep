@@ -24,6 +24,7 @@ from .utils import thin_pool_obj_path_generate, lv_obj_path_generate, \
 from .loader import common
 from .request import RequestEntry
 from .state import State
+from .utils import round_size
 
 
 def pvs_state_retrieve(selection):
@@ -188,7 +189,7 @@ class Pv(AutomatedProperties):
                          async_callbacks=('cb', 'cbe'))
     def ReSize(self, new_size_bytes, tmo, resize_options, cb, cbe):
         r = RequestEntry(tmo, Pv._resize,
-                         (self.Uuid, self.lvm_id, new_size_bytes,
+                         (self.Uuid, self.lvm_id, round_size(new_size_bytes),
                           resize_options), cb, cbe, False)
         cfg.worker_q.put(r)
 

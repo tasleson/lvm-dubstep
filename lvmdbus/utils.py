@@ -389,3 +389,11 @@ def pv_dest_ranges(cmd, pv_dest_range_list):
     if len(pv_dest_range_list):
         for i in pv_dest_range_list:
             pv_range_append(cmd, *i)
+
+
+def round_size(size_bytes):
+    bs = 512
+    remainder = size_bytes % bs
+    if not remainder:
+        return size_bytes
+    return size_bytes + bs - remainder
