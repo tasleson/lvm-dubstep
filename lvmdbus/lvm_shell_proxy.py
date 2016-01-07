@@ -19,9 +19,13 @@ import subprocess
 import shlex
 from fcntl import fcntl, F_GETFL, F_SETFL
 from os import O_NONBLOCK
-from cfg import LVM_CMD
 import traceback
 import sys
+
+try:
+    from .cfg import LVM_CMD
+except:
+    from cfg import LVM_CMD
 
 
 SHELL_PROMPT = "lvm> "
