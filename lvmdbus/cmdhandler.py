@@ -240,7 +240,7 @@ def vg_remove(vg_name, remove_options):
 def vg_lv_create(vg_name, create_options, name, size_bytes, pv_dests):
     cmd = ['lvcreate']
     cmd.extend(options_to_cli_args(create_options))
-    cmd.extend(['--size', str(size_bytes) + 'B'])
+    cmd.extend(['--size', str(size_bytes / 1024) + 'K'])
     cmd.extend(['--name', name, vg_name])
     pv_dest_ranges(cmd, pv_dests)
     return call(cmd)
@@ -252,7 +252,7 @@ def vg_lv_snapshot(vg_name, snapshot_options, name, size_bytes):
     cmd.extend(["-s"])
 
     if size_bytes != 0:
-        cmd.extend(['--size', str(size_bytes) + 'B'])
+        cmd.extend(['--size', str(size_bytes / 1024) + 'K'])
 
     cmd.extend(['--name', name, vg_name])
     return call(cmd)
@@ -263,9 +263,9 @@ def vg_lv_create_linear(vg_name, create_options, name, size_bytes, thin_pool):
     cmd.extend(options_to_cli_args(create_options))
 
     if not thin_pool:
-        cmd.extend(['--size', str(size_bytes) + 'B'])
+        cmd.extend(['--size', str(size_bytes / 1024) + 'K'])
     else:
-        cmd.extend(['--thin', '--size', str(size_bytes) + 'B'])
+        cmd.extend(['--thin', '--size', str(size_bytes / 1024) + 'K'])
     cmd.extend(['--name', name, vg_name])
     return call(cmd)
 
@@ -276,9 +276,9 @@ def vg_lv_create_striped(vg_name, create_options, name, size_bytes,
     cmd.extend(options_to_cli_args(create_options))
 
     if not thin_pool:
-        cmd.extend(['--size', str(size_bytes) + 'B'])
+        cmd.extend(['--size', str(size_bytes / 1024) + 'K'])
     else:
-        cmd.extend(['--thin', '--size', str(size_bytes) + 'B'])
+        cmd.extend(['--thin', '--size', str(size_bytes / 1024) + 'K'])
 
     cmd.extend(['--stripes', str(num_stripes)])
 
@@ -296,7 +296,7 @@ def _vg_lv_create_raid(vg_name, create_options, name, raid_type, size_bytes,
     cmd.extend(options_to_cli_args(create_options))
 
     cmd.extend(['--type', raid_type])
-    cmd.extend(['--size', str(size_bytes) + 'B'])
+    cmd.extend(['--size', str(size_bytes / 1024) + 'K'])
 
     if num_stripes != 0:
         cmd.extend(['--stripes', str(num_stripes)])
@@ -323,7 +323,7 @@ def vg_lv_create_mirror(vg_name, create_options, name, size_bytes, num_copies):
 
     cmd.extend(['--type', 'mirror'])
     cmd.extend(['--mirrors', str(num_copies)])
-    cmd.extend(['--size', str(size_bytes) + 'B'])
+    cmd.extend(['--size', str(size_bytes / 1024) + 'K'])
     cmd.extend(['--name', name, vg_name])
     return call(cmd)
 
@@ -361,7 +361,7 @@ def lv_resize(lv_full_name, size_change, pv_dests,
 def lv_lv_create(lv_full_name, create_options, name, size_bytes):
     cmd = ['lvcreate']
     cmd.extend(options_to_cli_args(create_options))
-    cmd.extend(['--virtualsize', str(size_bytes) + 'B', '-T'])
+    cmd.extend(['--virtualsize', str(size_bytes / 1024) + 'K', '-T'])
     cmd.extend(['--name', name, lv_full_name])
     return call(cmd)
 
