@@ -21,6 +21,7 @@ from fcntl import fcntl, F_GETFL, F_SETFL
 from os import O_NONBLOCK
 import traceback
 import sys
+import re
 
 try:
     from .cfg import LVM_CMD
@@ -41,6 +42,7 @@ def _quote_arg(arg):
 class LVMShellProxy(object):
 
     def _read_until_prompt(self):
+        prev_ec = None
         stdout = ""
         while not stdout.endswith(SHELL_PROMPT):
             try:
@@ -51,20 +53,57 @@ class LVMShellProxy(object):
                 # nothing written yet
                 pass
 
-        # strip the prompt from the STDOUT before returning
-        strip_idx = -1 * len(SHELL_PROMPT)
-        return stdout[:strip_idx]
+        # strip the prompt from the STDOUT before returning and grab the exit
+        # code if it's available
+        m = self.re.match(stdout)
+        if m:
+            prev_ec = int(m.group(2))
+            strip_idx = -1 * len(m.group(1))
+        else:
+            strip_idx = -1 * len(SHELL_PROMPT)
 
-    def _discard_line(self):
-        line = None
-        while line is None:
+        return stdout[:strip_idx], prev_ec
+
+    def _read_line(self):
+        while True:
             try:
-                line = self.lvm_shell.stdout.readline()
+                tmp = self.lvm_shell.stdout.readline()
+                if tmp:
+                    return tmp.decode("utf-8")
             except IOError:
-                # nothing written yet
                 pass
 
+    def _discard_echo(self, expected):
+        line = ""
+        while line != expected:
+            # GNU readline inserts some interesting characters at times...
+            line += self._read_line().replace(' \r', '')
+
+    def _write_cmd(self, cmd):
+        cmd_bytes = bytes(cmd, "utf-8")
+        num_written = self.lvm_shell.stdin.write(cmd_bytes)
+        assert(num_written == len(cmd_bytes))
+        self.lvm_shell.stdin.flush()
+
+    def _lvm_echos(self):
+        echo = False
+        cmd = "version\n"
+        self._write_cmd(cmd)
+        line = self._read_line()
+
+        if line == cmd:
+            echo = True
+
+        self._read_until_prompt()
+
+        if not echo:
+            print("No echo!")
+
+        return echo
+
     def __init__(self):
+        self.re = re.compile(".*(\[(-?[0-9]+)\] lvm> $)", re.DOTALL)
+
         # run the lvm shell
         self.lvm_shell = subprocess.Popen(
             [LVM_CMD], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
@@ -77,23 +116,24 @@ class LVMShellProxy(object):
         # wait for the first prompt
         self._read_until_prompt()
 
+        # Check to see if the version of LVM we are using is running with
+        # gnu readline which will echo our writes from stdin to stdout
+        self.echo = self._lvm_echos()
+
     def call_lvm(self, argv, debug=False):
         # create the command string
         cmd = " ".join(_quote_arg(arg) for arg in argv)
         cmd += "\n"
 
         # run the command by writing it to the shell's STDIN
-        cmd_bytes = bytes(cmd, "utf-8")
-        num_written = self.lvm_shell.stdin.write(cmd_bytes)
-        self.lvm_shell.stdin.flush()
-        assert(num_written == len(cmd_bytes))
+        self._write_cmd(cmd)
 
-        # read and discard the first line (the shell echoes the command string,
-        # no idea why)
-        self._discard_line()
+        # If lvm is utilizing gnu readline, it echos stdin to stdout
+        if self.echo:
+            self._discard_echo(cmd)
 
         # read everything from the STDOUT to the next prompt
-        stdout = self._read_until_prompt()
+        stdout, exit_code = self._read_until_prompt()
 
         # read everything from STDERR if there's something (we waited for the
         # prompt on STDOUT so there should be all or nothing at this point on
@@ -107,11 +147,16 @@ class LVMShellProxy(object):
             # nothing on STDERR
             pass
 
-        # if there was something on STDERR, there was some error
-        if stderr:
-            rc = 1
+        if exit_code is not None:
+            rc = exit_code
         else:
-            rc = 0
+            # LVM does write to stderr even when it did complete successfully,
+            # so without having the exit code in the prompt we can never be
+            # sure.
+            if stderr:
+                rc = 1
+            else:
+                rc = 0
 
         if debug or rc != 0:
             print(('CMD: %s' % cmd))
@@ -135,6 +180,8 @@ if __name__ == "__main__":
                 print(("RET: %d" % ret))
                 print(("OUT:\n%s" % out))
                 print(("ERR:\n%s" % err))
+    except KeyboardInterrupt:
+        pass
     except EOFError:
         pass
     except Exception:
