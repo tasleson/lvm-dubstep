@@ -416,7 +416,7 @@ def pv_resize(device, size_bytes, create_options):
 
 
 def pv_create(create_options, devices):
-    cmd = ['pvcreate', '-f']
+    cmd = ['pvcreate', '-ff']
     cmd.extend(options_to_cli_args(create_options))
     cmd.extend(devices)
     return call(cmd)
