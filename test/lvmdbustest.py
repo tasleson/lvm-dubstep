@@ -128,9 +128,6 @@ class RemoteObject(object):
                 except dbus.exceptions.DBusException as dbe:
                     if "GetAll" not in str(dbe):
                         raise dbe
-                    else:
-                        print("%d DEBUG: %s.GetAll is missing!" %
-                              (i, self.interface))
         if props:
             for kl, vl in list(props.items()):
                 setattr(self, kl, vl)
@@ -925,9 +922,9 @@ class TestDbusService(unittest.TestCase):
 if __name__ == '__main__':
     # Test forking & exec new each time
     set_execution(False)
-    unittest.main()
+    unittest.main(exit=False)
 
     # Test lvm shell
-    #print '\n *** Testing lvm shell *** \n'
-    #set_execution(True)
-    #unittest.main()
+    print('\n *** Testing lvm shell *** \n')
+    set_execution(True)
+    unittest.main()
