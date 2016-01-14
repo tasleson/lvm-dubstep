@@ -42,7 +42,10 @@ def process_request():
     while cfg.run.value != 0:
         try:
             req = cfg.worker_q.get(True, 5)
+            utils.pprint("Running method: %s with args %s" %
+                         (str(req.method), str(req.arguments)))
             req.run_cmd()
+            utils.pprint("Complete ")
         except queue.Empty:
             pass
         except Exception:
