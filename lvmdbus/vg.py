@@ -176,6 +176,18 @@ class Vg(AutomatedProperties):
             else:
                 obj.refresh()
 
+    def fetch_new_lv(self, vg_name, lv_name):
+        full_name = "%s/%s" % (vg_name, lv_name)
+        load_lvs(refresh=True, emit_signal=True)
+        l = cfg.om.get_by_lvm_id(full_name)
+        created_lv = l.dbus_object_path()
+
+        # Refresh self and all included PVs
+        self.refresh()       # Refresh VG
+        self.refresh_pvs()   # Refresh PVs
+
+        return created_lv
+
     @staticmethod
     def _rename(uuid, vg_name, new_name, rename_options):
         # Make sure we have a dbus object representing it
@@ -429,16 +441,7 @@ class Vg(AutomatedProperties):
                 vg_name, create_options, name, size_bytes, pv_dests)
 
             if rc == 0:
-                created_lv = "/"
-                full_name = "%s/%s" % (vg_name, name)
-                lvs = load_lvs([full_name], emit_signal=True)[0]
-                for l in lvs:
-                    created_lv = l.dbus_object_path()
-
-                # Refresh self and all included PVs
-                dbo.refresh()
-                dbo.refresh_pvs()
-                return created_lv
+                return dbo.fetch_new_lv(vg_name, name)
             else:
                 raise dbus.exceptions.DBusException(
                     VG_INTERFACE,
@@ -488,15 +491,7 @@ class Vg(AutomatedProperties):
                 vg_name, create_options, name, size_bytes, thin_pool)
 
             if rc == 0:
-                created_lv = "/"
-                full_name = "%s/%s" % (vg_name, name)
-                lvs = load_lvs([full_name], emit_signal=True)[0]
-                for l in lvs:
-                    created_lv = l.dbus_object_path()
-
-                # Refresh self and all included PVs
-                dbo.refresh()
-                dbo.refresh_pvs()
+                created_lv = dbo.fetch_new_lv(vg_name, name)
             else:
                 raise dbus.exceptions.DBusException(
                     VG_INTERFACE,
@@ -516,8 +511,8 @@ class Vg(AutomatedProperties):
                        thin_pool, tmo, create_options, cb, cbe):
         r = RequestEntry(tmo, Vg._lv_create_linear,
                          (self.state.Uuid, self.state.lvm_id,
-                          name, round_size(size_bytes), thin_pool, create_options),
-                         cb, cbe)
+                          name, round_size(size_bytes), thin_pool,
+                          create_options), cb, cbe)
         cfg.worker_q.put(r)
 
     @staticmethod
@@ -534,15 +529,7 @@ class Vg(AutomatedProperties):
                                                            stripe_size_kb,
                                                            thin_pool)
             if rc == 0:
-                created_lv = "/"
-                full_name = "%s/%s" % (vg_name, name)
-                lvs = load_lvs([full_name], emit_signal=True)[0]
-                for l in lvs:
-                    created_lv = l.dbus_object_path()
-
-                # Refresh self and all included PVs
-                dbo.refresh()
-                dbo.refresh_pvs()
+                created_lv = dbo.fetch_new_lv(vg_name, name)
             else:
                 raise dbus.exceptions.DBusException(
                     VG_INTERFACE,
@@ -578,15 +565,7 @@ class Vg(AutomatedProperties):
             rc, out, err = cmdhandler.vg_lv_create_mirror(
                 vg_name, create_options, name, size_bytes, num_copies)
             if rc == 0:
-                created_lv = "/"
-                full_name = "%s/%s" % (vg_name, name)
-                lvs = load_lvs([full_name], emit_signal=True)[0]
-                for l in lvs:
-                    created_lv = l.dbus_object_path()
-
-                # Refresh self and all included PVs
-                dbo.refresh()
-                dbo.refresh_pvs()
+                created_lv = dbo.fetch_new_lv(vg_name, name)
             else:
                 raise dbus.exceptions.DBusException(
                     VG_INTERFACE,
@@ -622,15 +601,7 @@ class Vg(AutomatedProperties):
                 vg_name, create_options, name, raid_type, size_bytes,
                 num_stripes, stripe_size_kb)
             if rc == 0:
-                created_lv = "/"
-                full_name = "%s/%s" % (vg_name, name)
-                lvs = load_lvs([full_name], emit_signal=True)[0]
-                for l in lvs:
-                    created_lv = l.dbus_object_path()
-
-                # Refresh self and all included PVs
-                dbo.refresh()
-                dbo.refresh_pvs()
+                created_lv = dbo.fetch_new_lv(vg_name, name)
             else:
                 raise dbus.exceptions.DBusException(
                     VG_INTERFACE,
