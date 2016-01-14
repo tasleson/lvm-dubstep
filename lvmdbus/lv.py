@@ -164,6 +164,10 @@ class LvCommon(AutomatedProperties):
         return self.state.vg_name_lookup()
 
     @property
+    def identifiers(self):
+        return self.state.identifiers
+
+    @property
     def Tags(self):
         return utils.parse_tags(self.state.Tags)
 
