@@ -510,9 +510,14 @@ class LvThinPool(Lv):
     _MetaDataLv_meta = ("o", THIN_POOL_INTERFACE)
 
     def _fetch_hidden(self, name):
-        for o in cfg.om.query_objects_by_lvm_id(name):
-            if o.Vg == self.Vg:
-                return o.dbus_object_path()
+
+        # The name is vg/name
+        full_name = "%s/%s" % (self.vg_name_lookup(), name)
+
+        o = cfg.om.get_by_lvm_id(full_name)
+        if o:
+            return o.dbus_object_path()
+
         return '/'
 
     def _get_data_meta(self):
