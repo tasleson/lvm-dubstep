@@ -21,6 +21,7 @@ from .cmdhandler import options_to_cli_args
 import dbus
 from .job import Job, JobState
 from .utils import pv_range_append, pv_dest_ranges
+from .request import RequestEntry
 
 _rlock = threading.RLock()
 _thread_list = list()
@@ -124,6 +125,18 @@ def pv_move_reaper():
         time.sleep(3)
 
 
+def process_move_result(job_object, exit_code, error_msg):
+    print("process_move_result -- entry")
+    cfg.load(refresh=True, emit_signal=True)
+    job_object.set_result(exit_code, error_msg)
+    print("process_move_result -- exit")
+    return None
+
+
+def empty_cb(disregard):
+    pass
+
+
 def move_execute(command, move_job):
     process = subprocess.Popen(command, stdout=subprocess.PIPE,
                                stderr=subprocess.PIPE, close_fds=True)
@@ -141,7 +154,11 @@ def move_execute(command, move_job):
     if process.returncode == 0:
         move_job.Percent = 100
 
-    move_job.set_result(process.returncode, out[1])
+    # Queue up the result so that it gets executed in same thread as others.
+    r = RequestEntry(-1, process_move_result,
+                     (move_job, process.returncode, out[1]),
+                     empty_cb, empty_cb, False)
+    cfg.worker_q.put(r)
 
 
 def add(command, reporting_job):
