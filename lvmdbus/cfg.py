@@ -71,3 +71,6 @@ lv_id = itertools.count()
 thin_id = itertools.count()
 job_id = itertools.count()
 hidden_lv = itertools.count()
+
+# Used to prevent circular imports...
+load = None

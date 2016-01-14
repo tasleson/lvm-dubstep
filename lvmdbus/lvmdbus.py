@@ -73,6 +73,8 @@ def main():
     cfg.om = Lvm(BASE_OBJ_PATH)
     cfg.om.register_object(Manager(MANAGER_OBJ_PATH))
 
+    cfg.load = load
+
     # Start up thread to monitor pv moves
     thread_list.append(
         threading.Thread(target=pv_move_reaper, name="pv_move_reaper"))
