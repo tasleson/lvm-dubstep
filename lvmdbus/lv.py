@@ -263,8 +263,10 @@ class Lv(LvCommon):
             if rc == 0:
                 # Refresh the VG
                 vg_name = dbo.vg_name_lookup()
-
                 dbo.refresh("%s/%s" % (vg_name, new_name))
+
+                load_lvs(refresh=True, emit_signal=True)
+
                 dbo.signal_vg_pv_changes()
 
             else:
