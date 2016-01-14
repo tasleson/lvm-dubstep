@@ -49,8 +49,7 @@ def _create_move_dbus_job(job_state):
 def move(interface_name, lv_name, pv_src_obj, pv_source_range,
          pv_dests_and_ranges, move_options, time_out):
     """
-    Common code for the pvmove handling.  As moves are usually time consuming
-    we will always be returning a job.
+    Common code for the pvmove handling.
     :param interface_name:  What dbus interface we are providing for
     :param lv_name:     Optional (None or name of LV to move)
     :param pv_src_obj:  dbus object patch for source PV
