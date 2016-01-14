@@ -18,14 +18,14 @@ from .vg import load_vgs
 from .lv import load_lvs
 
 
-def load(refresh=False):
+def load(refresh=False, emit_signal=False):
 
     num_total_changes = 0
 
     # Go through and load all the PVs, VGs and LVs
 
-    num_total_changes += load_pvs(refresh=refresh)[1]
-    num_total_changes += load_vgs(refresh=refresh)[1]
-    num_total_changes += load_lvs(refresh=refresh)[1]
+    num_total_changes += load_pvs(refresh=refresh, emit_signal=emit_signal)[1]
+    num_total_changes += load_vgs(refresh=refresh, emit_signal=emit_signal)[1]
+    num_total_changes += load_lvs(refresh=refresh, emit_signal=emit_signal)[1]
 
     return num_total_changes
