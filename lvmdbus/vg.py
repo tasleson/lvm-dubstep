@@ -242,10 +242,10 @@ class Vg(AutomatedProperties):
             rc, out, err = cmdhandler.vg_remove(vg_name, remove_options)
 
             if rc == 0:
-                # Remove data for associated LVs as it's gone
-                for lv_path in dbo.Lvs:
-                    lv = cfg.om.get_by_path(lv_path)
-                    cfg.om.remove_object(lv, True)
+                # If an LV has hidden LVs, things can get quite involved, especially
+                # if it's the last thin pool to get removed, so lets refresh
+                # all
+                load_lvs(refresh=True, emit_signal=True)
 
                 cfg.om.remove_object(dbo, True)
                 # The vg is gone from LVM and from the dbus API, signal changes
