@@ -17,13 +17,17 @@ from subprocess import Popen, PIPE
 import traceback
 import sys
 import time
-from . import cfg
 import threading
 from itertools import chain
-from .utils import pv_dest_ranges
 
-from .lvm_shell_proxy import LVMShellProxy
-
+try:
+    from . import cfg
+    from .utils import pv_dest_ranges
+    from .lvm_shell_proxy import LVMShellProxy
+except SystemError:
+    import cfg
+    from utils import pv_dest_ranges
+    from lvm_shell_proxy import LVMShellProxy
 
 SEP = '{|}'
 
@@ -403,6 +407,28 @@ def pv_retrieve(device=None):
     return d
 
 
+def pv_retrieve_with_segs(device=None):
+    columns = ['pv_name', 'pv_uuid', 'pv_fmt', 'pv_size', 'pv_free',
+               'pv_used', 'dev_size', 'pv_mda_size', 'pv_mda_free',
+               'pv_ba_start', 'pv_ba_size', 'pe_start', 'pv_pe_count',
+               'pv_pe_alloc_count', 'pv_attr', 'pv_tags', 'vg_name',
+               'vg_uuid', 'pv_seg_start', 'pvseg_size', 'segtype']
+
+    cmd = _dc('pvs', ['-o', ','.join(columns)])
+
+    if device:
+        cmd.extend(device)
+
+    rc, out, err = call(cmd)
+
+    d = []
+
+    if rc == 0:
+        d = parse_column_names(out, columns)
+
+    return d
+
+
 def pv_resize(device, size_bytes, create_options):
     cmd = ['pvresize']
 
@@ -639,6 +665,25 @@ def lv_retrieve(lv_name):
     if lv_name:
         cmd.extend(lv_name)
 
+    rc, out, err = call(cmd)
+
+    d = []
+
+    if rc == 0:
+        d = parse_column_names(out, columns)
+
+    return d
+
+
+def lv_retrieve_with_segments():
+
+    columns = ['lv_uuid', 'lv_name', 'lv_path', 'lv_size',
+                'vg_name', 'pool_lv_uuid', 'pool_lv', 'origin_uuid',
+                'origin', 'data_percent',
+               'lv_attr', 'lv_tags', 'vg_uuid', 'lv_active', 'data_lv',
+               'metadata_lv', 'seg_pe_ranges', 'segtype', 'lv_parent']
+
+    cmd = _dc('lvs', ['-a', '-o', ','.join(columns)])
     rc, out, err = call(cmd)
 
     d = []

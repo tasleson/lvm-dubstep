@@ -17,7 +17,7 @@ from .automatedproperties import AutomatedProperties
 
 from . import utils
 from .utils import lv_obj_path_generate, thin_pool_obj_path_generate, \
-    pv_obj_path_generate, vg_obj_path_generate, n
+    pv_obj_path_generate, vg_obj_path_generate, n, hidden_lv_obj_path_generate
 import dbus
 from . import cfg
 from .cfg import VG_INTERFACE
@@ -30,11 +30,14 @@ from . import pvmover
 from .utils import round_size
 
 
-def vgs_state_retrieve(selection):
+# noinspection PyUnusedLocal
+def vgs_state_retrieve(selection, cache_refresh=True):
     rc = []
-    _vgs = cmdhandler.vg_retrieve(selection)
-    vgs = sorted(_vgs, key=lambda vk: vk['vg_name'])
-    for v in vgs:
+
+    if cache_refresh:
+        cfg.db.refresh()
+
+    for v in cfg.db.fetch_vgs(selection):
         rc.append(
             VgState(v['vg_uuid'], v['vg_name'], v['vg_fmt'], n(v['vg_size']),
                     n(v['vg_free']), v['vg_sysid'], n(v['vg_extent_size']),
@@ -48,9 +51,9 @@ def vgs_state_retrieve(selection):
 
 
 def load_vgs(vg_specific=None, object_path=None, refresh=False,
-             emit_signal=False):
+             emit_signal=False, cache_refresh=True):
     return common(vgs_state_retrieve, (Vg,), vg_specific, object_path, refresh,
-                  emit_signal)
+                  emit_signal, cache_refresh)
 
 
 # noinspection PyPep8Naming,PyUnresolvedReferences,PyUnusedLocal
@@ -63,9 +66,9 @@ class VgState(State):
     def identifiers(self):
         return (self.Uuid, self.Name)
 
-    def _lv_paths_build(self, name):
+    def _lv_paths_build(self):
         rc = []
-        for lv in cmdhandler.lvs_in_vg(name):
+        for lv in cfg.db.lvs_in_vg(self.Uuid):
             (lv_name, lv_attr, lv_uuid) = lv
             full_name = "%s/%s" % (self.Name, lv_name)
 
@@ -80,10 +83,9 @@ class VgState(State):
             rc.append(lv_path)
         return dbus.Array(rc, signature='o')
 
-    @staticmethod
-    def _pv_paths_build(name):
+    def _pv_paths_build(self):
         rc = []
-        for p in cmdhandler.pvs_in_vg(name):
+        for p in cfg.db.pvs_in_vg(self.Uuid):
             (pv_name, pv_uuid) = p
             rc.append(cfg.om.get_object_path_by_lvm_id(
                 pv_uuid, pv_name, pv_obj_path_generate))
@@ -95,8 +97,8 @@ class VgState(State):
                  LvCount, SnapCount, Seqno, MdaCount, MdaFree,
                  MdaSizeBytes, MdaUsedCount, attr, tags):
         utils.init_class_from_arguments(self, None)
-        self.Pvs = self._pv_paths_build(Name)
-        self.Lvs = self._lv_paths_build(Name)
+        self.Pvs = self._pv_paths_build()
+        self.Lvs = self._lv_paths_build()
 
     def create_dbus_object(self, path):
         if not path:
@@ -178,13 +180,10 @@ class Vg(AutomatedProperties):
 
     def fetch_new_lv(self, vg_name, lv_name):
         full_name = "%s/%s" % (vg_name, lv_name)
-        load_lvs(refresh=True, emit_signal=True)
+
+        cfg.load(refresh=True, emit_signal=True, cache_refresh=True)
         l = cfg.om.get_by_lvm_id(full_name)
         created_lv = l.dbus_object_path()
-
-        # Refresh self and all included PVs
-        self.refresh()       # Refresh VG
-        self.refresh_pvs()   # Refresh PVs
 
         return created_lv
 
@@ -242,9 +241,9 @@ class Vg(AutomatedProperties):
             rc, out, err = cmdhandler.vg_remove(vg_name, remove_options)
 
             if rc == 0:
-                # If an LV has hidden LVs, things can get quite involved, especially
-                # if it's the last thin pool to get removed, so lets refresh
-                # all
+                # If an LV has hidden LVs, things can get quite involved,
+                # especially if it's the last thin pool to get removed, so
+                # lets refresh all
                 load_lvs(refresh=True, emit_signal=True)
 
                 cfg.om.remove_object(dbo, True)

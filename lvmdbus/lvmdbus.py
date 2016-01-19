@@ -22,6 +22,7 @@ from . import cmdhandler
 import time
 import signal
 import dbus
+from . import lvmdb
 # noinspection PyUnresolvedReferences
 from gi.repository import GObject
 from .fetch import load
@@ -77,6 +78,8 @@ def main():
     cfg.om.register_object(Manager(MANAGER_OBJ_PATH))
 
     cfg.load = load
+
+    cfg.db = lvmdb.DataStore()
 
     # Start up thread to monitor pv moves
     thread_list.append(

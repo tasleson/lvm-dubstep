@@ -19,19 +19,22 @@ from . import cfg
 import dbus
 from .cfg import PV_INTERFACE
 from . import cmdhandler
-from .utils import thin_pool_obj_path_generate, lv_obj_path_generate, \
-    vg_obj_path_generate, n, pv_obj_path_generate
+from .utils import vg_obj_path_generate, n, pv_obj_path_generate, \
+    lv_object_path_method
 from .loader import common
 from .request import RequestEntry
 from .state import State
 from .utils import round_size
 
 
-def pvs_state_retrieve(selection):
+# noinspection PyUnusedLocal
+def pvs_state_retrieve(selection, cache_refresh=True):
     rc = []
-    _pvs = cmdhandler.pv_retrieve(selection)
-    pvs = sorted(_pvs, key=lambda pk: pk['pv_name'])
-    for p in pvs:
+
+    if cache_refresh:
+        cfg.db.refresh()
+
+    for p in cfg.db.fetch_pvs(selection):
         rc.append(
             PvState(p["pv_name"], p["pv_uuid"], p["pv_name"],
                     p["pv_fmt"], n(p["pv_size"]), n(p["pv_free"]),
@@ -43,9 +46,10 @@ def pvs_state_retrieve(selection):
     return rc
 
 
-def load_pvs(device=None, object_path=None, refresh=False, emit_signal=False):
+def load_pvs(device=None, object_path=None, refresh=False, emit_signal=False,
+             cache_refresh=True):
     return common(pvs_state_retrieve, (Pv,), device, object_path, refresh,
-                  emit_signal)
+                  emit_signal, cache_refresh)
 
 
 # noinspection PyUnresolvedReferences
@@ -56,22 +60,21 @@ class PvState(State):
         return self.lvm_path
 
     def _lv_object_list(self, vg_name):
+
+        # Note we are returning "a(oa(tts))"
+
         rc = []
         if vg_name:
-            for lv in sorted(cmdhandler.pv_contained_lv(self.lvm_id)):
-                full_name = "%s/%s" % (vg_name, lv[0])
-                segs = lv[1]
-                attrib = lv[2]
-                lv_uuid = lv[3]
+            for lv in sorted(cfg.db.pv_contained_lv(self.lvm_id)):
+                lv_uuid, lv_name, lv_attr, segs = lv
+                full_name = "%s/%s" % (vg_name, lv_name)
 
-                if attrib[0] == 't':
-                    lv_path = cfg.om.get_object_path_by_lvm_id(
-                        lv_uuid, full_name, thin_pool_obj_path_generate)
-                else:
-                    lv_path = cfg.om.get_object_path_by_lvm_id(
-                        lv_uuid, full_name, lv_obj_path_generate)
+                path_create = lv_object_path_method(lv_name, lv_attr)
+                lv_path = cfg.om.get_object_path_by_lvm_id(
+                    lv_uuid, full_name, path_create)
+
                 rc.append((lv_path, segs))
-        return dbus.Array(rc, signature="(oa(tt))")
+        return dbus.Array(rc, signature="(oa(tts))")
 
     # noinspection PyUnusedLocal,PyPep8Naming
     def __init__(self, lvm_path, Uuid, Name,
@@ -80,7 +83,8 @@ class PvState(State):
                  PeStart, PeCount, PeAllocCount, attr, Tags, vg_name,
                  vg_uuid):
         utils.init_class_from_arguments(self, None)
-        self.pe_segments = cmdhandler.pv_segments(lvm_path)
+        self.pe_segments = cfg.db.pv_pe_segments(Uuid)
+
         self.lv = self._lv_object_list(vg_name)
 
         if vg_name:
@@ -123,7 +127,7 @@ class Pv(AutomatedProperties):
     _Exportable_meta = ("b", PV_INTERFACE)
     _Allocatable_meta = ("b", PV_INTERFACE)
     _Missing_meta = ("b", PV_INTERFACE)
-    _Lv_meta = ("a(oa(tt))", PV_INTERFACE)
+    _Lv_meta = ("a(oa(tts))", PV_INTERFACE)
     _Vg_meta = ("o", PV_INTERFACE)
 
     # noinspection PyUnusedLocal,PyPep8Naming

@@ -17,7 +17,7 @@ from . import cfg
 
 
 def common(retrieve, o_type, search_keys,
-                object_path, refresh, emit_signal):
+                object_path, refresh, emit_signal, cache_refresh):
     num_changes = 0
     existing_paths = []
     rc = []
@@ -25,7 +25,10 @@ def common(retrieve, o_type, search_keys,
     if search_keys:
         assert isinstance(search_keys, list)
 
-    objects = retrieve(search_keys)
+    if cache_refresh:
+        cfg.db.refresh()
+
+    objects = retrieve(search_keys, cache_refresh=False)
 
     # If we are doing a refresh we need to know what we have in memory, what's
     # in lvm and add those that are new and remove those that are gone!

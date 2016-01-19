@@ -15,26 +15,28 @@
 from .automatedproperties import AutomatedProperties
 
 from . import utils
-from .utils import vg_obj_path_generate, thin_pool_obj_path_generate, \
-    hidden_lv_obj_path_generate
+from .utils import vg_obj_path_generate, thin_pool_obj_path_generate
 import dbus
 from . import cmdhandler
 from . import cfg
 from .cfg import LV_INTERFACE, THIN_POOL_INTERFACE, SNAPSHOT_INTERFACE, \
     LV_COMMON_INTERFACE
 from .request import RequestEntry
-from .utils import lv_obj_path_generate, n, n32
+from .utils import n, n32
 from .loader import common
 from .state import State
 from . import pvmover
 from .utils import round_size
 
 
-def lvs_state_retrieve(selection):
+# noinspection PyUnusedLocal
+def lvs_state_retrieve(selection, cache_refresh=True):
     rc = []
-    _lvs = cmdhandler.lv_retrieve(selection)
-    lvs = sorted(_lvs, key=lambda lk: lk['lv_name'])
-    for l in lvs:
+
+    if cache_refresh:
+        cfg.db.refresh()
+
+    for l in cfg.db.fetch_lvs(selection):
         rc.append(LvState(l['lv_uuid'], l['lv_name'],
                                l['lv_path'], n(l['lv_size']),
                                l['vg_name'],
@@ -42,31 +44,29 @@ def lvs_state_retrieve(selection):
                                 l['pool_lv'], l['origin_uuid'], l['origin'],
                                n32(l['data_percent']), l['lv_attr'],
                                l['lv_tags'], l['lv_active'], l['data_lv'],
-                                l['metadata_lv']))
+                                l['metadata_lv'], l['segtype']))
     return rc
 
 
-def load_lvs(lv_name=None, object_path=None, refresh=False, emit_signal=False):
+def load_lvs(lv_name=None, object_path=None, refresh=False, emit_signal=False,
+             cache_refresh=True):
     # noinspection PyUnresolvedReferences
     return common(lvs_state_retrieve,
                   (LvCommon, Lv, LvThinPool, LvSnapShot),
-                  lv_name, object_path, refresh, emit_signal)
+                  lv_name, object_path, refresh, emit_signal, cache_refresh)
 
 
 # noinspection PyPep8Naming,PyUnresolvedReferences,PyUnusedLocal
 class LvState(State):
 
-    def _pv_devices(self, lvm_id):
+    @staticmethod
+    def _pv_devices(uuid):
         rc = []
-        for pv in sorted(cmdhandler.lv_pv_devices(lvm_id)):
-            (pv_name, pv_segs, pv_uuid) = pv
+        for pv in sorted(cfg.db.lv_contained_pv(uuid)):
+            (pv_uuid, pv_name, pv_segs) = pv
             pv_obj = cfg.om.get_object_path_by_lvm_id(
                 pv_uuid, pv_name, gen_new=False)
             rc.append((pv_obj, pv_segs))
-
-            for s in pv_segs:
-                if s[2] not in self._segs:
-                    self._segs.append(s[2])
 
         return dbus.Array(rc, signature="(oa(tts))")
 
@@ -83,13 +83,20 @@ class LvState(State):
     def __init__(self, Uuid, Name, Path, SizeBytes,
                      vg_name, vg_uuid, pool_lv_uuid, PoolLv,
                      origin_uuid, OriginLv, DataPercent, Attr, Tags, active,
-                     data_lv, metadata_lv):
+                     data_lv, metadata_lv, segtypes):
         utils.init_class_from_arguments(self, None)
+
+        # The segtypes is possibly an array with potentially dupes or a single
+        # value
         self._segs = dbus.Array([], signature='s')
+        if not isinstance(segtypes, list):
+            self._segs.append(segtypes)
+        else:
+            self._segs.extend(set(segtypes))
 
         self.Vg = cfg.om.get_object_path_by_lvm_id(
             Uuid, vg_name, vg_obj_path_generate)
-        self.Devices = self._pv_devices(self.lvm_id)
+        self.Devices = LvState._pv_devices(self.Uuid)
 
         if PoolLv:
             self.PoolLv = cfg.om.get_object_path_by_lvm_id(
@@ -111,11 +118,7 @@ class LvState(State):
         return self._segs
 
     def _object_path_create(self):
-        if self.Name[0] == '[':
-            return hidden_lv_obj_path_generate
-        elif self.Attr[0] == 't':
-            return thin_pool_obj_path_generate
-        return lv_obj_path_generate
+        return utils.lv_object_path_method(self.Name, self.Attr)
 
     def create_dbus_object(self, path):
         if not path:
@@ -201,9 +204,8 @@ class Lv(LvCommon):
     def _get_hidden_lv(self):
         rc = dbus.Array([], "o")
 
-        for o in cfg.om.query_objects_by_lvm_id('[' + self.Name):
-            if o.Vg == self.Vg:
-                rc.append(o.dbus_object_path())
+        for l in cfg.db.hidden_lvs(self.Uuid):
+            rc.append(cfg.om.get_by_uuid_lvm_id(l[0], l[1]))
         return rc
 
     # noinspection PyUnusedLocal,PyPep8Naming
@@ -264,10 +266,7 @@ class Lv(LvCommon):
                 # Refresh the VG
                 vg_name = dbo.vg_name_lookup()
                 dbo.refresh("%s/%s" % (vg_name, new_name))
-
-                load_lvs(refresh=True, emit_signal=True)
-
-                dbo.signal_vg_pv_changes()
+                cfg.load(refresh=True, emit_signal=True, cache_refresh=False)
 
             else:
                 # Need to work on error handling, need consistent
@@ -327,8 +326,7 @@ class Lv(LvCommon):
                     return_path = l.dbus_object_path()
 
                 # Refresh self and all included PVs
-                dbo.refresh()
-                dbo.signal_vg_pv_changes()
+                cfg.load(refresh=True, emit_signal=True, cache_refresh=False)
                 return return_path
             else:
                 raise dbus.exceptions.DBusException(

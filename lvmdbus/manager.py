@@ -90,12 +90,8 @@ class Manager(AutomatedProperties):
             for v in vgs:
                 created_vg = v.dbus_object_path()
 
-            # For each PV that was involved in this VG create we need to
-            # signal the property changes, make sure to do this *after* the
-            # vg is available on the bus
-            for p in pv_object_paths:
-                pv = cfg.om.get_by_path(p)
-                pv.refresh()
+            # Update the PVS
+            load_pvs(refresh=True, emit_signal=True, cache_refresh=False)
         else:
             raise dbus.exceptions.DBusException(
                 MANAGER_INTERFACE,
@@ -129,7 +125,7 @@ class Manager(AutomatedProperties):
 
         if rc != 0:
             utils.pprint('Manager.Refresh - exit %d' % (rc),
-                     'bg_black', 'fg_light_red')
+                         'bg_black', 'fg_light_red')
         else:
             utils.pprint('Manager.Refresh - exit %d' % (rc))
         return rc

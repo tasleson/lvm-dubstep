@@ -24,7 +24,10 @@ import dbus
 import dbus.service
 import dbus.mainloop.glib
 
-from . import cfg
+try:
+    from . import cfg
+except SystemError:
+    import cfg
 
 
 def md5(t):
@@ -299,6 +302,14 @@ def vg_obj_path_generate(object_path=None):
     if object_path:
         return object_path
     return cfg.VG_OBJ_PATH + "/%d" % next(cfg.vg_id)
+
+
+def lv_object_path_method(name, lv_attr):
+    if name[0] == '[':
+        return hidden_lv_obj_path_generate
+    elif lv_attr[0] == 't':
+        return thin_pool_obj_path_generate
+    return lv_obj_path_generate
 
 
 def lv_obj_path_generate(object_path=None):
