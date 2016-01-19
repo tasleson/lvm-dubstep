@@ -25,6 +25,7 @@ import string
 import functools
 import time
 import pyudev
+import os
 import xml.etree.ElementTree as Et
 from collections import OrderedDict
 
@@ -921,10 +922,15 @@ class TestDbusService(unittest.TestCase):
 
 if __name__ == '__main__':
     # Test forking & exec new each time
-    set_execution(False)
-    unittest.main(exit=False)
+    test_shell = os.getenv('LVM_DBUS_TEST_SHELL', 0)
 
-    # Test lvm shell
-    print('\n *** Testing lvm shell *** \n')
-    set_execution(True)
-    unittest.main()
+    set_execution(False)
+
+    if test_shell == 0:
+        unittest.main(exit=True)
+    else:
+        unittest.main(exit=False)
+        # Test lvm shell
+        print('\n *** Testing lvm shell *** \n')
+        set_execution(True)
+        unittest.main()
