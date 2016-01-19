@@ -133,6 +133,7 @@ def process_move_result(job_object, exit_code, error_msg):
     return None
 
 
+# noinspection PyUnusedLocal
 def empty_cb(disregard):
     pass
 
