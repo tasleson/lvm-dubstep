@@ -170,6 +170,7 @@ class LvCommon(AutomatedProperties):
     _Permissions_meta = ("(ss)", LV_COMMON_INTERFACE)
     _AllocationPolicy_meta = ("(ss)", LV_COMMON_INTERFACE)
     _State_meta = ("(ss)", LV_COMMON_INTERFACE)
+    _TargetType_meta = ("(ss)", LV_COMMON_INTERFACE)
 
     # noinspection PyUnusedLocal,PyPep8Naming
     def __init__(self, object_path, object_state):
@@ -218,6 +219,13 @@ class LvCommon(AutomatedProperties):
                     'i': 'mapped device present with inactive table',
                     'X': 'unknown', '-': 'Unspecified'}
         return (self.state.Attr[4], type_map[self.state.Attr[4]])
+
+    @property
+    def TargetType(self):
+        type_map = {'C': 'Cache', 'm': 'mirror', 'r': 'raid',
+                    's': 'snapshot', 't': 'thin', 'u': 'unknown',
+                    'v': 'virtual', '-': 'Unspecified'}
+        return (self.state.Attr[6], type_map[self.state.Attr[6]])
 
     def signal_vg_pv_changes(self):
         # Signal property changes...
