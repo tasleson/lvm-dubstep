@@ -171,6 +171,7 @@ class LvCommon(AutomatedProperties):
     _AllocationPolicy_meta = ("(ss)", LV_COMMON_INTERFACE)
     _State_meta = ("(ss)", LV_COMMON_INTERFACE)
     _TargetType_meta = ("(ss)", LV_COMMON_INTERFACE)
+    _Health_meta = ("(ss)", LV_COMMON_INTERFACE)
 
     # noinspection PyUnusedLocal,PyPep8Naming
     def __init__(self, object_path, object_state):
@@ -226,6 +227,13 @@ class LvCommon(AutomatedProperties):
                     's': 'snapshot', 't': 'thin', 'u': 'unknown',
                     'v': 'virtual', '-': 'Unspecified'}
         return (self.state.Attr[6], type_map[self.state.Attr[6]])
+
+    @property
+    def Health(self):
+        type_map = {'p': 'partial', 'r': 'refresh',
+                    'm': 'mismatches', 'w': 'writemostly',
+                    'X': 'X unknown', '-': 'Unspecified'}
+        return (self.state.Attr[8], type_map[self.state.Attr[8]])
 
     def signal_vg_pv_changes(self):
         # Signal property changes...
