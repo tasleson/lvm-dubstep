@@ -178,7 +178,8 @@ class Vg(AutomatedProperties):
             else:
                 obj.refresh()
 
-    def fetch_new_lv(self, vg_name, lv_name):
+    @staticmethod
+    def fetch_new_lv(vg_name, lv_name):
         full_name = "%s/%s" % (vg_name, lv_name)
 
         cfg.load(refresh=True, emit_signal=True, cache_refresh=True)
@@ -440,7 +441,7 @@ class Vg(AutomatedProperties):
                 vg_name, create_options, name, size_bytes, pv_dests)
 
             if rc == 0:
-                return dbo.fetch_new_lv(vg_name, name)
+                return Vg.fetch_new_lv(vg_name, name)
             else:
                 raise dbus.exceptions.DBusException(
                     VG_INTERFACE,
@@ -490,7 +491,7 @@ class Vg(AutomatedProperties):
                 vg_name, create_options, name, size_bytes, thin_pool)
 
             if rc == 0:
-                created_lv = dbo.fetch_new_lv(vg_name, name)
+                created_lv = Vg.fetch_new_lv(vg_name, name)
             else:
                 raise dbus.exceptions.DBusException(
                     VG_INTERFACE,
@@ -528,7 +529,7 @@ class Vg(AutomatedProperties):
                                                            stripe_size_kb,
                                                            thin_pool)
             if rc == 0:
-                created_lv = dbo.fetch_new_lv(vg_name, name)
+                created_lv = Vg.fetch_new_lv(vg_name, name)
             else:
                 raise dbus.exceptions.DBusException(
                     VG_INTERFACE,
@@ -564,7 +565,7 @@ class Vg(AutomatedProperties):
             rc, out, err = cmdhandler.vg_lv_create_mirror(
                 vg_name, create_options, name, size_bytes, num_copies)
             if rc == 0:
-                created_lv = dbo.fetch_new_lv(vg_name, name)
+                created_lv = Vg.fetch_new_lv(vg_name, name)
             else:
                 raise dbus.exceptions.DBusException(
                     VG_INTERFACE,
@@ -600,7 +601,7 @@ class Vg(AutomatedProperties):
                 vg_name, create_options, name, raid_type, size_bytes,
                 num_stripes, stripe_size_kb)
             if rc == 0:
-                created_lv = dbo.fetch_new_lv(vg_name, name)
+                created_lv = Vg.fetch_new_lv(vg_name, name)
             else:
                 raise dbus.exceptions.DBusException(
                     VG_INTERFACE,
