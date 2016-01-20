@@ -167,6 +167,7 @@ class LvCommon(AutomatedProperties):
     _IsThinPool_meta = ("b", LV_COMMON_INTERFACE)
     _Active_meta = ("b", LV_COMMON_INTERFACE)
     _VolumeType_meta = ("(ss)", LV_COMMON_INTERFACE)
+    _Permissions_meta = ("(ss)", LV_COMMON_INTERFACE)
 
     # noinspection PyUnusedLocal,PyPep8Naming
     def __init__(self, object_path, object_state):
@@ -188,6 +189,13 @@ class LvCommon(AutomatedProperties):
                     'e': 'raid or pool metadata or pool metadata spare',
                     '-': 'Unspecified'}
         return (self.state.Attr[0], type_map[self.state.Attr[0]])
+
+    @property
+    def Permissions(self):
+        type_map = {'w': 'writable', 'r': 'read-only',
+                    'R': 'Read-only activation of non-read-only volume',
+                    '-': 'Unspecified'}
+        return (self.state.Attr[1], type_map[self.state.Attr[1]])
 
     def signal_vg_pv_changes(self):
         # Signal property changes...
