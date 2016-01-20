@@ -169,6 +169,7 @@ class LvCommon(AutomatedProperties):
     _VolumeType_meta = ("(ss)", LV_COMMON_INTERFACE)
     _Permissions_meta = ("(ss)", LV_COMMON_INTERFACE)
     _AllocationPolicy_meta = ("(ss)", LV_COMMON_INTERFACE)
+    _State_meta = ("(ss)", LV_COMMON_INTERFACE)
 
     # noinspection PyUnusedLocal,PyPep8Naming
     def __init__(self, object_path, object_state):
@@ -206,6 +207,17 @@ class LvCommon(AutomatedProperties):
                     'l': 'cling', 'L': 'cling locked',
                     'n': 'normal', 'N': 'normal locked', '-': 'Unspecified'}
         return (self.state.Attr[2], type_map[self.state.Attr[2]])
+
+    @property
+    def State(self):
+        type_map = {'a': 'active', 's': 'suspended', 'I': 'Invalid snapshot',
+                    'S': 'invalid Suspended snapshot',
+                    'm': 'snapshot merge failed',
+                    'M': 'suspended snapshot (M)erge failed',
+                    'd': 'mapped device present without  tables',
+                    'i': 'mapped device present with inactive table',
+                    'X': 'unknown', '-': 'Unspecified'}
+        return (self.state.Attr[4], type_map[self.state.Attr[4]])
 
     def signal_vg_pv_changes(self):
         # Signal property changes...
