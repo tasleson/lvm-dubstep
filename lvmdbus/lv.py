@@ -80,6 +80,19 @@ class LvState(State):
     def identifiers(self):
         return (self.Uuid, self.lvm_id)
 
+    def _get_hidden_lv(self):
+        rc = dbus.Array([], "o")
+
+        vg_name = self.vg_name_lookup()
+
+        for l in cfg.db.hidden_lvs(self.Uuid):
+            full_name = "%s/%s" % (vg_name, l[1])
+            op = cfg.om.get_object_path_by_lvm_id(l[0], full_name,
+                                                  gen_new=False)
+            assert op
+            rc.append(op)
+        return rc
+
     def __init__(self, Uuid, Name, Path, SizeBytes,
                      vg_name, vg_uuid, pool_lv_uuid, PoolLv,
                      origin_uuid, OriginLv, DataPercent, Attr, Tags, active,
@@ -113,6 +126,8 @@ class LvState(State):
         else:
             self.OriginLv = '/'
 
+        self.HiddenLvs = self._get_hidden_lv()
+
     @property
     def SegType(self):
         return self._segs
@@ -145,32 +160,18 @@ class LvState(State):
 @utils.dbus_property(LV_COMMON_INTERFACE, 'OriginLv', 'o')
 @utils.dbus_property(LV_COMMON_INTERFACE, 'PoolLv', 'o')
 @utils.dbus_property(LV_COMMON_INTERFACE, 'Devices', "a(oa(tts))")
+@utils.dbus_property(LV_COMMON_INTERFACE, 'HiddenLvs', "ao")
 class LvCommon(AutomatedProperties):
     _Tags_meta = ("as", LV_COMMON_INTERFACE)
     _IsThinVolume_meta = ("b", LV_COMMON_INTERFACE)
     _IsThinPool_meta = ("b", LV_COMMON_INTERFACE)
     _Active_meta = ("b", LV_COMMON_INTERFACE)
-    _HiddenLvs_meta = ("ao", LV_COMMON_INTERFACE)
-
-    def _get_hidden_lv(self):
-        rc = dbus.Array([], "o")
-
-        vg_name = self.vg_name_lookup()
-
-        for l in cfg.db.hidden_lvs(self.Uuid):
-            full_name = "%s/%s" % (vg_name, l[1])
-            op = cfg.om.get_object_path_by_lvm_id(l[0], full_name,
-                                                  gen_new=False)
-            assert op
-            rc.append(op)
-        return rc
 
     # noinspection PyUnusedLocal,PyPep8Naming
     def __init__(self, object_path, object_state):
         super(LvCommon, self).__init__(object_path, lvs_state_retrieve)
         self.set_interface(LV_COMMON_INTERFACE)
         self.state = object_state
-        self._hidden_lvs = self._get_hidden_lv()
 
     def signal_vg_pv_changes(self):
         # Signal property changes...
@@ -180,10 +181,6 @@ class LvCommon(AutomatedProperties):
 
     def vg_name_lookup(self):
         return self.state.vg_name_lookup()
-
-    @property
-    def HiddenLvs(self):
-        return self._hidden_lvs
 
     @property
     def identifiers(self):
