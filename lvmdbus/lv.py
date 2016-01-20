@@ -172,6 +172,9 @@ class LvCommon(AutomatedProperties):
     _State_meta = ("(ss)", LV_COMMON_INTERFACE)
     _TargetType_meta = ("(ss)", LV_COMMON_INTERFACE)
     _Health_meta = ("(ss)", LV_COMMON_INTERFACE)
+    _FixedMinor_meta = ('b', LV_COMMON_INTERFACE)
+    _ZeroBlocks_meta = ('b', LV_COMMON_INTERFACE)
+    _SkipActivation = ('b', LV_COMMON_INTERFACE)
 
     # noinspection PyUnusedLocal,PyPep8Naming
     def __init__(self, object_path, object_state):
@@ -211,6 +214,10 @@ class LvCommon(AutomatedProperties):
         return (self.state.Attr[2], type_map[self.state.Attr[2]])
 
     @property
+    def FixedMinor(self):
+        return self.state.Attr[3] == 'm'
+
+    @property
     def State(self):
         type_map = {'a': 'active', 's': 'suspended', 'I': 'Invalid snapshot',
                     'S': 'invalid Suspended snapshot',
@@ -229,11 +236,19 @@ class LvCommon(AutomatedProperties):
         return (self.state.Attr[6], type_map[self.state.Attr[6]])
 
     @property
+    def ZeroBlocks(self):
+        return self.state.Attr[7] == 'z'
+
+    @property
     def Health(self):
         type_map = {'p': 'partial', 'r': 'refresh',
                     'm': 'mismatches', 'w': 'writemostly',
                     'X': 'X unknown', '-': 'Unspecified'}
         return (self.state.Attr[8], type_map[self.state.Attr[8]])
+
+    @property
+    def SkipActivation(self):
+        return self.state.Attr[9] == 'k'
 
     def signal_vg_pv_changes(self):
         # Signal property changes...
