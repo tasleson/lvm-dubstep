@@ -361,23 +361,31 @@ def lv_merge(lv_full_name, merge_options):
 
 
 def pv_retrieve_with_segs(device=None):
+    d = []
+
     columns = ['pv_name', 'pv_uuid', 'pv_fmt', 'pv_size', 'pv_free',
                'pv_used', 'dev_size', 'pv_mda_size', 'pv_mda_free',
                'pv_ba_start', 'pv_ba_size', 'pe_start', 'pv_pe_count',
                'pv_pe_alloc_count', 'pv_attr', 'pv_tags', 'vg_name',
                'vg_uuid', 'pv_seg_start', 'pvseg_size', 'segtype']
 
-    cmd = _dc('pvs', ['-o', ','.join(columns)])
+    # Lvm has some issues where it returns failure when querying pvs when other
+    # operations are in process, see:
+    # https://bugzilla.redhat.com/show_bug.cgi?id=1274085
+    while True:
+        cmd = _dc('pvs', ['-o', ','.join(columns)])
 
-    if device:
-        cmd.extend(device)
+        if device:
+            cmd.extend(device)
 
-    rc, out, err = call(cmd)
+        rc, out, err = call(cmd)
 
-    d = []
-
-    if rc == 0:
-        d = parse_column_names(out, columns)
+        if rc == 0:
+            d = parse_column_names(out, columns)
+            break
+        else:
+            time.sleep(0.2)
+            print("LVM Bug workaround, retrying pvs command...")
 
     return d
 
