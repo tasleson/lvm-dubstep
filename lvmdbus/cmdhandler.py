@@ -14,8 +14,6 @@
 # Copyright 2014-2015, Tony Asleson <tasleson@redhat.com>
 
 from subprocess import Popen, PIPE
-import traceback
-import sys
 import time
 import threading
 from itertools import chain
@@ -174,21 +172,6 @@ def options_to_cli_args(options):
         if v != "":
             rc.append(str(v))
     return rc
-
-
-def pvs_in_vg(vg_name):
-    rc, out, error = call(_dc('vgs', ['-o', 'pv_name,pv_uuid', vg_name]))
-    if rc == 0:
-        return parse(out)
-    return []
-
-
-def lvs_in_vg(vg_name):
-    rc, out, error = call(_dc('vgs', ['-o', 'lv_name,lv_attr,lv_uuid',
-                                      vg_name]))
-    if rc == 0:
-        return parse(out)
-    return []
 
 
 def pv_remove(device, remove_options):
@@ -377,36 +360,6 @@ def lv_merge(lv_full_name, merge_options):
     return call(cmd)
 
 
-def pv_segments(device):
-    r = []
-    rc, out, err = call(_dc('pvs', ['-o', 'pvseg_all', device]))
-    if rc == 0:
-        r = parse(out)
-    return r
-
-
-def pv_retrieve(device=None):
-    columns = ['pv_name', 'pv_uuid', 'pv_fmt', 'pv_size', 'pv_free',
-               'pv_used', 'dev_size', 'pv_mda_size', 'pv_mda_free',
-               'pv_ba_start', 'pv_ba_size', 'pe_start', 'pv_pe_count',
-               'pv_pe_alloc_count', 'pv_attr', 'pv_tags', 'vg_name',
-               'vg_uuid']
-
-    cmd = _dc('pvs', ['-o', ','.join(columns)])
-
-    if device:
-        cmd.extend(device)
-
-    rc, out, err = call(cmd)
-
-    d = []
-
-    if rc == 0:
-        d = parse_column_names(out, columns)
-
-    return d
-
-
 def pv_retrieve_with_segs(device=None):
     columns = ['pv_name', 'pv_uuid', 'pv_fmt', 'pv_size', 'pv_free',
                'pv_used', 'dev_size', 'pv_mda_size', 'pv_mda_free',
@@ -458,48 +411,6 @@ def pv_allocatable(device, yes, allocation_options):
     cmd.extend(options_to_cli_args(allocation_options))
     cmd.extend(['-x', yn, device])
     return call(cmd)
-
-
-def _lv_device(data, key, search, pe_device_parse, attrib, uuid):
-    device, seg = pe_device_parse.split(':')
-
-    if search != device:
-        return
-
-    r1, r2 = seg.split('-')
-
-    if key in data:
-        data[key]['segs'].append((r1, r2))
-        data[key]['attrib'] = attrib
-        data[key]['uuid'] = uuid
-    else:
-        data[key] = {}
-        data[key]['segs'] = [((r1, r2))]
-        data[key]['attrib'] = attrib
-        data[key]['uuid'] = uuid
-
-
-def pv_contained_lv(device):
-    data = []
-    tmp = {}
-    cmd = _dc('lvs', ['-o', 'uuid,lv_name,lv_attr,seg_pe_ranges',
-                      '-S', 'seg_pe_ranges=~"%s.*"' % (device)])
-
-    rc, out, err = call(cmd)
-    if rc == 0:
-        d = parse(out)
-        for l in d:
-            if ' ' not in l[3]:
-                _lv_device(tmp, l[1], device, l[3], l[2], l[0])
-            else:
-                pe_ranges = l[3].split(' ')
-                for pe in pe_ranges:
-                    _lv_device(tmp, l[1], device, pe, l[2], l[0])
-
-        for k, v in list(tmp.items()):
-            data.append((k, v['segs'], v['attrib'], v['uuid']))
-
-    return data
 
 
 def pv_scan(activate, cache, device_paths, major_minors, scan_options):
@@ -649,32 +560,6 @@ def vg_retrieve(vg_specific):
     return d
 
 
-def lv_retrieve(lv_name):
-
-    if lv_name:
-        assert isinstance(lv_name, list)
-
-    columns = ['lv_uuid', 'lv_name', 'lv_path', 'lv_size',
-                'vg_name', 'pool_lv_uuid', 'pool_lv', 'origin_uuid',
-                'origin', 'data_percent',
-               'lv_attr', 'lv_tags', 'vg_uuid', 'lv_active', 'data_lv',
-               'metadata_lv']
-
-    cmd = _dc('lvs', ['-a', '-o', ','.join(columns)])
-
-    if lv_name:
-        cmd.extend(lv_name)
-
-    rc, out, err = call(cmd)
-
-    d = []
-
-    if rc == 0:
-        d = parse_column_names(out, columns)
-
-    return d
-
-
 def lv_retrieve_with_segments():
 
     columns = ['lv_uuid', 'lv_name', 'lv_path', 'lv_size',
@@ -694,54 +579,8 @@ def lv_retrieve_with_segments():
     return d
 
 
-def _pv_device(data, device, uuid, seg_type):
-    device, seg = device.split(':')
-    r1, r2 = seg.split('-')
-
-    if device in data:
-        data[device]['ranges'].append((r1, r2, seg_type))
-        data[device]['uuid'] = uuid
-    else:
-        data[device] = dict()
-        data[device]['ranges'] = [((r1, r2, seg_type))]
-        data[device]['uuid'] = uuid
-
-
-def lv_pv_devices(lv_name):
-    data = []
-    tmp = {}
-
-    cmd = _dc('pvs', ['-o', 'uuid,seg_pe_ranges,seg_type', '-S',
-                      'lv_full_name=~"%s.+"' % lv_name])
-
-    rc, out, err = call(cmd)
-
-    try:
-        if rc == 0:
-            d = parse(out)
-            for l in d:
-                # We have a striped result set where all lines are repeats
-                # so handle this line and break out.
-                # No idea why this is the odd one!
-                if ' ' in l[1]:
-                    devices = l[1].split(' ')
-                    for d in devices:
-                        _pv_device(tmp, d, l[0], l[2])
-                    break
-                else:
-                    _pv_device(tmp, l[1], l[0], l[2])
-
-            for k, v in list(tmp.items()):
-                data.append((k, v['ranges'], v['uuid']))
-
-    except Exception:
-        traceback.print_exc(file=sys.stdout)
-        pass
-
-    return data
-
 if __name__ == '__main__':
-    pv_data = pv_retrieve()
+    pv_data = pv_retrieve_with_segs()
 
     for p in pv_data:
         print(str(p))
