@@ -166,12 +166,28 @@ class LvCommon(AutomatedProperties):
     _IsThinVolume_meta = ("b", LV_COMMON_INTERFACE)
     _IsThinPool_meta = ("b", LV_COMMON_INTERFACE)
     _Active_meta = ("b", LV_COMMON_INTERFACE)
+    _VolumeType_meta = ("(ss)", LV_COMMON_INTERFACE)
 
     # noinspection PyUnusedLocal,PyPep8Naming
     def __init__(self, object_path, object_state):
         super(LvCommon, self).__init__(object_path, lvs_state_retrieve)
         self.set_interface(LV_COMMON_INTERFACE)
         self.state = object_state
+
+    @property
+    def VolumeType(self):
+        type_map = {'C': 'Cache', 'm': 'mirrored',
+                    'M': 'Mirrored without initial sync', 'o': 'origin',
+                    'O': 'Origin with merging snapshot', 'r': 'raid',
+                    'R': 'Raid without initial sync', 's': 'snapshot',
+                    'S': 'merging Snapshot', 'p': 'pvmove',
+                    'v': 'virtual', 'i': 'mirror  or  raid  image',
+                    'I': 'mirror or raid Image out-of-sync',
+                    'l': 'mirror log device', 'c': 'under conversion',
+                    'V': 'thin Volume', 't': 'thin pool', 'T': 'Thin pool data',
+                    'e': 'raid or pool metadata or pool metadata spare',
+                    '-': 'Unspecified'}
+        return (self.state.Attr[0], type_map[self.state.Attr[0]])
 
     def signal_vg_pv_changes(self):
         # Signal property changes...
