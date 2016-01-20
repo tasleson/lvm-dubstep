@@ -168,6 +168,7 @@ class LvCommon(AutomatedProperties):
     _Active_meta = ("b", LV_COMMON_INTERFACE)
     _VolumeType_meta = ("(ss)", LV_COMMON_INTERFACE)
     _Permissions_meta = ("(ss)", LV_COMMON_INTERFACE)
+    _AllocationPolicy_meta = ("(ss)", LV_COMMON_INTERFACE)
 
     # noinspection PyUnusedLocal,PyPep8Naming
     def __init__(self, object_path, object_state):
@@ -196,6 +197,15 @@ class LvCommon(AutomatedProperties):
                     'R': 'Read-only activation of non-read-only volume',
                     '-': 'Unspecified'}
         return (self.state.Attr[1], type_map[self.state.Attr[1]])
+
+    @property
+    def AllocationPolicy(self):
+        type_map = {'a': 'anywhere', 'A': 'anywhere locked',
+                    'c': 'contiguous', 'C': 'contiguous locked',
+                    'i': 'inherited', 'I': 'inherited locked',
+                    'l': 'cling', 'L': 'cling locked',
+                    'n': 'normal', 'N': 'normal locked', '-': 'Unspecified'}
+        return (self.state.Attr[2], type_map[self.state.Attr[2]])
 
     def signal_vg_pv_changes(self):
         # Signal property changes...
