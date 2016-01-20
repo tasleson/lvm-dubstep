@@ -150,12 +150,27 @@ class LvCommon(AutomatedProperties):
     _IsThinVolume_meta = ("b", LV_COMMON_INTERFACE)
     _IsThinPool_meta = ("b", LV_COMMON_INTERFACE)
     _Active_meta = ("b", LV_COMMON_INTERFACE)
+    _HiddenLvs_meta = ("ao", LV_COMMON_INTERFACE)
+
+    def _get_hidden_lv(self):
+        rc = dbus.Array([], "o")
+
+        vg_name = self.vg_name_lookup()
+
+        for l in cfg.db.hidden_lvs(self.Uuid):
+            full_name = "%s/%s" % (vg_name, l[1])
+            op = cfg.om.get_object_path_by_lvm_id(l[0], full_name,
+                                                  gen_new=False)
+            assert op
+            rc.append(op)
+        return rc
 
     # noinspection PyUnusedLocal,PyPep8Naming
     def __init__(self, object_path, object_state):
         super(LvCommon, self).__init__(object_path, lvs_state_retrieve)
         self.set_interface(LV_COMMON_INTERFACE)
         self.state = object_state
+        self._hidden_lvs = self._get_hidden_lv()
 
     def signal_vg_pv_changes(self):
         # Signal property changes...
@@ -165,6 +180,10 @@ class LvCommon(AutomatedProperties):
 
     def vg_name_lookup(self):
         return self.state.vg_name_lookup()
+
+    @property
+    def HiddenLvs(self):
+        return self._hidden_lvs
 
     @property
     def identifiers(self):
@@ -199,26 +218,12 @@ class LvCommon(AutomatedProperties):
 
 # noinspection PyPep8Naming
 class Lv(LvCommon):
-    _HiddenLvs_meta = ("ao", LV_INTERFACE)
-
-    def _get_hidden_lv(self):
-        rc = dbus.Array([], "o")
-
-        for l in cfg.db.hidden_lvs(self.Uuid):
-            rc.append(cfg.om.get_by_uuid_lvm_id(l[0], l[1]))
-        return rc
 
     # noinspection PyUnusedLocal,PyPep8Naming
     def __init__(self, object_path, object_state):
         super(Lv, self).__init__(object_path, object_state)
         self.set_interface(LV_INTERFACE)
         self.state = object_state
-        self._hidden_lvs = self._get_hidden_lv()
-
-    @property
-    def HiddenLvs(self):
-        # We will leverage the object manager for now.
-        return self._hidden_lvs
 
     @staticmethod
     def _remove(lv_uuid, lv_name, remove_options):
