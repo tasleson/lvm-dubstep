@@ -126,10 +126,8 @@ def pv_move_reaper():
 
 
 def process_move_result(job_object, exit_code, error_msg):
-    print("process_move_result -- entry")
     cfg.load(refresh=True, emit_signal=True)
     job_object.set_result(exit_code, error_msg)
-    print("process_move_result -- exit")
     return None
 
 

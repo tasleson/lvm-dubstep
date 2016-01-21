@@ -25,8 +25,10 @@ import re
 
 try:
     from .cfg import LVM_CMD
+    from .utils import pprint
 except:
     from cfg import LVM_CMD
+    from utils import pprint
 
 
 SHELL_PROMPT = "lvm> "
@@ -96,9 +98,6 @@ class LVMShellProxy(object):
 
         self._read_until_prompt()
 
-        if not echo:
-            print("No echo!")
-
         return echo
 
     def __init__(self):
@@ -159,10 +158,10 @@ class LVMShellProxy(object):
                 rc = 0
 
         if debug or rc != 0:
-            print(('CMD: %s' % cmd))
-            print(("EC = %d" % rc))
-            print(("STDOUT=\n %s\n" % stdout))
-            print(("STDERR=\n %s\n" % stderr))
+            pprint(('CMD: %s' % cmd))
+            pprint(("EC = %d" % rc))
+            pprint(("STDOUT=\n %s\n" % stdout))
+            pprint(("STDERR=\n %s\n" % stderr))
 
         return (rc, stdout, stderr)
 

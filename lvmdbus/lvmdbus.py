@@ -32,6 +32,7 @@ import traceback
 import queue
 import sys
 from . import udevwatch
+from .utils import pprint
 
 
 class Lvm(objectmanager.ObjectManager):
@@ -43,10 +44,10 @@ def process_request():
     while cfg.run.value != 0:
         try:
             req = cfg.worker_q.get(True, 5)
-            utils.pprint("Running method: %s with args %s" %
+            pprint("Running method: %s with args %s" %
                          (str(req.method), str(req.arguments)))
             req.run_cmd()
-            utils.pprint("Complete ")
+            pprint("Complete ")
         except queue.Empty:
             pass
         except Exception:
@@ -96,8 +97,8 @@ def main():
         process.start()
 
     end = time.time()
-    print('Service ready! total time= %.2f, lvm time= %.2f count= %d' %
-          (end - start, cmdhandler.total_time, cmdhandler.total_count))
+    pprint('Service ready! total time= %.2f, lvm time= %.2f count= %d' %
+           (end - start, cmdhandler.total_time, cmdhandler.total_count))
 
     # Add udev watching
     udevwatch.add()

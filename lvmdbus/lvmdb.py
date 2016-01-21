@@ -14,13 +14,15 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 # Copyright 2016, Tony Asleson <tasleson@redhat.com>
-import pprint
 from collections import OrderedDict
 
+import pprint as prettyprint
 try:
     from . import cmdhandler
+    from . utils import pprint
 except SystemError:
     import cmdhandler
+    from utils import pprint
 
 
 class DataStore(object):
@@ -268,7 +270,7 @@ class DataStore(object):
         :return: None
         """
 
-        print("lvmdb - refresh entry")
+        pprint("lvmdb - refresh entry")
 
         # Grab everything first then parse it
         _raw_pvs = cmdhandler.pv_retrieve_with_segs()
@@ -293,7 +295,7 @@ class DataStore(object):
 
         # Create lookup table for which LV and segments are on each PV
         self.pv_lvs, self.lv_pvs = self._parse_pv_in_lvs()
-        print("lvmdb - refresh exit")
+        pprint("lvmdb - refresh exit")
 
     def fetch_pvs(self, pv_name):
         if not pv_name:
@@ -372,7 +374,7 @@ class DataStore(object):
         return rc
 
 if __name__ == "__main__":
-    pp = pprint.PrettyPrinter(indent=4)
+    pp = prettyprint.PrettyPrinter(indent=4)
 
     ds = DataStore()
     ds.refresh()

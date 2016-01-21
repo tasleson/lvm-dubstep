@@ -20,11 +20,11 @@ from itertools import chain
 
 try:
     from . import cfg
-    from .utils import pv_dest_ranges
+    from .utils import pv_dest_ranges, pprint
     from .lvm_shell_proxy import LVMShellProxy
 except SystemError:
     import cfg
-    from utils import pv_dest_ranges
+    from utils import pv_dest_ranges, pprint
     from lvm_shell_proxy import LVMShellProxy
 
 SEP = '{|}'
@@ -43,10 +43,10 @@ _t_call = None
 
 
 def _debug_c(cmd, exit_code, out):
-    print('CMD:', ' '.join(cmd))
-    print(("EC = %d" % exit_code))
-    print(("STDOUT=\n %s\n" % out[0]))
-    print(("STDERR=\n %s\n" % out[1]))
+    pprint('CMD:', ' '.join(cmd))
+    pprint(("EC = %d" % exit_code))
+    pprint(("STDOUT=\n %s\n" % out[0]))
+    pprint(("STDERR=\n %s\n" % out[1]))
 
 
 def call_lvm(command, debug=False):
@@ -74,7 +74,7 @@ def call_lvm(command, debug=False):
 
     if process.returncode == 0:
         if out[1] and len(out[1]):
-            print('WARNING: lvm is out-putting text to STDERR on success!')
+            pprint('WARNING: lvm is out-putting text to STDERR on success!')
             _debug_c(command, process.returncode, (stdout_text, stderr_text))
 
     return process.returncode, stdout_text, stderr_text
@@ -82,7 +82,7 @@ def call_lvm(command, debug=False):
 
 def _shell_cfg():
     global _t_call
-    print('Using lvm shell!')
+    pprint('Using lvm shell!')
     lvm_shell = LVMShellProxy()
     _t_call = lvm_shell.call_lvm
 
@@ -98,7 +98,7 @@ def set_execution(shell):
     with cmd_lock:
         _t_call = None
         if shell:
-            print('Using lvm shell!')
+            pprint('Using lvm shell!')
             lvm_shell = LVMShellProxy()
             _t_call = lvm_shell.call_lvm
         else:
@@ -385,7 +385,7 @@ def pv_retrieve_with_segs(device=None):
             break
         else:
             time.sleep(0.2)
-            print("LVM Bug workaround, retrying pvs command...")
+            pprint("LVM Bug workaround, retrying pvs command...")
 
     return d
 
@@ -591,4 +591,4 @@ if __name__ == '__main__':
     pv_data = pv_retrieve_with_segs()
 
     for p in pv_data:
-        print(str(p))
+        pprint(str(p))
