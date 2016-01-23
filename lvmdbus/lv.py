@@ -20,7 +20,7 @@ import dbus
 from . import cmdhandler
 from . import cfg
 from .cfg import LV_INTERFACE, THIN_POOL_INTERFACE, SNAPSHOT_INTERFACE, \
-    LV_COMMON_INTERFACE
+    LV_COMMON_INTERFACE, CACHE_POOL_INTERFACE, LV_CACHED
 from .request import RequestEntry
 from .utils import n, n32
 from .loader import common
@@ -277,6 +277,9 @@ class LvCommon(AutomatedProperties):
 
     def vg_name_lookup(self):
         return self.state.vg_name_lookup()
+
+    def lv_full_name(self):
+        return "%s/%s" % (self.state.vg_name_lookup(), self.state.Name)
 
     @property
     def identifiers(self):
@@ -670,6 +673,113 @@ class LvThinPool(Lv):
         r = RequestEntry(tmo, LvThinPool._lv_create,
                          (self.Uuid, self.lvm_id, name,
                           round_size(size_bytes), create_options), cb, cbe)
+        cfg.worker_q.put(r)
+
+
+# noinspection PyPep8Naming
+class LvCachePool(Lv):
+
+    def __init__(self, object_path, object_state):
+        super(LvCachePool, self).__init__(object_path, object_state)
+        self.set_interface(CACHE_POOL_INTERFACE)
+
+    @staticmethod
+    def _cache_lv(lv_uuid, lv_name, lv_object_path, cache_options):
+
+        # Make sure we have a dbus object representing cache pool
+        dbo = cfg.om.get_by_uuid_lvm_id(lv_uuid, lv_name)
+
+        # Make sure we have dbus object representing lv to cache
+        lv_to_cache = cfg.om.get_by_path(lv_object_path)
+
+        if dbo and lv_to_cache:
+            full_cache_name = lv_to_cache.lv_full_name()
+            rc, out, err = cmdhandler.lv_cache_lv(
+                dbo.lv_full_name(), full_cache_name, cache_options)
+            if rc == 0:
+                # When we cache an LV, the cache pool and the lv that is getting
+                # cached need to be removed from the object manager and
+                # re-created as their interfaces have changed!
+                cfg.om.remove_object(dbo, emit_signal=True)
+                cfg.om.remove_object(lv_to_cache, emit_signal=True)
+                cfg.load(refresh=True, emit_signal=True)
+
+                lv_converted = \
+                    cfg.om.get_by_lvm_id(full_cache_name).dbus_object_path()
+
+            else:
+                raise dbus.exceptions.DBusException(
+                    LV_INTERFACE,
+                    'Exit code %s, stderr = %s' % (str(rc), err))
+        else:
+            raise dbus.exceptions.DBusException(
+                LV_INTERFACE, 'LV with uuid %s and name %s not present!' %
+                (lv_uuid, lv_name))
+        return lv_converted
+
+    @dbus.service.method(dbus_interface=CACHE_POOL_INTERFACE,
+                         in_signature='oia{sv}',
+                         out_signature='(oo)',
+                         async_callbacks=('cb', 'cbe'))
+    def CacheLv(self, lv_object, tmo, cache_options, cb, cbe):
+        r = RequestEntry(tmo, LvCachePool._cache_lv,
+                         (self.Uuid, self.lvm_id, lv_object,
+                          cache_options), cb, cbe)
+        cfg.worker_q.put(r)
+
+
+# noinspection PyPep8Naming
+class LvCacheLv(Lv):
+    _CachePool_meta = ("o", LV_CACHED)
+
+    def __init__(self, object_path, object_state):
+        super(LvCacheLv, self).__init__(object_path, object_state)
+        self.set_interface(LV_CACHED)
+
+    @property
+    def CachePool(self):
+        return self.state.PoolLv
+
+    @staticmethod
+    def _detach_lv(lv_uuid, lv_name, detach_options):
+        # Make sure we have a dbus object representing cache pool
+        dbo = cfg.om.get_by_uuid_lvm_id(lv_uuid, lv_name)
+
+        if dbo:
+
+            # Get current cache name
+            cache_pool = cfg.om.get_by_path(dbo.CachePool)
+            cache_full_name = "%s/%s" % \
+                (cache_pool.vg_name_lookup(), cache_pool.Name[1:-1])
+
+            rc, out, err = cmdhandler.lv_detach_cache(
+                dbo.lv_full_name(), detach_options)
+            if rc == 0:
+                # The cache pool gets removed as hidden and put back to
+                # visible, so lets delete
+                cfg.om.remove_object(cache_pool, emit_signal=True)
+                cfg.om.remove_object(dbo, emit_signal=True)
+                cfg.load(refresh=True, emit_signal=True)
+                cache_pool_path = \
+                    cfg.om.get_by_lvm_id(cache_full_name).dbus_object_path()
+
+            else:
+                raise dbus.exceptions.DBusException(
+                    LV_INTERFACE,
+                    'Exit code %s, stderr = %s' % (str(rc), err))
+        else:
+            raise dbus.exceptions.DBusException(
+                LV_INTERFACE, 'LV with uuid %s and name %s not present!' %
+                (lv_uuid, lv_name))
+        return cache_pool_path
+
+    @dbus.service.method(dbus_interface=LV_CACHED,
+                         in_signature='ia{sv}',
+                         out_signature='(oo)',
+                         async_callbacks=('cb', 'cbe'))
+    def DetachCachePool(self, tmo, detach_options, cb, cbe):
+        r = RequestEntry(tmo, LvCacheLv._detach_lv,
+                         (self.Uuid, self.lvm_id, detach_options), cb, cbe)
         cfg.worker_q.put(r)
 
 

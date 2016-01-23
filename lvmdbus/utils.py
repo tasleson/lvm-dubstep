@@ -330,6 +330,12 @@ def _thin_pool_obj_path_generate(object_path=None):
     return cfg.THIN_POOL_PATH + "/%d" % next(cfg.thin_id)
 
 
+def _cache_pool_obj_path_generate(object_path=None):
+    if object_path:
+        return object_path
+    return cfg.CACHE_POOL_PATH + "/%d" % next(cfg.cache_pool_id)
+
+
 def _hidden_lv_obj_path_generate(object_path=None):
     if object_path:
         return object_path

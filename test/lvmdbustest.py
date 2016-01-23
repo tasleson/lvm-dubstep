@@ -40,6 +40,8 @@ THINPOOL_INT = BUSNAME + ".ThinPool"
 SNAPSHOT_INT = BUSNAME + ".Snapshot"
 LV_COMMON_INT = BUSNAME + ".LvCommon"
 JOB_INT = BUSNAME + ".Job"
+CACHE_POOL_INT = BUSNAME + ".CachePool"
+CACHE_LV_INT = BUSNAME + ".CachedLv"
 
 THINPOOL_LV_PATH = '/' + THINPOOL_INT.replace('.', '/')
 
@@ -189,7 +191,8 @@ class ClientProxy(object):
 
 def get_objects():
     rc = {MANAGER_INT: [], PV_INT: [], VG_INT: [], LV_INT: [],
-          THINPOOL_INT: [], JOB_INT: [], SNAPSHOT_INT: [], LV_COMMON_INT: []}
+          THINPOOL_INT: [], JOB_INT: [], SNAPSHOT_INT: [], LV_COMMON_INT: [],
+          CACHE_POOL_INT: [], CACHE_LV_INT: []}
 
     manager = dbus.Interface(bus.get_object(
         BUSNAME, "/com/redhat/lvmdbus1"),
@@ -421,15 +424,21 @@ class TestDbusService(unittest.TestCase):
                              (rs(8, '_lv'), 'raid4',
                               1024 * 1024 * 16, 2, 8, -1, {}), vg)
 
-    def _create_lv(self, thinpool=False):
-        pv_paths = []
-        for pp in self.objs[PV_INT]:
-            pv_paths.append(pp.object_path)
+    def _create_lv(self, thinpool=False, size=None, vg=None):
 
-        vg = self._vg_create(pv_paths).Vg
+        if not vg:
+            pv_paths = []
+            for pp in self.objs[PV_INT]:
+                pv_paths.append(pp.object_path)
+
+            vg = self._vg_create(pv_paths).Vg
+
+        if size is None:
+            size = 1024 * 1024 * 128
+
         return self._test_lv_create(
             vg.LvCreateLinear,
-            (rs(8, '_lv'), 1024 * 1024 * 128, thinpool, -1, {}), vg)
+            (rs(8, '_lv'), size, thinpool, -1, {}), vg)
 
     def test_lv_create_thin_pool(self):
         self._create_lv(True)
@@ -919,6 +928,41 @@ class TestDbusService(unittest.TestCase):
         job_path = ss.Snapshot.Merge(0, {})
         self.assertTrue(job_path != '/')
         self._wait_for_job(job_path)
+
+    def _create_cache_pool(self):
+        vg = self._vg_create().Vg
+
+        md = self._create_lv(size=(1024 * 1024 * 8), vg=vg)
+        data = self._create_lv(size=(1024 * 1024 * 256), vg=vg)
+
+        cache_pool_path = vg.CreateCachePool(
+            md.object_path, data.object_path, -1, {})[0]
+
+        cp = ClientProxy(self.bus, cache_pool_path)
+
+        return (vg, cp)
+
+    def test_cache_pool_create(self):
+
+        vg, cache_pool = self._create_cache_pool()
+
+        self.assertTrue('/com/redhat/lvmdbus1/CachePool' in
+                        cache_pool.object_path)
+
+    def test_cache_lv_create(self):
+        vg, cache_pool = self._create_cache_pool()
+
+        lv_to_cache = self._create_lv(size=(1024 * 1024 * 1024), vg=vg)
+
+        c_lv_path = cache_pool.CachePool.CacheLv(
+            lv_to_cache.object_path, -1, {})[0]
+
+        cached_lv = ClientProxy(self.bus, c_lv_path)
+
+        cache_pool_path = cached_lv.CachedLv.DetachCachePool(-1, {})[0]
+
+        self.assertTrue('/com/redhat/lvmdbus1/CachePool' in
+                        cache_pool_path)
 
 if __name__ == '__main__':
     # Test forking & exec new each time

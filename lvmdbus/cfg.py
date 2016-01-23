@@ -50,15 +50,19 @@ VG_INTERFACE = BASE_INTERFACE + '.Vg'
 LV_INTERFACE = BASE_INTERFACE + '.Lv'
 LV_COMMON_INTERFACE = BASE_INTERFACE + '.LvCommon'
 THIN_POOL_INTERFACE = BASE_INTERFACE + '.ThinPool'
+CACHE_POOL_INTERFACE = BASE_INTERFACE + '.CachePool'
+LV_CACHED = BASE_INTERFACE + '.CachedLv'
 SNAPSHOT_INTERFACE = BASE_INTERFACE + '.Snapshot'
 MANAGER_INTERFACE = BASE_INTERFACE + '.Manager'
 JOB_INTERFACE = BASE_INTERFACE + '.Job'
+
 
 BASE_OBJ_PATH = '/' + BASE_INTERFACE.replace('.', '/')
 PV_OBJ_PATH = BASE_OBJ_PATH + '/Pv'
 VG_OBJ_PATH = BASE_OBJ_PATH + '/Vg'
 LV_OBJ_PATH = BASE_OBJ_PATH + '/Lv'
 THIN_POOL_PATH = BASE_OBJ_PATH + "/ThinPool"
+CACHE_POOL_PATH = BASE_OBJ_PATH + "/CachePool"
 HIDDEN_LV_PATH = BASE_OBJ_PATH + "/HiddenLv"
 MANAGER_OBJ_PATH = BASE_OBJ_PATH + '/Manager'
 JOB_OBJ_PATH = BASE_OBJ_PATH + '/Job'
@@ -69,6 +73,7 @@ pv_id = itertools.count()
 vg_id = itertools.count()
 lv_id = itertools.count()
 thin_id = itertools.count()
+cache_pool_id = itertools.count()
 job_id = itertools.count()
 hidden_lv = itertools.count()
 

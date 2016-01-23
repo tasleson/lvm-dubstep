@@ -315,6 +315,14 @@ def vg_lv_create_mirror(vg_name, create_options, name, size_bytes, num_copies):
     return call(cmd)
 
 
+def vg_create_cache_pool(md_full_name, data_full_name, create_options):
+    cmd = ['lvconvert']
+    cmd.extend(options_to_cli_args(create_options))
+    cmd.extend(['--type', 'cache-pool', '--force', '-y',
+                '--poolmetadata', md_full_name, data_full_name])
+    return call(cmd)
+
+
 def lv_remove(lv_path, remove_options):
     cmd = ['lvremove']
     cmd.extend(options_to_cli_args(remove_options))
@@ -350,6 +358,22 @@ def lv_lv_create(lv_full_name, create_options, name, size_bytes):
     cmd.extend(options_to_cli_args(create_options))
     cmd.extend(['--virtualsize', str(size_bytes) + 'B', '-T'])
     cmd.extend(['--name', name, lv_full_name])
+    return call(cmd)
+
+
+def lv_cache_lv(cache_pool_full_name, lv_full_name, cache_options):
+    # lvconvert --type cache --cachepool VG/CachePoolLV VG/OriginLV
+    cmd = ['lvconvert']
+    cmd.extend(options_to_cli_args(cache_options))
+    cmd.extend(['--type', 'cache', '--cachepool',
+                cache_pool_full_name, lv_full_name])
+    return call(cmd)
+
+
+def lv_detach_cache(lv_full_name, detach_options):
+    cmd = ['lvconvert']
+    cmd.extend(options_to_cli_args(detach_options))
+    cmd.extend(['--splitcache', lv_full_name])
     return call(cmd)
 
 
@@ -574,7 +598,8 @@ def lv_retrieve_with_segments():
                 'vg_name', 'pool_lv_uuid', 'pool_lv', 'origin_uuid',
                 'origin', 'data_percent',
                'lv_attr', 'lv_tags', 'vg_uuid', 'lv_active', 'data_lv',
-               'metadata_lv', 'seg_pe_ranges', 'segtype', 'lv_parent']
+               'metadata_lv', 'seg_pe_ranges', 'segtype', 'lv_parent',
+               'lv_role', 'lv_layout']
 
     cmd = _dc('lvs', ['-a', '-o', ','.join(columns)])
     rc, out, err = call(cmd)
