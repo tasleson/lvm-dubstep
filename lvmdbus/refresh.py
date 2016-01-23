@@ -39,9 +39,9 @@ def handle_external_event(event, lvm_id, lvm_uuid, seq_no):
         # If we are supplied with these, lets see if we need to update
         vg = cfg.om.get_by_uuid_lvm_id(lvm_uuid, lvm_id)
         if not (event == 'vg_update' and vg and vg.Seqno == seq_no):
-            load(refresh=True)
+            load(refresh=True, emit_signal=True)
     else:
-        load(refresh=True)
+        load(refresh=True, emit_signal=True)
 
 
 def event_add(params):
