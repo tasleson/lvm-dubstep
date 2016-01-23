@@ -16,8 +16,7 @@
 from .automatedproperties import AutomatedProperties
 
 from . import utils
-from .utils import lv_obj_path_generate, thin_pool_obj_path_generate, \
-    pv_obj_path_generate, vg_obj_path_generate, n, hidden_lv_obj_path_generate
+from .utils import pv_obj_path_generate, vg_obj_path_generate, n
 import dbus
 from . import cfg
 from .cfg import VG_INTERFACE
@@ -69,14 +68,10 @@ class VgState(State):
     def _lv_paths_build(self):
         rc = []
         for lv in cfg.db.lvs_in_vg(self.Uuid):
-            (lv_name, lv_attr, lv_uuid) = lv
+            (lv_name, meta, lv_uuid) = lv
             full_name = "%s/%s" % (self.Name, lv_name)
 
-            gen = lv_obj_path_generate
-            if lv_name[0] == '[':
-                gen = hidden_lv_obj_path_generate
-            elif lv_attr[0] == 't':
-                gen = thin_pool_obj_path_generate
+            gen = utils.lv_object_path_method(lv_name, meta)
 
             lv_path = cfg.om.get_object_path_by_lvm_id(
                 lv_uuid, full_name, gen)

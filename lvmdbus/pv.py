@@ -66,10 +66,10 @@ class PvState(State):
         rc = []
         if vg_name:
             for lv in sorted(cfg.db.pv_contained_lv(self.lvm_id)):
-                lv_uuid, lv_name, lv_attr, segs = lv
+                lv_uuid, lv_name, meta, segs = lv
                 full_name = "%s/%s" % (vg_name, lv_name)
 
-                path_create = lv_object_path_method(lv_name, lv_attr)
+                path_create = lv_object_path_method(lv_name, meta)
                 lv_path = cfg.om.get_object_path_by_lvm_id(
                     lv_uuid, full_name, path_create)
 

@@ -128,7 +128,9 @@ class DataStore(object):
                 c_lvs_in_vgs[i['vg_uuid']] = []
 
             c_lvs_in_vgs[i['vg_uuid']].append(
-                (i['lv_name'], i['lv_attr'], i['lv_uuid']))
+                (i['lv_name'],
+                 (i['lv_attr'], i['lv_layout'], i['lv_role']),
+                 i['lv_uuid']))
 
             if i['lv_parent']:
                 # Lookup what the parent refers too
@@ -183,7 +185,7 @@ class DataStore(object):
         return rc
 
     @staticmethod
-    def _pv_device_lv_entry(table, pv_device, lv_uuid, lv_name, lv_attr,
+    def _pv_device_lv_entry(table, pv_device, lv_uuid, meta, lv_attr,
                             segment_info):
 
         if pv_device not in table:
@@ -192,8 +194,8 @@ class DataStore(object):
         if lv_uuid not in table[pv_device]:
             table[pv_device][lv_uuid] = {}
             table[pv_device][lv_uuid]['segs'] = [segment_info]
-            table[pv_device][lv_uuid]['name'] = lv_name
-            table[pv_device][lv_uuid]['attr'] = lv_attr
+            table[pv_device][lv_uuid]['name'] = meta
+            table[pv_device][lv_uuid]['meta'] = lv_attr
         else:
             table[pv_device][lv_uuid]['segs'].append(segment_info)
 
@@ -204,7 +206,7 @@ class DataStore(object):
         for pv_device, pd in pv_device_lvs.items():
             lvs = []
             for lv_uuid, ld in sorted(pd.items()):
-                lvs.append((lv_uuid, ld['name'], ld['attr'], ld['segs']))
+                lvs.append((lv_uuid, ld['name'], ld['meta'], ld['segs']))
 
             rc[pv_device] = lvs
         return rc
@@ -246,7 +248,8 @@ class DataStore(object):
 
                     DataStore._pv_device_lv_entry(
                         pv_device_lvs, device, i['lv_uuid'], i['lv_name'],
-                        i['lv_attr'], (r[0], r[1], seg_type))
+                        (i['lv_attr'], i['lv_layout'], i['lv_role']),
+                        (r[0], r[1], seg_type))
 
                     # (pv_name, pv_segs, pv_uuid)
                     DataStore._lvs_device_pv_entry(
@@ -352,7 +355,7 @@ class DataStore(object):
 
     def lvs_in_vg(self, vg_uuid):
         # Return an array of
-        # (lv_name, lv_attr, lv_uuid)
+        # (lv_name, (lv_attr, lv_layout, lv_role), lv_uuid)
         rc = []
         if vg_uuid in self.lvs_in_vgs:
             rc = self.lvs_in_vgs[vg_uuid]

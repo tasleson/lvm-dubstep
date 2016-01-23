@@ -304,27 +304,33 @@ def vg_obj_path_generate(object_path=None):
     return cfg.VG_OBJ_PATH + "/%d" % next(cfg.vg_id)
 
 
-def lv_object_path_method(name, lv_attr):
+def lv_object_path_method(name, meta):
     if name[0] == '[':
-        return hidden_lv_obj_path_generate
-    elif lv_attr[0] == 't':
-        return thin_pool_obj_path_generate
-    return lv_obj_path_generate
+        return _hidden_lv_obj_path_generate
+    elif meta[0][0] == 't':
+        return _thin_pool_obj_path_generate
+    elif meta[0][0] == 'C' and 'pool' in meta[1]:
+        return _cache_pool_obj_path_generate
+
+    return _lv_obj_path_generate
 
 
-def lv_obj_path_generate(object_path=None):
+# Note: None of the individual LV path generate functions should be called
+# directly, they should only be dispatched through lv_object_path_method
+
+def _lv_obj_path_generate(object_path=None):
     if object_path:
         return object_path
     return cfg.LV_OBJ_PATH + "/%d" % next(cfg.lv_id)
 
 
-def thin_pool_obj_path_generate(object_path=None):
+def _thin_pool_obj_path_generate(object_path=None):
     if object_path:
         return object_path
     return cfg.THIN_POOL_PATH + "/%d" % next(cfg.thin_id)
 
 
-def hidden_lv_obj_path_generate(object_path=None):
+def _hidden_lv_obj_path_generate(object_path=None):
     if object_path:
         return object_path
     return cfg.HIDDEN_LV_PATH + "/%d" % next(cfg.hidden_lv)

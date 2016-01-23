@@ -15,7 +15,7 @@
 from .automatedproperties import AutomatedProperties
 
 from . import utils
-from .utils import vg_obj_path_generate, thin_pool_obj_path_generate
+from .utils import vg_obj_path_generate
 import dbus
 from . import cmdhandler
 from . import cfg
@@ -44,7 +44,8 @@ def lvs_state_retrieve(selection, cache_refresh=True):
                                 l['pool_lv'], l['origin_uuid'], l['origin'],
                                n32(l['data_percent']), l['lv_attr'],
                                l['lv_tags'], l['lv_active'], l['data_lv'],
-                                l['metadata_lv'], l['segtype']))
+                                l['metadata_lv'], l['segtype'], l['lv_role'],
+                                l['lv_layout']))
     return rc
 
 
@@ -96,7 +97,7 @@ class LvState(State):
     def __init__(self, Uuid, Name, Path, SizeBytes,
                      vg_name, vg_uuid, pool_lv_uuid, PoolLv,
                      origin_uuid, OriginLv, DataPercent, Attr, Tags, active,
-                     data_lv, metadata_lv, segtypes):
+                     data_lv, metadata_lv, segtypes, role, layout):
         utils.init_class_from_arguments(self, None)
 
         # The segtypes is possibly an array with potentially dupes or a single
@@ -112,9 +113,11 @@ class LvState(State):
         self.Devices = LvState._pv_devices(self.Uuid)
 
         if PoolLv:
+            gen = utils.lv_object_path_method(Name, (Attr, layout, role))
+
             self.PoolLv = cfg.om.get_object_path_by_lvm_id(
                 pool_lv_uuid, '%s/%s' % (vg_name, PoolLv),
-                thin_pool_obj_path_generate)
+                gen)
         else:
             self.PoolLv = '/'
 
@@ -133,7 +136,8 @@ class LvState(State):
         return self._segs
 
     def _object_path_create(self):
-        return utils.lv_object_path_method(self.Name, self.Attr)
+        return utils.lv_object_path_method(
+            self.Name, (self.Attr, self.layout, self.role))
 
     def _object_type_create(self):
         if self.Name[0] == '[':
