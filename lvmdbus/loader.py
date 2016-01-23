@@ -16,6 +16,18 @@
 from . import cfg
 
 
+def _compare_construction(o_state, new_state):
+    # We need to check to see if the objects would get constructed
+    # the same
+    existing_ctor, existing_path = o_state.creation_signature()
+    new_ctor, new_path = new_state.creation_signature()
+
+    #print("%s == %s and %s == %s" % (str(existing_ctor), str(new_ctor),
+    #      str(existing_path), str(new_path)))
+
+    return ((existing_ctor == new_ctor) and (existing_path == new_path))
+
+
 def common(retrieve, o_type, search_keys,
                 object_path, refresh, emit_signal, cache_refresh):
     num_changes = 0
@@ -47,7 +59,19 @@ def common(retrieve, o_type, search_keys,
 
             if dbus_object:
                 del existing_paths[dbus_object.dbus_object_path()]
-                num_changes += dbus_object.refresh(object_state=o)
+
+                # If the old object state and new object state wouldn't be
+                # created with the same path and same object constructor we
+                # need to remove the old object and construct the new one
+                # instead!
+                if not _compare_construction(dbus_object.state, o):
+                    # Remove existing and construct new one
+                    cfg.om.remove_object(dbus_object, emit_signal)
+                    dbus_object = o.create_dbus_object(None)
+                    cfg.om.register_object(dbus_object, emit_signal)
+                    num_changes += 1
+                else:
+                    num_changes += dbus_object.refresh(object_state=o)
                 return_object = False
 
         if return_object:

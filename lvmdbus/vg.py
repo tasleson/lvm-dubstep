@@ -106,6 +106,10 @@ class VgState(State):
                 self.Uuid, self.Name, vg_obj_path_generate)
         return Vg(path, self)
 
+    # noinspection PyMethodMayBeStatic
+    def creation_signature(self):
+        return (Vg, vg_obj_path_generate)
+
 
 # noinspection PyPep8Naming
 @utils.dbus_property(VG_INTERFACE, 'Uuid', 's')

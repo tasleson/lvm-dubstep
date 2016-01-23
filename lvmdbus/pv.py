@@ -102,6 +102,10 @@ class PvState(State):
                                                     pv_obj_path_generate)
         return Pv(path, self)
 
+    # noinspection PyMethodMayBeStatic
+    def creation_signature(self):
+        return (Pv, pv_obj_path_generate)
+
 
 # noinspection PyPep8Naming
 @utils.dbus_property(PV_INTERFACE, 'Uuid', 's')     # PV UUID/pv_uuid

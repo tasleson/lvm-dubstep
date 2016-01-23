@@ -135,18 +135,33 @@ class LvState(State):
     def _object_path_create(self):
         return utils.lv_object_path_method(self.Name, self.Attr)
 
+    def _object_type_create(self):
+        if self.Name[0] == '[':
+            return LvCommon
+        if self.Attr[0] == 't':
+            return LvThinPool
+        elif self.Attr[0] == 'C':
+            if 'pool' in self.layout:
+                return LvCachePool
+            else:
+                return LvCacheLv
+        elif self.OriginLv != '/':
+            return LvSnapShot
+        else:
+            return Lv
+
     def create_dbus_object(self, path):
         if not path:
             path = cfg.om.get_object_path_by_lvm_id(
                 self.Uuid, self.lvm_id, self._object_path_create())
-        if self.Name[0] == '[':
-            return LvCommon(path, self)
-        if self.Attr[0] == 't':
-            return LvThinPool(path, self)
-        elif self.OriginLv != '/':
-            return LvSnapShot(path, self)
-        else:
-            return Lv(path, self)
+
+        obj_ctor = self._object_type_create()
+        return obj_ctor(path, self)
+
+    def creation_signature(self):
+        klass = self._object_type_create()
+        path_method = self._object_path_create()
+        return (klass, path_method)
 
 
 # noinspection PyPep8Naming
