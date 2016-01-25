@@ -33,6 +33,7 @@ import queue
 import sys
 from . import udevwatch
 from .utils import pprint
+import argparse
 
 
 class Lvm(objectmanager.ObjectManager):
@@ -56,6 +57,15 @@ def process_request():
 
 
 def main():
+
+    # Add simple command line handling
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--udev", action='store_true',
+                        help="Use udev for updating state", default=False,
+                        dest='use_udev')
+
+    args = parser.parse_args()
+
     # List of threads that we start up
     thread_list = []
 
@@ -101,13 +111,16 @@ def main():
            (end - start, cmdhandler.total_time, cmdhandler.total_count))
 
     # Add udev watching
-    udevwatch.add()
+    if args.use_udev:
+        pprint('Utilizing udev to trigger updates')
+        udevwatch.add()
 
     try:
         if cfg.run.value != 0:
             cfg.loop.run()
 
-            udevwatch.remove()
+            if args.use_udev:
+                udevwatch.remove()
 
             for process in thread_list:
                 process.join()
