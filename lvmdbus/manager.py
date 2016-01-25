@@ -164,10 +164,10 @@ class Manager(AutomatedProperties):
         cmdhandler.set_execution(yes_no)
 
     @dbus.service.method(dbus_interface=MANAGER_INTERFACE,
-                         in_signature='sssu', out_signature='i')
-    def ExternalEvent(self, event, lvm_id, lvm_uuid, seqno):
+                         in_signature='s', out_signature='i')
+    def ExternalEvent(self, command):
 
-        event_add((event, lvm_id, lvm_uuid, seqno))
+        event_add((command,))
         return dbus.Int32(0)
 
     @staticmethod

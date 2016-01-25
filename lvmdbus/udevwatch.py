@@ -42,7 +42,7 @@ def filter_event(action, device):
         refresh = True
 
     if refresh:
-        event_add(('udev', None, None, 0))
+        event_add(('udev',))
 
 
 def add():
