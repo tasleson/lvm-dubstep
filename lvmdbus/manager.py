@@ -120,14 +120,14 @@ class Manager(AutomatedProperties):
         """
         #cfg.om.refresh_all()
 
-        utils.pprint('Manager.Refresh - entry')
+        utils.log_debug('Manager.Refresh - entry')
         rc = load(refresh=True, emit_signal=True)
 
         if rc != 0:
-            utils.pprint('Manager.Refresh - exit %d' % (rc),
-                         'bg_black', 'fg_light_red')
+            utils.log_debug('Manager.Refresh - exit %d' % (rc),
+                            'bg_black', 'fg_light_red')
         else:
-            utils.pprint('Manager.Refresh - exit %d' % (rc))
+            utils.log_debug('Manager.Refresh - exit %d' % (rc))
         return rc
 
     @dbus.service.method(dbus_interface=MANAGER_INTERFACE,

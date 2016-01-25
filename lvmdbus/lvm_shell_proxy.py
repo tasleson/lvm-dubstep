@@ -25,10 +25,10 @@ import re
 
 try:
     from .cfg import LVM_CMD
-    from .utils import pprint
+    from .utils import log_debug
 except:
     from cfg import LVM_CMD
-    from utils import pprint
+    from utils import log_debug
 
 
 SHELL_PROMPT = "lvm> "
@@ -158,10 +158,10 @@ class LVMShellProxy(object):
                 rc = 0
 
         if debug or rc != 0:
-            pprint(('CMD: %s' % cmd))
-            pprint(("EC = %d" % rc))
-            pprint(("STDOUT=\n %s\n" % stdout))
-            pprint(("STDERR=\n %s\n" % stderr))
+            log_debug(('CMD: %s' % cmd))
+            log_debug(("EC = %d" % rc))
+            log_debug(("STDOUT=\n %s\n" % stdout))
+            log_debug(("STDERR=\n %s\n" % stderr))
 
         return (rc, stdout, stderr)
 

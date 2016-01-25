@@ -268,7 +268,7 @@ def parse_tags(tags):
 # Serializes access to stdout to prevent interleaved output
 # @param msg    Message to output to stdout
 # @return None
-def pprint(msg, *attributes):
+def log_debug(msg, *attributes):
     if cfg.DEBUG:
         cfg.stdout_lock.acquire()
         tid = ctypes.CDLL('libc.so.6').syscall(186)
@@ -287,7 +287,7 @@ def pprint(msg, *attributes):
 # noinspection PyUnusedLocal
 def handler(signum, frame):
     cfg.run.value = 0
-    pprint('Signal handler called with signal %d' % signum)
+    log_debug('Signal handler called with signal %d' % signum)
     if cfg.loop is not None:
         cfg.loop.quit()
 

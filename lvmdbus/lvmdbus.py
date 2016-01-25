@@ -32,7 +32,7 @@ import traceback
 import queue
 import sys
 from . import udevwatch
-from .utils import pprint
+from .utils import log_debug
 import argparse
 
 
@@ -45,10 +45,10 @@ def process_request():
     while cfg.run.value != 0:
         try:
             req = cfg.worker_q.get(True, 5)
-            pprint("Running method: %s with args %s" %
-                         (str(req.method), str(req.arguments)))
+            log_debug("Running method: %s with args %s" %
+                      (str(req.method), str(req.arguments)))
             req.run_cmd()
-            pprint("Complete ")
+            log_debug("Complete ")
         except queue.Empty:
             pass
         except Exception:
@@ -107,12 +107,12 @@ def main():
         process.start()
 
     end = time.time()
-    pprint('Service ready! total time= %.2f, lvm time= %.2f count= %d' %
-           (end - start, cmdhandler.total_time, cmdhandler.total_count))
+    log_debug('Service ready! total time= %.2f, lvm time= %.2f count= %d' %
+              (end - start, cmdhandler.total_time, cmdhandler.total_count))
 
     # Add udev watching
     if args.use_udev:
-        pprint('Utilizing udev to trigger updates')
+        log_debug('Utilizing udev to trigger updates')
         udevwatch.add()
 
     try:

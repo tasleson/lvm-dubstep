@@ -18,7 +18,7 @@ import threading
 import traceback
 import dbus
 from . import cfg
-from .utils import pprint
+from .utils import log_debug
 from .automatedproperties import AutomatedProperties
 
 
@@ -62,14 +62,14 @@ class ObjectManager(AutomatedProperties):
     @dbus.service.signal(dbus_interface="org.freedesktop.DBus.ObjectManager",
                          signature='oa{sa{sv}}')
     def InterfacesAdded(self, object_path, int_name_prop_dict):
-        pprint(('SIGNAL: InterfacesAdded(%s, %s)' %
-               (str(object_path), str(int_name_prop_dict))))
+        log_debug(('SIGNAL: InterfacesAdded(%s, %s)' %
+                   (str(object_path), str(int_name_prop_dict))))
 
     @dbus.service.signal(dbus_interface="org.freedesktop.DBus.ObjectManager",
                          signature='oas')
     def InterfacesRemoved(self, object_path, interface_list):
-        pprint(('SIGNAL: InterfacesRemoved(%s, %s)' %
-               (str(object_path), str(interface_list))))
+        log_debug(('SIGNAL: InterfacesRemoved(%s, %s)' %
+                   (str(object_path), str(interface_list))))
 
     def _lookup_add(self, obj, path, lvm_id, uuid):
         """
@@ -194,7 +194,7 @@ class ObjectManager(AutomatedProperties):
                     if o:
                         rc.append(o)
                     else:
-                        pprint("DEBUG: No object for %s" % (k))
+                        log_debug("DEBUG: No object for %s" % (k))
                         traceback.print_stack()
         return rc
 
@@ -237,7 +237,7 @@ class ObjectManager(AutomatedProperties):
                 try:
                     v[0].refresh()
                 except Exception:
-                    pprint('Object path= ', k)
+                    log_debug('Object path= ', k)
                     traceback.print_exc(file=sys.stdout)
 
 

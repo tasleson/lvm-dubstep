@@ -27,7 +27,7 @@ _count = 0
 
 
 def handle_external_event(command):
-    utils.pprint("External event: '%s'" % command)
+    utils.log_debug("External event: '%s'" % command)
     event_complete()
     load(refresh=True, emit_signal=True)
 

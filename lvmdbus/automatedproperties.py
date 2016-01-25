@@ -16,7 +16,7 @@
 import dbus
 from . import cfg
 from .utils import get_properties, add_properties, get_object_property_diff, \
-    pprint
+    log_debug
 from .state import State
 
 
@@ -77,8 +77,8 @@ class AutomatedProperties(dbus.service.Object):
         value = getattr(self, property_name)
         # Note: If we get an exception in this handler we won't know about it,
         # only the side effect of no returned value!
-        pprint('Get (%s), type (%s), value(%s)' %
-               (property_name, str(type(value)), str(value)))
+        log_debug('Get (%s), type (%s), value(%s)' %
+                  (property_name, str(type(value)), str(value)))
         return value
 
     @dbus.service.method(dbus_interface=dbus.PROPERTIES_IFACE,
@@ -120,9 +120,9 @@ class AutomatedProperties(dbus.service.Object):
                          signature='sa{sv}as')
     def PropertiesChanged(self, interface_name, changed_properties,
                           invalidated_properties):
-        pprint(('SIGNAL: PropertiesChanged(%s, %s, %s, %s)' %
-               (str(self._ap_o_path), str(interface_name),
-                str(changed_properties), str(invalidated_properties))))
+        log_debug(('SIGNAL: PropertiesChanged(%s, %s, %s, %s)' %
+                   (str(self._ap_o_path), str(interface_name),
+                    str(changed_properties), str(invalidated_properties))))
 
     def refresh(self, search_key=None, object_state=None):
         """

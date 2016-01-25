@@ -20,11 +20,11 @@ from itertools import chain
 
 try:
     from . import cfg
-    from .utils import pv_dest_ranges, pprint
+    from .utils import pv_dest_ranges, log_debug
     from .lvm_shell_proxy import LVMShellProxy
 except SystemError:
     import cfg
-    from utils import pv_dest_ranges, pprint
+    from utils import pv_dest_ranges, log_debug
     from lvm_shell_proxy import LVMShellProxy
 
 SEP = '{|}'
@@ -43,10 +43,10 @@ _t_call = None
 
 
 def _debug_c(cmd, exit_code, out):
-    pprint('CMD:', ' '.join(cmd))
-    pprint(("EC = %d" % exit_code))
-    pprint(("STDOUT=\n %s\n" % out[0]))
-    pprint(("STDERR=\n %s\n" % out[1]))
+    log_debug('CMD:', ' '.join(cmd))
+    log_debug(("EC = %d" % exit_code))
+    log_debug(("STDOUT=\n %s\n" % out[0]))
+    log_debug(("STDERR=\n %s\n" % out[1]))
 
 
 def call_lvm(command, debug=False):
@@ -74,7 +74,7 @@ def call_lvm(command, debug=False):
 
     if process.returncode == 0:
         if out[1] and len(out[1]):
-            pprint('WARNING: lvm is out-putting text to STDERR on success!')
+            log_debug('WARNING: lvm is out-putting text to STDERR on success!')
             _debug_c(command, process.returncode, (stdout_text, stderr_text))
 
     return process.returncode, stdout_text, stderr_text
@@ -82,7 +82,7 @@ def call_lvm(command, debug=False):
 
 def _shell_cfg():
     global _t_call
-    pprint('Using lvm shell!')
+    log_debug('Using lvm shell!')
     lvm_shell = LVMShellProxy()
     _t_call = lvm_shell.call_lvm
 
@@ -98,7 +98,7 @@ def set_execution(shell):
     with cmd_lock:
         _t_call = None
         if shell:
-            pprint('Using lvm shell!')
+            log_debug('Using lvm shell!')
             lvm_shell = LVMShellProxy()
             _t_call = lvm_shell.call_lvm
         else:
@@ -409,7 +409,7 @@ def pv_retrieve_with_segs(device=None):
             break
         else:
             time.sleep(0.2)
-            pprint("LVM Bug workaround, retrying pvs command...")
+            log_debug("LVM Bug workaround, retrying pvs command...")
 
     return d
 
@@ -616,4 +616,4 @@ if __name__ == '__main__':
     pv_data = pv_retrieve_with_segs()
 
     for p in pv_data:
-        pprint(str(p))
+        log_debug(str(p))
