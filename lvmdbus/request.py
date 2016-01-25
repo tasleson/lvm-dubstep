@@ -18,7 +18,8 @@ import threading
 from gi.repository import GObject
 from .job import Job
 from . import cfg
-import dbus
+import traceback
+from .utils import pprint
 
 
 class RequestEntry(object):
@@ -69,10 +70,13 @@ class RequestEntry(object):
         try:
             result = self.method(*self.arguments)
             self.register_result(result)
-        except dbus.DBusException as de:
+        except Exception:
             # Use the request entry to return the result as the client may
             # have gotten a job by the time we hit an error
-            self.register_error(-1, de)
+            # Lets get the stacktrace and set that to the error message
+            st = traceback.format_exc()
+            pprint("Exception returned to client: \n%s", st)
+            self.register_error(-1, st)
 
     def is_done(self):
         with self.lock:
