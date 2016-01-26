@@ -24,7 +24,7 @@ from . import cmdhandler
 from .request import RequestEntry
 from .loader import common
 from .state import State
-from . import pvmover
+from . import background
 from .utils import round_size
 
 
@@ -364,8 +364,8 @@ class Vg(AutomatedProperties):
                              out_signature='o')
     def Move(self, pv_src_obj, pv_source_range, pv_dests_and_ranges,
              tmo, move_options):
-        return pvmover.move(VG_INTERFACE, None, pv_src_obj, pv_source_range,
-                            pv_dests_and_ranges, move_options, tmo)
+        return background.move(VG_INTERFACE, None, pv_src_obj, pv_source_range,
+                               pv_dests_and_ranges, move_options, tmo)
 
     @staticmethod
     def _lv_create(uuid, vg_name, name, size_bytes, pv_dests_and_ranges,

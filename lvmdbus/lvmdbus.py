@@ -27,7 +27,7 @@ from . import lvmdb
 from gi.repository import GObject
 from .fetch import load
 from .manager import Manager
-from .pvmover import pv_move_reaper
+from .background import pv_move_reaper
 import traceback
 import queue
 import sys

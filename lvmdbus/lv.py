@@ -25,7 +25,7 @@ from .request import RequestEntry
 from .utils import n, n32
 from .loader import common
 from .state import State
-from . import pvmover
+from . import background
 from .utils import round_size
 
 
@@ -390,9 +390,9 @@ class Lv(LvCommon):
                          out_signature='o')
     def Move(self, pv_src_obj, pv_source_range, pv_dests_and_ranges,
              tmo, move_options):
-        return pvmover.move(LV_INTERFACE, self.lvm_id, pv_src_obj,
-                            pv_source_range, pv_dests_and_ranges,
-                            move_options, tmo)
+        return background.move(LV_INTERFACE, self.lvm_id, pv_src_obj,
+                               pv_source_range, pv_dests_and_ranges,
+                               move_options, tmo)
 
     @staticmethod
     def _snap_shot(lv_uuid, lv_name, name, optional_size,
