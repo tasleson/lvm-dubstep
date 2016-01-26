@@ -331,7 +331,7 @@ class Lv(LvCommon):
 
             if rc == 0:
                 cfg.om.remove_object(dbo, True)
-                dbo.signal_vg_pv_changes()
+                cfg.load()
             else:
                 # Need to work on error handling, need consistent
                 raise dbus.exceptions.DBusException(
@@ -477,7 +477,7 @@ class Lv(LvCommon):
 
             if rc == 0:
                 # Refresh what's changed
-                dbo.signal_vg_pv_changes()
+                cfg.load()
                 return "/"
             else:
                 raise dbus.exceptions.DBusException(
@@ -806,7 +806,7 @@ class LvSnapShot(Lv):
                 # Refresh the VG and the PVs and delete the LV that was just
                 # merged
                 cfg.om.remove_object(dbo, True)
-                dbo.signal_vg_pv_changes()
+                cfg.load()
                 return "/"
             else:
                 raise dbus.exceptions.DBusException(
