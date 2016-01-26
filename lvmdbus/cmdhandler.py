@@ -292,7 +292,7 @@ def _vg_lv_create_raid(vg_name, create_options, name, raid_type, size_bytes,
         cmd.extend(['--stripesize', str(stripe_size_kb)])
 
     cmd.extend(['--name', name, vg_name])
-    return call(cmd, True)
+    return call(cmd)
 
 
 def vg_lv_create_raid(vg_name, create_options, name, raid_type, size_bytes,
