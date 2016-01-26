@@ -270,10 +270,6 @@ class LvCommon(AutomatedProperties):
     def SkipActivation(self):
         return self.state.Attr[9] == 'k'
 
-    def signal_vg_pv_changes(self):
-        # Signal property changes...
-        cfg.load()
-
     def vg_name_lookup(self):
         return self.state.vg_name_lookup()
 
