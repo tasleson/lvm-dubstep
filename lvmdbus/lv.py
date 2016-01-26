@@ -193,7 +193,7 @@ class LvCommon(AutomatedProperties):
     _Health_meta = ("(ss)", LV_COMMON_INTERFACE)
     _FixedMinor_meta = ('b', LV_COMMON_INTERFACE)
     _ZeroBlocks_meta = ('b', LV_COMMON_INTERFACE)
-    _SkipActivation = ('b', LV_COMMON_INTERFACE)
+    _SkipActivation_meta = ('b', LV_COMMON_INTERFACE)
 
     # noinspection PyUnusedLocal,PyPep8Naming
     def __init__(self, object_path, object_state):
