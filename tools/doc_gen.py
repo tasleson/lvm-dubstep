@@ -27,7 +27,7 @@ TYPE_TABLE = {
     'd': "double",
     'h': "Unix file descriptor",
     's': 'String',
-    'o': 'Oject path',
+    'o': 'Object path',
     'g': 'Signature',
     'v': 'Variant',
     '': 'None'
