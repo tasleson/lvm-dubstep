@@ -272,9 +272,7 @@ class LvCommon(AutomatedProperties):
 
     def signal_vg_pv_changes(self):
         # Signal property changes...
-        vg_obj = cfg.om.get_by_path(self.Vg)
-        vg_obj.refresh()
-        vg_obj.refresh_pvs()
+        cfg.load(refresh=True, emit_signal=True)
 
     def vg_name_lookup(self):
         return self.state.vg_name_lookup()
@@ -332,8 +330,8 @@ class Lv(LvCommon):
             rc, out, err = cmdhandler.lv_remove(lv_name, remove_options)
 
             if rc == 0:
-                dbo.signal_vg_pv_changes()
                 cfg.om.remove_object(dbo, True)
+                dbo.signal_vg_pv_changes()
             else:
                 # Need to work on error handling, need consistent
                 raise dbus.exceptions.DBusException(
@@ -480,7 +478,6 @@ class Lv(LvCommon):
 
             if rc == 0:
                 # Refresh what's changed
-                dbo.refresh()
                 dbo.signal_vg_pv_changes()
                 return "/"
             else:
@@ -809,8 +806,8 @@ class LvSnapShot(Lv):
 
                 # Refresh the VG and the PVs and delete the LV that was just
                 # merged
-                dbo.signal_vg_pv_changes()
                 cfg.om.remove_object(dbo, True)
+                dbo.signal_vg_pv_changes()
                 return "/"
             else:
                 raise dbus.exceptions.DBusException(
