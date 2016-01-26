@@ -109,7 +109,8 @@ class LvState(State):
             self._segs.extend(set(segtypes))
 
         self.Vg = cfg.om.get_object_path_by_lvm_id(
-            Uuid, vg_name, vg_obj_path_generate)
+            vg_uuid, vg_name, vg_obj_path_generate)
+
         self.Devices = LvState._pv_devices(self.Uuid)
 
         if PoolLv:

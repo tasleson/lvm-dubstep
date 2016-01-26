@@ -364,9 +364,26 @@ class TestDbusService(unittest.TestCase):
     # noinspection PyUnresolvedReferences
     def test_vg_rename(self):
         vg = self._vg_create().Vg
+
+        # Create some LVs in the VG
+        for i in range(0, 5):
+            self._create_lv(size=1024 * 1024 * 16, vg=vg)
+
         path = vg.Rename('renamed_' + vg.Name, -1, {})
         self.assertTrue(path == '/')
         self.assertEqual(self._refresh(), 0)
+
+        # Go through each LV and make sure it has the correct path back to the
+        # VG
+        vg.update()
+
+        lv_paths = vg.Lvs
+        self.assertTrue(len(lv_paths) == 5)
+
+        for l in lv_paths:
+            lv_proxy = ClientProxy(self.bus, l).LvCommon
+            self.assertTrue(lv_proxy.Vg == vg.object_path, "%s != %s" %
+                            (lv_proxy.Vg, vg.object_path))
 
     def _test_lv_create(self, method, params, vg):
         lv = None
