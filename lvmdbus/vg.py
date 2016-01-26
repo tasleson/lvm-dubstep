@@ -198,18 +198,10 @@ class Vg(AutomatedProperties):
             if rc == 0:
 
                 # The refresh will fix up all the lookups for this object,
-                # however the LVs will still have the wrong lookup entries.
+                # however the LVs will still have the wrong lookup entries, so
+                # we need to update them too.
                 dbo.refresh(new_name)
-
-                for lv in dbo.Lvs:
-                    # This will fix the lookups, and the object state actually
-                    # has an update as the path property is changing, but it's
-                    # unfortunate that we need to go out and fetch all of these
-                    # TODO: Change to some kind of batch operation where we do
-                    # all with one lvs command instead of
-                    # fetching one at a time
-                    lv_obj = cfg.om.get_by_path(lv)
-                    lv_obj.refresh()
+                cfg.load(refresh=True, emit_signal=True, cache_refresh=False)
             else:
                 # Need to work on error handling, need consistent
                 raise dbus.exceptions.DBusException(
