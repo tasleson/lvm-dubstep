@@ -702,7 +702,8 @@ class TestDbusService(unittest.TestCase):
 
         print("\nNote: This test isn't guaranteed to pass...")
 
-        for i in [32, 64]:
+        # This may not pass
+        for i in [48, 64, 128]:
             yes = self._test_expired_timer(i)
             if yes:
                 print('Success!')
