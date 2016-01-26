@@ -19,7 +19,6 @@ import threading
 from .request import RequestEntry
 from . import cfg
 from . import utils
-from .fetch import load
 
 
 _rlock = threading.RLock()
@@ -29,7 +28,7 @@ _count = 0
 def handle_external_event(command):
     utils.log_debug("External event: '%s'" % command)
     event_complete()
-    load(refresh=True, emit_signal=True)
+    cfg.load(refresh=True, emit_signal=True)
 
 
 def event_add(params):

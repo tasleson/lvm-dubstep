@@ -113,7 +113,7 @@ def main():
     # Using a thread to process requests.
     thread_list.append(threading.Thread(target=process_request))
 
-    load()
+    cfg.load()
     cfg.loop = GObject.MainLoop()
 
     for process in thread_list:

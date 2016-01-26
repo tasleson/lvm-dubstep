@@ -20,7 +20,7 @@ from .cfg import MANAGER_INTERFACE
 import dbus
 from . import cfg
 from . import cmdhandler
-from .fetch import load_pvs, load_vgs, load
+from .fetch import load_pvs, load_vgs
 from .request import RequestEntry
 from .refresh import event_add
 
@@ -182,7 +182,7 @@ class Manager(AutomatedProperties):
         if rc == 0:
             # This could potentially change the state quite a bit, so lets
             # update everything to be safe
-            load(refresh=True)
+            cfg.load(refresh=True, emit_signal=True)
             return '/'
         else:
             raise dbus.exceptions.DBusException(
