@@ -23,7 +23,6 @@ from .cfg import VG_INTERFACE
 from . import cmdhandler
 from .request import RequestEntry
 from .loader import common
-from .lv import load_lvs
 from .state import State
 from . import pvmover
 from .utils import round_size
@@ -233,16 +232,14 @@ class Vg(AutomatedProperties):
             rc, out, err = cmdhandler.vg_remove(vg_name, remove_options)
 
             if rc == 0:
+                # Remove the VG
+                cfg.om.remove_object(dbo, True)
+
                 # If an LV has hidden LVs, things can get quite involved,
                 # especially if it's the last thin pool to get removed, so
                 # lets refresh all
-                load_lvs(refresh=True, emit_signal=True)
+                cfg.load(refresh=True, emit_signal=True)
 
-                cfg.om.remove_object(dbo, True)
-                # The vg is gone from LVM and from the dbus API, signal changes
-                # in all the previously involved PVs as the usages have
-                # changed.
-                dbo.refresh_pvs()
             else:
                 # Need to work on error handling, need consistent
                 raise dbus.exceptions.DBusException(
@@ -327,9 +324,7 @@ class Vg(AutomatedProperties):
             rc, out, err = cmdhandler.vg_reduce(vg_name, missing, pv_devices,
                                                 reduce_options)
             if rc == 0:
-                original_pvs = dbo.state.Pvs
-                dbo.refresh()
-                dbo.refresh_pvs(original_pvs)
+                cfg.load(refresh=True, emit_signal=True)
             else:
                 raise dbus.exceptions.DBusException(
                     VG_INTERFACE, 'Exit code %s, stderr = %s' % (str(rc), err))
@@ -369,16 +364,7 @@ class Vg(AutomatedProperties):
                 rc, out, err = cmdhandler.vg_extend(vg_name, extend_devices,
                                                     extend_options)
                 if rc == 0:
-                    # This is a little confusing, because when we call
-                    # dbo.refresh the current 'dbo' doesn't get updated,
-                    # the object that gets called with the next dbus call will
-                    # be the updated object so we need to manually append the
-                    # object path of PVS and go see refresh method for more
-                    # details.
-                    current_pvs = list(dbo.Pvs)
-                    dbo.refresh()
-                    current_pvs.extend(pv_object_paths)
-                    dbo.refresh_pvs(current_pvs)
+                    cfg.load(refresh=True, emit_signal=True)
                 else:
                     raise dbus.exceptions.DBusException(
                         VG_INTERFACE,
@@ -696,9 +682,7 @@ class Vg(AutomatedProperties):
             rc, out, err = cmdhandler.pv_tag(pv_devices, tags_add, tags_del,
                                              tag_options)
             if rc == 0:
-                # For each PV that had a name change refresh it
-                for p in pv_object_paths:
-                    cfg.om.get_by_path(p).refresh()
+                cfg.load(refresh=True, emit_signal=True)
 
                 return '/'
             else:
@@ -857,10 +841,7 @@ class Vg(AutomatedProperties):
             rc, out, err = cmdhandler.activate_deactivate(
                 'vgchange', vg_name, activate, control_flags, options)
             if rc == 0:
-                dbo.refresh()
-                # Refresh all the LVs too
-                dbo.refresh_lvs()
-
+                cfg.load(refresh=True, emit_signal=True)
                 return '/'
             else:
                 raise dbus.exceptions.DBusException(
