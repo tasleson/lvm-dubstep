@@ -256,7 +256,7 @@ class TestDbusService(unittest.TestCase):
                         break
 
                 if not found:
-                    print('Re-creating PV=', p)
+                    # print('Re-creating PV=', p)
                     self._pv_create(p)
 
     def _pv_create(self, device):
@@ -526,10 +526,11 @@ class TestDbusService(unittest.TestCase):
     def _wait_for_job(self, j_path):
         import time
         rc = None
+        j = ClientProxy(self.bus, j_path).Job
+
         while True:
-            j = ClientProxy(self.bus, j_path).Job
+            j.update()
             if j.Complete:
-                print('Done!')
                 (ec, error_msg) = j.GetError
                 self.assertTrue(ec == 0, "%d :%s" % (ec, error_msg))
 
@@ -540,11 +541,10 @@ class TestDbusService(unittest.TestCase):
                 j.Remove()
 
                 break
-            else:
-                print('Percentage = ', j.Percent)
 
             if j.Wait(1):
-                print('Wait indicates we are done!')
+                j.update()
+                self.assertTrue(j.Complete)
 
         return rc
 
@@ -700,13 +700,10 @@ class TestDbusService(unittest.TestCase):
 
         yes = False
 
-        print("\nNote: This test isn't guaranteed to pass...")
-
         # This may not pass
         for i in [48, 64, 128]:
             yes = self._test_expired_timer(i)
             if yes:
-                print('Success!')
                 break
             print('Attempt (%d) failed, trying again...' % (i))
 
