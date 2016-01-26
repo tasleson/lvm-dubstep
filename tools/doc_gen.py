@@ -114,7 +114,7 @@ def ouput_interfaces(interfaces):
         print('\n## Interface %s ##' % (interface_name))
         print('\n#### Methods ####')
         for k, v in sorted(md['methods'].items()):
-            print('* %s ' % k)
+            print('* %s' % k)
 
             if len(list(v['args'].keys())) == 0:
                 print('  * Arguments (None)')
