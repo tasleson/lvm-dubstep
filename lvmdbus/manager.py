@@ -108,18 +108,8 @@ class Manager(AutomatedProperties):
                          cb, cbe)
         cfg.worker_q.put(r)
 
-    @dbus.service.method(dbus_interface=MANAGER_INTERFACE,
-                         out_signature='t')
-    def Refresh(self):
-        """
-        Take all the objects we know about and go out and grab the latest
-        more of a test method at the moment to make sure we are handling object
-        paths correctly.
-
-        Returns the number of changes, object add/remove/properties changed
-        """
-        #cfg.om.refresh_all()
-
+    @staticmethod
+    def _refresh():
         utils.log_debug('Manager.Refresh - entry')
 
         # This is a diagnostic and should not be run in normal operation, so
@@ -132,6 +122,22 @@ class Manager(AutomatedProperties):
         else:
             utils.log_debug('Manager.Refresh - exit %d' % (rc))
         return rc
+
+    @dbus.service.method(dbus_interface=MANAGER_INTERFACE,
+                         out_signature='t', async_callbacks=('cb', 'cbe'))
+    def Refresh(self, cb, cbe):
+        """
+        Take all the objects we know about and go out and grab the latest
+        more of a test method at the moment to make sure we are handling object
+        paths correctly.
+
+        :param cb   Callback for result
+        :param cbe  Callback for errors
+
+        Returns the number of changes, object add/remove/properties changed
+        """
+        r = RequestEntry(-1, Manager._refresh, (), cb, cbe, False)
+        cfg.worker_q.put(r)
 
     @dbus.service.method(dbus_interface=MANAGER_INTERFACE,
                          in_signature='s',
