@@ -18,7 +18,7 @@ import threading
 import traceback
 import dbus
 from . import cfg
-from .utils import log_debug
+from .utils import log_debug, log_error
 from .automatedproperties import AutomatedProperties
 
 
@@ -194,7 +194,7 @@ class ObjectManager(AutomatedProperties):
                     if o:
                         rc.append(o)
                     else:
-                        log_debug("DEBUG: No object for %s" % (k))
+                        log_error("DEBUG: No object for %s" % (k))
                         traceback.print_stack()
         return rc
 

@@ -19,7 +19,7 @@ from gi.repository import GObject
 from .job import Job
 from . import cfg
 import traceback
-from .utils import log_debug
+from .utils import log_error
 
 
 class RequestEntry(object):
@@ -75,7 +75,7 @@ class RequestEntry(object):
             # have gotten a job by the time we hit an error
             # Lets get the stacktrace and set that to the error message
             st = traceback.format_exc()
-            log_debug("Exception returned to client: \n%s", st)
+            log_error("Exception returned to client: \n%s", st)
             self.register_error(-1, st)
 
     def is_done(self):

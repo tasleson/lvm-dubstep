@@ -265,23 +265,31 @@ def parse_tags(tags):
     return dbus.Array([], signature='s')
 
 
+def _common_log(msg, *attributes):
+    cfg.stdout_lock.acquire()
+    tid = ctypes.CDLL('libc.so.6').syscall(186)
+
+    msg = "%d:%d - %s" % (os.getpid(), tid, msg)
+
+    if attributes:
+        print(color(msg, *attributes))
+    else:
+        print(msg)
+
+    cfg.stdout_lock.release()
+    sys.stdout.flush()
+
+
 # Serializes access to stdout to prevent interleaved output
 # @param msg    Message to output to stdout
 # @return None
 def log_debug(msg, *attributes):
     if cfg.DEBUG:
-        cfg.stdout_lock.acquire()
-        tid = ctypes.CDLL('libc.so.6').syscall(186)
+        _common_log(msg, *attributes)
 
-        msg = "%d:%d - %s" % (os.getpid(), tid, msg)
 
-        if attributes:
-            print(color(msg, *attributes))
-        else:
-            print(msg)
-
-        cfg.stdout_lock.release()
-        sys.stdout.flush()
+def log_error(msg, *attributes):
+    _common_log(msg, *attributes)
 
 
 # noinspection PyUnusedLocal

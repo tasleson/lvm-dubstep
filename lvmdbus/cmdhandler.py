@@ -20,11 +20,11 @@ from itertools import chain
 
 try:
     from . import cfg
-    from .utils import pv_dest_ranges, log_debug
+    from .utils import pv_dest_ranges, log_debug, log_error
     from .lvm_shell_proxy import LVMShellProxy
 except SystemError:
     import cfg
-    from utils import pv_dest_ranges, log_debug
+    from utils import pv_dest_ranges, log_debug, log_error
     from lvm_shell_proxy import LVMShellProxy
 
 SEP = '{|}'
@@ -43,10 +43,10 @@ _t_call = None
 
 
 def _debug_c(cmd, exit_code, out):
-    log_debug('CMD:', ' '.join(cmd))
-    log_debug(("EC = %d" % exit_code))
-    log_debug(("STDOUT=\n %s\n" % out[0]))
-    log_debug(("STDERR=\n %s\n" % out[1]))
+    log_error('CMD= %s' % ' '.join(cmd))
+    log_error(("EC= %d" % exit_code))
+    log_error(("STDOUT=\n %s\n" % out[0]))
+    log_error(("STDERR=\n %s\n" % out[1]))
 
 
 def call_lvm(command, debug=False):
@@ -73,8 +73,8 @@ def call_lvm(command, debug=False):
         _debug_c(command, process.returncode, (stdout_text, stderr_text))
 
     if process.returncode == 0:
-        if out[1] and len(out[1]):
-            log_debug('WARNING: lvm is out-putting text to STDERR on success!')
+        if cfg.DEBUG and out[1] and len(out[1]):
+            log_error('WARNING: lvm is out-putting text to STDERR on success!')
             _debug_c(command, process.returncode, (stdout_text, stderr_text))
 
     return process.returncode, stdout_text, stderr_text
