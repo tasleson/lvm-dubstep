@@ -63,8 +63,13 @@ def main():
     parser.add_argument("--udev", action='store_true',
                         help="Use udev for updating state", default=False,
                         dest='use_udev')
+    parser.add_argument("--debug", action='store_true',
+                        help="Dump debug messages", default=False,
+                        dest='debug')
 
     args = parser.parse_args()
+
+    cfg.DEBUG = args.debug
 
     # List of threads that we start up
     thread_list = []
