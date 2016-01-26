@@ -30,6 +30,9 @@ except SystemError:
     import cfg
 
 
+STDOUT_TTY = os.isatty(sys.stdout.fileno())
+
+
 def md5(t):
     # noinspection PyUnresolvedReferences
     h = hashlib.md5()
@@ -271,7 +274,7 @@ def _common_log(msg, *attributes):
 
     msg = "%d:%d - %s" % (os.getpid(), tid, msg)
 
-    if attributes:
+    if STDOUT_TTY and attributes:
         print(color(msg, *attributes))
     else:
         print(msg)
