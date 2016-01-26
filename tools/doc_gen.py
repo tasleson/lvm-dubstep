@@ -126,7 +126,10 @@ def ouput_interfaces(interfaces):
                           (arg_name, type_to_human(arg_type)))
             print('  * Returns')
             print('      * %s' % (type_to_human(v['return_val'])))
-        print('\n#### Properties ####')
+        if len(md['properties'].keys()) == 0:
+            print('\n#### Properties (None) ####')
+        else:
+            print('\n#### Properties ####')
         for p, t in sorted(md['properties'].items()):
             print('* %s (%s)' % (p, type_to_human(t['prop_type'])))
 

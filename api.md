@@ -10,7 +10,7 @@
   * Returns
       * Structure (Object path, Object path)
 
-#### Properties ####
+#### Properties (None) ####
 
 ## Interface com.redhat.lvmdbus1.CachedLv ##
 
@@ -114,7 +114,7 @@
   * Returns
       * Object path
 
-#### Properties ####
+#### Properties (None) ####
 
 ## Interface com.redhat.lvmdbus1.LvCommon ##
 
@@ -260,7 +260,7 @@
   * Returns
       * Object path
 
-#### Properties ####
+#### Properties (None) ####
 
 ## Interface com.redhat.lvmdbus1.ThinPool ##
 
