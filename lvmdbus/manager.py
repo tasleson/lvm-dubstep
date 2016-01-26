@@ -121,7 +121,10 @@ class Manager(AutomatedProperties):
         #cfg.om.refresh_all()
 
         utils.log_debug('Manager.Refresh - entry')
-        rc = load(refresh=True, emit_signal=True)
+
+        # This is a diagnostic and should not be run in normal operation, so
+        # lets remove the log entries for refresh as it's implied.
+        rc = cfg.load(refresh=True, emit_signal=True, log=False)
 
         if rc != 0:
             utils.log_debug('Manager.Refresh - exit %d' % (rc),
