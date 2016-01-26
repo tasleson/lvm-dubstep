@@ -45,9 +45,18 @@ def process_request():
     while cfg.run.value != 0:
         try:
             req = cfg.worker_q.get(True, 5)
+
+            start = cfg.db.num_refreshes
+
             log_debug("Running method: %s with args %s" %
                       (str(req.method), str(req.arguments)))
             req.run_cmd()
+
+            end = cfg.db.num_refreshes
+
+            if end - start > 1:
+                log_debug("Inspect method %s for too many refreshes" %
+                          (str(req.method)))
             log_debug("Complete ")
         except queue.Empty:
             pass
