@@ -19,7 +19,7 @@ from .lv import load_lvs
 from . import cfg
 
 
-def load(refresh=False, emit_signal=False, cache_refresh=True, log=True):
+def load(refresh=True, emit_signal=True, cache_refresh=True, log=True):
 
     num_total_changes = 0
 

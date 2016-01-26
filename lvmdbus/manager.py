@@ -124,7 +124,7 @@ class Manager(AutomatedProperties):
 
         # This is a diagnostic and should not be run in normal operation, so
         # lets remove the log entries for refresh as it's implied.
-        rc = cfg.load(refresh=True, emit_signal=True, log=False)
+        rc = cfg.load(log=False)
 
         if rc != 0:
             utils.log_debug('Manager.Refresh - exit %d' % (rc),
@@ -182,7 +182,7 @@ class Manager(AutomatedProperties):
         if rc == 0:
             # This could potentially change the state quite a bit, so lets
             # update everything to be safe
-            cfg.load(refresh=True, emit_signal=True)
+            cfg.load()
             return '/'
         else:
             raise dbus.exceptions.DBusException(

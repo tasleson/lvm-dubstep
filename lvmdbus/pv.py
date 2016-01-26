@@ -210,7 +210,7 @@ class Pv(AutomatedProperties):
             rc, out, err = cmdhandler.pv_allocatable(pv_name, yes_no,
                                                      allocation_options)
             if rc == 0:
-                cfg.load(refresh=True, emit_signal=True)
+                cfg.load()
             else:
                 raise dbus.exceptions.DBusException(
                     PV_INTERFACE, 'Exit code %s, stderr = %s' % (str(rc), err))

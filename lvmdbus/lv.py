@@ -272,7 +272,7 @@ class LvCommon(AutomatedProperties):
 
     def signal_vg_pv_changes(self):
         # Signal property changes...
-        cfg.load(refresh=True, emit_signal=True)
+        cfg.load()
 
     def vg_name_lookup(self):
         return self.state.vg_name_lookup()
@@ -366,7 +366,7 @@ class Lv(LvCommon):
                 # Refresh the VG
                 vg_name = dbo.vg_name_lookup()
                 dbo.refresh("%s/%s" % (vg_name, new_name))
-                cfg.load(refresh=True, emit_signal=True, cache_refresh=False)
+                cfg.load(cache_refresh=False)
 
             else:
                 # Need to work on error handling, need consistent
@@ -422,11 +422,10 @@ class Lv(LvCommon):
                 full_name = "%s/%s" % (dbo.vg_name_lookup(), name)
                 lvs = load_lvs([full_name], emit_signal=True)[0]
                 for l in lvs:
-                    l.dbus_object_path()
                     return_path = l.dbus_object_path()
 
                 # Refresh self and all included PVs
-                cfg.load(refresh=True, emit_signal=True, cache_refresh=False)
+                cfg.load(cache_refresh=False)
                 return return_path
             else:
                 raise dbus.exceptions.DBusException(
@@ -700,7 +699,7 @@ class LvCachePool(Lv):
                 # re-created as their interfaces have changed!
                 cfg.om.remove_object(dbo, emit_signal=True)
                 cfg.om.remove_object(lv_to_cache, emit_signal=True)
-                cfg.load(refresh=True, emit_signal=True)
+                cfg.load()
 
                 lv_converted = \
                     cfg.om.get_by_lvm_id(full_cache_name).dbus_object_path()
@@ -764,7 +763,7 @@ class LvCacheLv(Lv):
                 # visible, so lets delete
                 cfg.om.remove_object(cache_pool, emit_signal=True)
                 cfg.om.remove_object(dbo, emit_signal=True)
-                cfg.load(refresh=True, emit_signal=True)
+                cfg.load()
                 cache_pool_path = \
                     cfg.om.get_by_lvm_id(cache_full_name).dbus_object_path()
 

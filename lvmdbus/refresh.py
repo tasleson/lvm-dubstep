@@ -28,7 +28,7 @@ _count = 0
 def handle_external_event(command):
     utils.log_debug("External event: '%s'" % command)
     event_complete()
-    cfg.load(refresh=True, emit_signal=True)
+    cfg.load()
 
 
 def event_add(params):

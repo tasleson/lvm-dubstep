@@ -126,7 +126,7 @@ def pv_move_reaper():
 
 
 def process_move_result(job_object, exit_code, error_msg):
-    cfg.load(refresh=True, emit_signal=True)
+    cfg.load()
     job_object.set_result(exit_code, error_msg)
     return None
 

@@ -151,7 +151,7 @@ class Vg(AutomatedProperties):
     def fetch_new_lv(vg_name, lv_name):
         full_name = "%s/%s" % (vg_name, lv_name)
 
-        cfg.load(refresh=True, emit_signal=True, cache_refresh=True)
+        cfg.load()
         l = cfg.om.get_by_lvm_id(full_name)
         created_lv = l.dbus_object_path()
 
@@ -171,7 +171,7 @@ class Vg(AutomatedProperties):
                 # however the LVs will still have the wrong lookup entries, so
                 # we need to update them too.
                 dbo.refresh(new_name)
-                cfg.load(refresh=True, emit_signal=True, cache_refresh=False)
+                cfg.load(cache_refresh=False)
             else:
                 # Need to work on error handling, need consistent
                 raise dbus.exceptions.DBusException(
@@ -209,7 +209,7 @@ class Vg(AutomatedProperties):
                 # If an LV has hidden LVs, things can get quite involved,
                 # especially if it's the last thin pool to get removed, so
                 # lets refresh all
-                cfg.load(refresh=True, emit_signal=True)
+                cfg.load()
 
             else:
                 # Need to work on error handling, need consistent
@@ -295,7 +295,7 @@ class Vg(AutomatedProperties):
             rc, out, err = cmdhandler.vg_reduce(vg_name, missing, pv_devices,
                                                 reduce_options)
             if rc == 0:
-                cfg.load(refresh=True, emit_signal=True)
+                cfg.load()
             else:
                 raise dbus.exceptions.DBusException(
                     VG_INTERFACE, 'Exit code %s, stderr = %s' % (str(rc), err))
@@ -335,7 +335,7 @@ class Vg(AutomatedProperties):
                 rc, out, err = cmdhandler.vg_extend(vg_name, extend_devices,
                                                     extend_options)
                 if rc == 0:
-                    cfg.load(refresh=True, emit_signal=True)
+                    cfg.load()
                 else:
                     raise dbus.exceptions.DBusException(
                         VG_INTERFACE,
@@ -653,8 +653,7 @@ class Vg(AutomatedProperties):
             rc, out, err = cmdhandler.pv_tag(pv_devices, tags_add, tags_del,
                                              tag_options)
             if rc == 0:
-                cfg.load(refresh=True, emit_signal=True)
-
+                cfg.load()
                 return '/'
             else:
                 raise dbus.exceptions.DBusException(
@@ -812,7 +811,7 @@ class Vg(AutomatedProperties):
             rc, out, err = cmdhandler.activate_deactivate(
                 'vgchange', vg_name, activate, control_flags, options)
             if rc == 0:
-                cfg.load(refresh=True, emit_signal=True)
+                cfg.load()
                 return '/'
             else:
                 raise dbus.exceptions.DBusException(
