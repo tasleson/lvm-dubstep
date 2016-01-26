@@ -19,13 +19,13 @@ from .lv import load_lvs
 from . import cfg
 
 
-def load(refresh=False, emit_signal=False, cache_refresh=True):
+def load(refresh=False, emit_signal=False, cache_refresh=True, log=True):
 
     num_total_changes = 0
 
     # Go through and load all the PVs, VGs and LVs
     if cache_refresh:
-        cfg.db.refresh()
+        cfg.db.refresh(log)
 
     num_total_changes += load_pvs(refresh=refresh, emit_signal=emit_signal,
                                   cache_refresh=False)[1]

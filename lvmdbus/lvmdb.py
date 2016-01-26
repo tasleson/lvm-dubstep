@@ -43,6 +43,7 @@ class DataStore(object):
         self.pvs_in_vgs = {}
 
         #self.refresh()
+        self.num_refreshes = 0
 
     @staticmethod
     def _insert_record(table, key, record, allowed_multiple):
@@ -267,13 +268,16 @@ class DataStore(object):
 
         return pv_device_lvs_result, lvs_device_pv_result
 
-    def refresh(self):
+    def refresh(self, log=True):
         """
         Go out and query lvm for the latest data in as few trips as possible
+        :param log  Add debug log entry/exit messages
         :return: None
         """
 
-        log_debug("lvmdb - refresh entry")
+        if log:
+            log_debug("lvmdb - refresh entry")
+            self.num_refreshes += 1
 
         # Grab everything first then parse it
         _raw_pvs = cmdhandler.pv_retrieve_with_segs()
@@ -298,7 +302,9 @@ class DataStore(object):
 
         # Create lookup table for which LV and segments are on each PV
         self.pv_lvs, self.lv_pvs = self._parse_pv_in_lvs()
-        log_debug("lvmdb - refresh exit")
+
+        if log:
+            log_debug("lvmdb - refresh exit")
 
     def fetch_pvs(self, pv_name):
         if not pv_name:
