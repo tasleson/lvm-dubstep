@@ -147,35 +147,6 @@ class Vg(AutomatedProperties):
         self._object_path = object_path
         self.state = object_state
 
-    def refresh_pvs(self, pv_list=None):
-        """
-        Refresh the state of the PVs for this vg given a PV object path
-        :param pv_list:  List of PVs to refresh (optional), do all when None
-        """
-        if not pv_list:
-            pv_list = self.state.Pvs
-
-        for p in pv_list:
-            pv = cfg.om.get_by_path(p)
-            pv.refresh()
-
-    def refresh_lvs(self, lv_list=None, vg_name=None):
-        """
-        Refresh the state of the PVs for this vg given a PV object path
-        :param lv_list: List of specific LVs to refresh
-        :param vg_name: VG the LV resides on
-        """
-        if not lv_list:
-            lv_list = self.state.Lvs
-
-        for i in lv_list:
-            obj = cfg.om.get_by_path(i)
-
-            if vg_name:
-                obj.refresh(search_key="%s/%s" % (vg_name, obj.name))
-            else:
-                obj.refresh()
-
     @staticmethod
     def fetch_new_lv(vg_name, lv_name):
         full_name = "%s/%s" % (vg_name, lv_name)
