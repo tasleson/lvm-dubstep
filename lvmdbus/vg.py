@@ -654,9 +654,21 @@ class Vg(AutomatedProperties):
                     'Exit code %s, stderr = %s' % (str(rc), err))
 
         else:
-            raise dbus.exceptions.DBusException(
-                VG_INTERFACE, 'VG with uuid %s and name %s not present!' %
-                (uuid, vg_name))
+            msg = ""
+
+            if not dbo:
+                msg += 'VG with uuid %s and name %s not present!' % \
+                    (uuid, vg_name)
+
+            if not md:
+                msg += 'Meta data LV with object path %s not present!' % \
+                       (meta_data_lv)
+
+            if not data_lv:
+                msg += 'Data LV with object path %s not present!' % \
+                       (meta_data_lv)
+
+            raise dbus.exceptions.DBusException(VG_INTERFACE, msg)
 
         return cache_pool_lv
 
