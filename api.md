@@ -1,116 +1,204 @@
 
+## Interface com.redhat.lvmdbus1.CachePool ##
+
+#### Methods ####
+* CacheLv
+  * Arguments
+      * lv_object (Object path)
+      * tmo (int32_t)
+      * cache_options (Dictionary:{String, Variant})
+  * Returns
+      * Structure (Object path, Object path)
+
+#### Properties ####
+
+## Interface com.redhat.lvmdbus1.CachedLv ##
+
+#### Methods ####
+* DetachCachePool
+  * Arguments
+      * tmo (int32_t)
+      * detach_options (Dictionary:{String, Variant})
+  * Returns
+      * Structure (Object path, Object path)
+
+#### Properties ####
+* CachePool (Object path)
+
 ## Interface com.redhat.lvmdbus1.Job ##
 
 #### Methods ####
-* Remove 
+* Remove
   * Arguments (None)
   * Returns
       * None
+* Wait
+  * Arguments
+      * timeout (int32_t)
+  * Returns
+      * Boolean (0 is false, 1 is true)
 
 #### Properties ####
 * Complete (Boolean (0 is false, 1 is true))
+* GetError (Structure (int32_t, String))
 * Percent (uint8_t)
-* Result (Oject path)
-* get_error (Structure (int32_t, String))
+* Result (Object path)
 
 ## Interface com.redhat.lvmdbus1.Lv ##
 
 #### Methods ####
-* Move 
+* Activate
   * Arguments
-      * pv_src_obj (Oject path)
+      * control_flags (uint64_t)
+      * tmo (int32_t)
+      * activate_options (Dictionary:{String, Variant})
+  * Returns
+      * Object path
+* Deactivate
+  * Arguments
+      * control_flags (uint64_t)
+      * tmo (int32_t)
+      * activate_options (Dictionary:{String, Variant})
+  * Returns
+      * Object path
+* Move
+  * Arguments
+      * pv_src_obj (Object path)
       * pv_source_range (Structure (uint64_t, uint64_t))
-      * pv_dest_obj (Oject path)
-      * pv_dest_range (Structure (uint64_t, uint64_t))
+      * pv_dests_and_ranges (Array of Structure (Object path, uint64_t, uint64_t))
+      * tmo (int32_t)
       * move_options (Dictionary:{String, Variant})
   * Returns
-      * Oject path
-* Remove 
+      * Object path
+* Remove
   * Arguments
       * tmo (int32_t)
       * remove_options (Dictionary:{String, Variant})
   * Returns
-      * Oject path
-* Rename 
+      * Object path
+* Rename
   * Arguments
       * name (String)
       * tmo (int32_t)
       * rename_options (Dictionary:{String, Variant})
   * Returns
-      * Oject path
-* Snapshot 
+      * Object path
+* Resize
+  * Arguments
+      * new_size_bytes (uint64_t)
+      * pv_dests_and_ranges (Array of Structure (Object path, uint64_t, uint64_t))
+      * tmo (int32_t)
+      * resize_options (Dictionary:{String, Variant})
+  * Returns
+      * Object path
+* Snapshot
   * Arguments
       * name (String)
       * optional_size (uint64_t)
       * tmo (int32_t)
       * snapshot_options (Dictionary:{String, Variant})
   * Returns
-      * Structure (Oject path, Oject path)
-* TagsAdd 
+      * Structure (Object path, Object path)
+* TagsAdd
   * Arguments
       * tags (Array of String )
       * tmo (int32_t)
       * tag_options (Dictionary:{String, Variant})
   * Returns
-      * Oject path
-* TagsDel 
+      * Object path
+* TagsDel
   * Arguments
       * tags (Array of String )
       * tmo (int32_t)
       * tag_options (Dictionary:{String, Variant})
   * Returns
-      * Oject path
+      * Object path
 
 #### Properties ####
+
+## Interface com.redhat.lvmdbus1.LvCommon ##
+
+#### Methods ####
+* _Future
+  * Arguments
+      * tmo (int32_t)
+      * open_options (Dictionary:{String, Variant})
+  * Returns
+      * Object path
+
+#### Properties ####
+* Active (Boolean (0 is false, 1 is true))
+* AllocationPolicy (Structure (String, String))
 * DataPercent (uint32_t)
-* Devices (Array of Structure (Oject path, Array of Structure (uint64_t, uint64_t, String)))
+* Devices (Array of Structure (Object path, Array of Structure (uint64_t, uint64_t, String)))
+* FixedMinor (Boolean (0 is false, 1 is true))
+* Health (Structure (String, String))
+* HiddenLvs (Array of Object path )
 * IsThinPool (Boolean (0 is false, 1 is true))
 * IsThinVolume (Boolean (0 is false, 1 is true))
 * Name (String)
-* OriginLv (Oject path)
+* OriginLv (Object path)
 * Path (String)
-* PoolLv (Oject path)
+* Permissions (Structure (String, String))
+* PoolLv (Object path)
 * SegType (Array of String )
 * SizeBytes (uint64_t)
+* SkipActivation (Boolean (0 is false, 1 is true))
+* State (Structure (String, String))
 * Tags (Array of String )
+* TargetType (Structure (String, String))
 * Uuid (String)
-* Vg (Oject path)
+* Vg (Object path)
+* VolumeType (Structure (String, String))
+* ZeroBlocks (Boolean (0 is false, 1 is true))
 
 ## Interface com.redhat.lvmdbus1.Manager ##
 
 #### Methods ####
-* ExternalEvent 
+* ExternalEvent
   * Arguments
-      * event (String)
-      * lvm_id (String)
-      * lvm_uuid (String)
-      * seqno (uint32_t)
+      * command (String)
   * Returns
       * int32_t
-* LookUpByLvmId 
+* LookUpByLvmId
   * Arguments
       * key (String)
   * Returns
-      * Oject path
-* PvCreate 
+      * Object path
+* PvCreate
   * Arguments
       * device (String)
       * tmo (int32_t)
       * create_options (Dictionary:{String, Variant})
   * Returns
-      * Structure (Oject path, Oject path)
-* Refresh 
+      * Structure (Object path, Object path)
+* PvScan
+  * Arguments
+      * activate (Boolean (0 is false, 1 is true))
+      * cache (Boolean (0 is false, 1 is true))
+      * device_paths (Array of String )
+      * major_minors (Array of Structure (int32_t, int32_t))
+      * tmo (int32_t)
+      * scan_options (Dictionary:{String, Variant})
+  * Returns
+      * Object path
+* Refresh
   * Arguments (None)
   * Returns
       * uint64_t
-* VgCreate 
+* UseLvmShell
+  * Arguments
+      * yes_no (Boolean (0 is false, 1 is true))
+  * Returns
+      * None
+* VgCreate
   * Arguments
       * name (String)
-      * pv_object_paths (Array of Oject path )
+      * pv_object_paths (Array of Object path )
       * tmo (int32_t)
       * create_options (Dictionary:{String, Variant})
   * Returns
-      * Structure (Oject path, Oject path)
+      * Structure (Object path, Object path)
 
 #### Properties ####
 * Version (uint64_t)
@@ -118,26 +206,26 @@
 ## Interface com.redhat.lvmdbus1.Pv ##
 
 #### Methods ####
-* AllocationEnabled 
+* AllocationEnabled
   * Arguments
       * yes (Boolean (0 is false, 1 is true))
       * tmo (int32_t)
       * allocation_options (Dictionary:{String, Variant})
   * Returns
-      * Oject path
-* ReSize 
+      * Object path
+* ReSize
   * Arguments
       * new_size_bytes (uint64_t)
       * tmo (int32_t)
       * resize_options (Dictionary:{String, Variant})
   * Returns
-      * Oject path
-* Remove 
+      * Object path
+* Remove
   * Arguments
       * tmo (int32_t)
       * remove_options (Dictionary:{String, Variant})
   * Returns
-      * Oject path
+      * Object path
 
 #### Properties ####
 * Allocatable (Boolean (0 is false, 1 is true))
@@ -147,7 +235,7 @@
 * Exportable (Boolean (0 is false, 1 is true))
 * Fmt (String)
 * FreeBytes (uint64_t)
-* Lv (Array of Structure (Oject path, Array of Structure (uint64_t, uint64_t)))
+* Lv (Array of Structure (Object path, Array of Structure (uint64_t, uint64_t, String)))
 * MdaFreeBytes (uint64_t)
 * MdaSizeBytes (uint64_t)
 * Missing (Boolean (0 is false, 1 is true))
@@ -160,82 +248,91 @@
 * Tags (Array of String )
 * UsedBytes (uint64_t)
 * Uuid (String)
-* Vg (Oject path)
+* Vg (Object path)
+
+## Interface com.redhat.lvmdbus1.Snapshot ##
+
+#### Methods ####
+* Merge
+  * Arguments
+      * tmo (int32_t)
+      * merge_options (Dictionary:{String, Variant})
+  * Returns
+      * Object path
+
+#### Properties ####
 
 ## Interface com.redhat.lvmdbus1.ThinPool ##
 
 #### Methods ####
-* LvCreate 
+* LvCreate
   * Arguments
       * name (String)
       * size_bytes (uint64_t)
       * tmo (int32_t)
       * create_options (Dictionary:{String, Variant})
   * Returns
-      * Structure (Oject path, Oject path)
-* Move 
-  * Arguments
-      * pv_src_obj (Oject path)
-      * pv_source_range (Structure (uint64_t, uint64_t))
-      * pv_dest_obj (Oject path)
-      * pv_dest_range (Structure (uint64_t, uint64_t))
-      * move_options (Dictionary:{String, Variant})
-  * Returns
-      * Oject path
-* Remove 
-  * Arguments
-      * tmo (int32_t)
-      * remove_options (Dictionary:{String, Variant})
-  * Returns
-      * Oject path
-* Rename 
-  * Arguments
-      * name (String)
-      * tmo (int32_t)
-      * rename_options (Dictionary:{String, Variant})
-  * Returns
-      * Oject path
-* Snapshot 
-  * Arguments
-      * name (String)
-      * tmo (int32_t)
-      * optional_size (uint64_t)
-      * snapshot_options (Dictionary:{String, Variant})
-  * Returns
-      * Structure (Oject path, Oject path)
+      * Structure (Object path, Object path)
 
 #### Properties ####
-* DataPercent (uint32_t)
-* Devices (Array of Structure (Oject path, Array of Structure (uint64_t, uint64_t, String)))
-* IsThinPool (Boolean (0 is false, 1 is true))
-* IsThinVolume (Boolean (0 is false, 1 is true))
-* Name (String)
-* OriginLv (Oject path)
-* Path (String)
-* PoolLv (Oject path)
-* SegType (Array of String )
-* SizeBytes (uint64_t)
-* Tags (Array of String )
-* Uuid (String)
-* Vg (Oject path)
+* DataLv (Object path)
+* MetaDataLv (Object path)
 
 ## Interface com.redhat.lvmdbus1.Vg ##
 
 #### Methods ####
-* Change 
+* Activate
+  * Arguments
+      * control_flags (uint64_t)
+      * tmo (int32_t)
+      * activate_options (Dictionary:{String, Variant})
+  * Returns
+      * Object path
+* AllocationPolicySet
+  * Arguments
+      * policy (String)
+      * tmo (int32_t)
+      * policy_options (Dictionary:{String, Variant})
+  * Returns
+      * Object path
+* Change
   * Arguments
       * tmo (int32_t)
       * change_options (Dictionary:{String, Variant})
   * Returns
-      * Oject path
-* Extend 
+      * Object path
+* CreateCachePool
   * Arguments
-      * pv_object_paths (Array of Oject path )
+      * meta_data_lv (Object path)
+      * data_lv (Object path)
+      * tmo (int32_t)
+      * create_options (Dictionary:{String, Variant})
+  * Returns
+      * Structure (Object path, Object path)
+* Deactivate
+  * Arguments
+      * control_flags (uint64_t)
+      * tmo (int32_t)
+      * activate_options (Dictionary:{String, Variant})
+  * Returns
+      * Object path
+* Extend
+  * Arguments
+      * pv_object_paths (Array of Object path )
       * tmo (int32_t)
       * extend_options (Dictionary:{String, Variant})
   * Returns
-      * Oject path
-* LvCreateLinear 
+      * Object path
+* LvCreate
+  * Arguments
+      * name (String)
+      * size_bytes (uint64_t)
+      * pv_dests_and_ranges (Array of Structure (Object path, uint64_t, uint64_t))
+      * tmo (int32_t)
+      * create_options (Dictionary:{String, Variant})
+  * Returns
+      * Structure (Object path, Object path)
+* LvCreateLinear
   * Arguments
       * name (String)
       * size_bytes (uint64_t)
@@ -243,8 +340,8 @@
       * tmo (int32_t)
       * create_options (Dictionary:{String, Variant})
   * Returns
-      * Structure (Oject path, Oject path)
-* LvCreateMirror 
+      * Structure (Object path, Object path)
+* LvCreateMirror
   * Arguments
       * name (String)
       * size_bytes (uint64_t)
@@ -252,20 +349,19 @@
       * tmo (int32_t)
       * create_options (Dictionary:{String, Variant})
   * Returns
-      * Structure (Oject path, Oject path)
-* LvCreateRaid 
+      * Structure (Object path, Object path)
+* LvCreateRaid
   * Arguments
       * name (String)
       * raid_type (String)
       * size_bytes (uint64_t)
       * num_stripes (uint32_t)
       * stripe_size_kb (uint32_t)
-      * thin_pool (Boolean (0 is false, 1 is true))
       * tmo (int32_t)
       * create_options (Dictionary:{String, Variant})
   * Returns
-      * Structure (Oject path, Oject path)
-* LvCreateStriped 
+      * Structure (Object path, Object path)
+* LvCreateStriped
   * Arguments
       * name (String)
       * size_bytes (uint64_t)
@@ -275,58 +371,87 @@
       * tmo (int32_t)
       * create_options (Dictionary:{String, Variant})
   * Returns
-      * Structure (Oject path, Oject path)
-* PvTagsAdd 
+      * Structure (Object path, Object path)
+* MaxLvSet
   * Arguments
-      * pvs (Array of Oject path )
+      * number (uint64_t)
+      * tmo (int32_t)
+      * max_options (Dictionary:{String, Variant})
+  * Returns
+      * Object path
+* MaxPvSet
+  * Arguments
+      * number (uint64_t)
+      * tmo (int32_t)
+      * max_options (Dictionary:{String, Variant})
+  * Returns
+      * Object path
+* Move
+  * Arguments
+      * pv_src_obj (Object path)
+      * pv_source_range (Structure (uint64_t, uint64_t))
+      * pv_dests_and_ranges (Array of Structure (Object path, uint64_t, uint64_t))
+      * tmo (int32_t)
+      * move_options (Dictionary:{String, Variant})
+  * Returns
+      * Object path
+* PvTagsAdd
+  * Arguments
+      * pvs (Array of Object path )
       * tags (Array of String )
       * tmo (int32_t)
       * tag_options (Dictionary:{String, Variant})
   * Returns
-      * Oject path
-* PvTagsDel 
+      * Object path
+* PvTagsDel
   * Arguments
-      * pvs (Array of Oject path )
+      * pvs (Array of Object path )
       * tags (Array of String )
       * tmo (int32_t)
       * tag_options (Dictionary:{String, Variant})
   * Returns
-      * Oject path
-* Reduce 
+      * Object path
+* Reduce
   * Arguments
       * missing (Boolean (0 is false, 1 is true))
-      * pv_object_paths (Array of Oject path )
+      * pv_object_paths (Array of Object path )
       * tmo (int32_t)
       * reduce_options (Dictionary:{String, Variant})
   * Returns
-      * Oject path
-* Remove 
+      * Object path
+* Remove
   * Arguments
       * tmo (int32_t)
       * remove_options (Dictionary:{String, Variant})
   * Returns
-      * Oject path
-* Rename 
+      * Object path
+* Rename
   * Arguments
       * name (String)
       * tmo (int32_t)
       * rename_options (Dictionary:{String, Variant})
   * Returns
-      * Oject path
-* TagsAdd 
+      * Object path
+* TagsAdd
   * Arguments
       * tags (Array of String )
       * tmo (int32_t)
       * tag_options (Dictionary:{String, Variant})
   * Returns
-      * Oject path
-* TagsDel 
+      * Object path
+* TagsDel
   * Arguments
       * tags (Array of String )
       * tmo (int32_t)
       * tag_options (Dictionary:{String, Variant})
   * Returns
-      * Oject path
+      * Object path
+* UuidGenerate
+  * Arguments
+      * tmo (int32_t)
+      * options (Dictionary:{String, Variant})
+  * Returns
+      * Object path
 
 #### Properties ####
 * AllocAnywhere (Boolean (0 is false, 1 is true))
@@ -341,7 +466,7 @@
 * FreeBytes (uint64_t)
 * FreeCount (uint64_t)
 * LvCount (uint64_t)
-* Lvs (Array of Oject path )
+* Lvs (Array of Object path )
 * MaxLv (uint64_t)
 * MaxPv (uint64_t)
 * MdaCount (uint64_t)
@@ -352,7 +477,7 @@
 * Partial (Boolean (0 is false, 1 is true))
 * Profile (String)
 * PvCount (uint64_t)
-* Pvs (Array of Oject path )
+* Pvs (Array of Object path )
 * Readable (Boolean (0 is false, 1 is true))
 * Seqno (uint64_t)
 * SizeBytes (uint64_t)
