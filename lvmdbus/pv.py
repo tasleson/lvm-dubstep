@@ -210,9 +210,7 @@ class Pv(AutomatedProperties):
             rc, out, err = cmdhandler.pv_allocatable(pv_name, yes_no,
                                                      allocation_options)
             if rc == 0:
-                dbo.refresh()
-                # Refresh VG as VG gets a metadata update too
-                cfg.om.get_by_path(dbo.Vg).refresh()
+                cfg.load(refresh=True, emit_signal=True)
             else:
                 raise dbus.exceptions.DBusException(
                     PV_INTERFACE, 'Exit code %s, stderr = %s' % (str(rc), err))
