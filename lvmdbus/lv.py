@@ -712,9 +712,16 @@ class LvCachePool(Lv):
                     LV_INTERFACE,
                     'Exit code %s, stderr = %s' % (str(rc), err))
         else:
-            raise dbus.exceptions.DBusException(
-                LV_INTERFACE, 'LV with uuid %s and name %s not present!' %
-                (lv_uuid, lv_name))
+            msg = ""
+            if not dbo:
+                dbo += 'CachePool LV with uuid %s and name %s not present!' % \
+                    (lv_uuid, lv_name)
+
+            if not lv_to_cache:
+                dbo += 'LV to cache with object path %s not present!' % \
+                       (lv_object_path)
+
+            raise dbus.exceptions.DBusException(LV_INTERFACE, msg)
         return lv_converted
 
     @dbus.service.method(dbus_interface=CACHE_POOL_INTERFACE,
