@@ -741,7 +741,7 @@ class LvCacheLv(Lv):
         return self.state.PoolLv
 
     @staticmethod
-    def _detach_lv(lv_uuid, lv_name, detach_options):
+    def _detach_lv(lv_uuid, lv_name, detach_options, destroy_cache):
         # Make sure we have a dbus object representing cache pool
         dbo = cfg.om.get_by_uuid_lvm_id(lv_uuid, lv_name)
 
@@ -749,19 +749,18 @@ class LvCacheLv(Lv):
 
             # Get current cache name
             cache_pool = cfg.om.get_by_path(dbo.CachePool)
-            cache_full_name = "%s/%s" % \
-                (cache_pool.vg_name_lookup(), cache_pool.Name[1:-1])
 
             rc, out, err = cmdhandler.lv_detach_cache(
-                dbo.lv_full_name(), detach_options)
+                dbo.lv_full_name(), detach_options, destroy_cache)
             if rc == 0:
                 # The cache pool gets removed as hidden and put back to
                 # visible, so lets delete
                 cfg.om.remove_object(cache_pool, emit_signal=True)
                 cfg.om.remove_object(dbo, emit_signal=True)
                 cfg.load()
-                cache_pool_path = \
-                    cfg.om.get_by_lvm_id(cache_full_name).dbus_object_path()
+
+                uncached_lv_path = \
+                    cfg.om.get_by_lvm_id(lv_name).dbus_object_path()
 
             else:
                 raise dbus.exceptions.DBusException(
@@ -771,15 +770,16 @@ class LvCacheLv(Lv):
             raise dbus.exceptions.DBusException(
                 LV_INTERFACE, 'LV with uuid %s and name %s not present!' %
                 (lv_uuid, lv_name))
-        return cache_pool_path
+        return uncached_lv_path
 
     @dbus.service.method(dbus_interface=LV_CACHED,
-                         in_signature='ia{sv}',
+                         in_signature='bia{sv}',
                          out_signature='(oo)',
                          async_callbacks=('cb', 'cbe'))
-    def DetachCachePool(self, tmo, detach_options, cb, cbe):
+    def DetachCachePool(self, destroy_cache, tmo, detach_options, cb, cbe):
         r = RequestEntry(tmo, LvCacheLv._detach_lv,
-                         (self.Uuid, self.lvm_id, detach_options), cb, cbe)
+                         (self.Uuid, self.lvm_id, detach_options,
+                          destroy_cache), cb, cbe)
         cfg.worker_q.put(r)
 
 

@@ -982,19 +982,24 @@ class TestDbusService(unittest.TestCase):
                         cache_pool.object_path)
 
     def test_cache_lv_create(self):
-        vg, cache_pool = self._create_cache_pool()
 
-        lv_to_cache = self._create_lv(size=(1024 * 1024 * 1024), vg=vg)
+        for destroy_cache in [True, False]:
+            vg, cache_pool = self._create_cache_pool()
 
-        c_lv_path = cache_pool.CachePool.CacheLv(
-            lv_to_cache.object_path, -1, {})[0]
+            lv_to_cache = self._create_lv(size=(1024 * 1024 * 1024), vg=vg)
 
-        cached_lv = ClientProxy(self.bus, c_lv_path)
+            c_lv_path = cache_pool.CachePool.CacheLv(
+                lv_to_cache.object_path, -1, {})[0]
 
-        cache_pool_path = cached_lv.CachedLv.DetachCachePool(-1, {})[0]
+            cached_lv = ClientProxy(self.bus, c_lv_path)
 
-        self.assertTrue('/com/redhat/lvmdbus1/CachePool' in
-                        cache_pool_path)
+            uncached_lv_path = \
+                cached_lv.CachedLv.DetachCachePool(destroy_cache, -1, {})[0]
+
+            self.assertTrue('/com/redhat/lvmdbus1/Lv' in
+                            uncached_lv_path)
+
+            vg.Remove(-1, {})
 
 if __name__ == '__main__':
     # Test forking & exec new each time
