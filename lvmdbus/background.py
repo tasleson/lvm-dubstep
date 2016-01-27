@@ -41,10 +41,43 @@ def pv_move_lv_cmd(move_options, lv_full_name,
     return cmd
 
 
-def _create_move_dbus_job(job_state):
+def lv_merge_cmd(merge_options, lv_full_name):
+    cmd = ['lvconvert', '--merge', '-i', '1']
+    cmd.extend(options_to_cli_args(merge_options))
+    cmd.append(lv_full_name)
+    return cmd
+
+
+def _create_background_dbus_job(job_state):
     job_obj = Job(None, job_state)
     cfg.om.register_object(job_obj)
     return job_obj.dbus_object_path()
+
+
+def _move_merge(interface_name, cmd, time_out, skip_first_line=False):
+    # Create job object to be used while running the command
+    rc = '/'
+    job_state = JobState(None)
+    add(cmd, job_state, skip_first_line)
+
+    if time_out == -1:
+        # Waiting forever
+        done = job_state.Wait(time_out)
+        if not done:
+            ec, err_msg = job_state.GetError
+            raise dbus.exceptions.DBusException(
+                interface_name,
+                'Exit code %s, stderr = %s' % (str(ec), err_msg))
+    elif time_out == 0:
+        # Immediately create and return a job
+        rc = _create_background_dbus_job(job_state)
+    else:
+        # Willing to wait for a bit
+        done = job_state.Wait(time_out)
+        if not done:
+            rc = _create_background_dbus_job(job_state)
+
+    return rc
 
 
 def move(interface_name, lv_name, pv_src_obj, pv_source_range,
@@ -60,7 +93,6 @@ def move(interface_name, lv_name, pv_src_obj, pv_source_range,
     :param time_out:
     :return: Object path to job object
     """
-    rc = '/'
     pv_dests = []
     pv_src = cfg.om.get_by_path(pv_src_obj)
     if pv_src:
@@ -85,34 +117,25 @@ def move(interface_name, lv_name, pv_src_obj, pv_source_range,
                                 pv_source_range,
                                 pv_dests)
 
-        # Create job object to be used while running the command
-        job_state = JobState(None)
-        add(cmd, job_state)
-
-        if time_out == -1:
-            # Waiting forever
-            done = job_state.Wait(time_out)
-            if not done:
-                ec, err_msg = job_state.GetError
-                raise dbus.exceptions.DBusException(
-                    interface_name,
-                    'Exit code %s, stderr = %s' % (str(ec), err_msg))
-        elif time_out == 0:
-            # Immediately create and return a job
-            rc = _create_move_dbus_job(job_state)
-        else:
-            # Willing to wait for a bit
-            done = job_state.Wait(time_out)
-            if not done:
-                rc = _create_move_dbus_job(job_state)
-
-        return rc
+        return _move_merge(interface_name, cmd, time_out)
     else:
         raise dbus.exceptions.DBusException(
             interface_name, 'pv_src_obj (%s) not found' % pv_src_obj)
 
 
-def pv_move_reaper():
+def merge(interface_name, lv_uuid, lv_name, merge_options, time_out):
+    # Make sure we have a dbus object representing it
+    dbo = cfg.om.get_by_uuid_lvm_id(lv_uuid, lv_name)
+    if dbo:
+        cmd = lv_merge_cmd(merge_options, dbo.lvm_id)
+        return _move_merge(interface_name, cmd, time_out, True)
+    else:
+        raise dbus.exceptions.DBusException(
+            interface_name, 'LV with uuid %s and name %s not present!' %
+            (lv_uuid, lv_name))
+
+
+def background_reaper():
     while cfg.run.value != 0:
         with _rlock:
             num_threads = len(_thread_list) - 1
@@ -125,7 +148,7 @@ def pv_move_reaper():
         time.sleep(3)
 
 
-def process_move_result(job_object, exit_code, error_msg):
+def process_background_result(job_object, exit_code, error_msg):
     cfg.load()
     job_object.set_result(exit_code, error_msg)
     return None
@@ -136,14 +159,19 @@ def empty_cb(disregard):
     pass
 
 
-def move_execute(command, move_job):
+def background_execute(command, background_job, skip_first_line=False):
     process = subprocess.Popen(command, stdout=subprocess.PIPE,
                                stderr=subprocess.PIPE, close_fds=True)
     lines_iterator = iter(process.stdout.readline, b"")
     for line in lines_iterator:
+        # Merge ouputs a line before updates, move does not
+        if skip_first_line:
+            skip_first_line = False
+            continue
+
         if len(line) > 10:
             (device, ignore, percentage) = line.decode("utf-8").split(':')
-            move_job.Percent = round(float(percentage.strip()[:-1]), 1)
+            background_job.Percent = round(float(percentage.strip()[:-1]), 1)
 
     out = process.communicate()
 
@@ -151,20 +179,20 @@ def move_execute(command, move_job):
     #      (process.returncode, out[0], out[1])
 
     if process.returncode == 0:
-        move_job.Percent = 100
+        background_job.Percent = 100
 
     # Queue up the result so that it gets executed in same thread as others.
-    r = RequestEntry(-1, process_move_result,
-                     (move_job, process.returncode, out[1]),
+    r = RequestEntry(-1, process_background_result,
+                     (background_job, process.returncode, out[1]),
                      empty_cb, empty_cb, False)
     cfg.worker_q.put(r)
 
 
-def add(command, reporting_job):
+def add(command, reporting_job, skip_first_line=False):
     # Create the thread, get it running and then add it to the list
-    t = threading.Thread(target=move_execute,
-                            name="thread: " + ' '.join(command),
-                            args=(command, reporting_job))
+    t = threading.Thread(target=background_execute,
+                         name="thread: " + ' '.join(command),
+                         args=(command, reporting_job, skip_first_line))
     t.start()
 
     with _rlock:

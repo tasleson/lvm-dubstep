@@ -27,7 +27,7 @@ from . import lvmdb
 from gi.repository import GObject
 from .fetch import load
 from .manager import Manager
-from .background import pv_move_reaper
+from .background import background_reaper
 import traceback
 import queue
 import sys
@@ -108,7 +108,7 @@ def main():
 
     # Start up thread to monitor pv moves
     thread_list.append(
-        threading.Thread(target=pv_move_reaper, name="pv_move_reaper"))
+        threading.Thread(target=background_reaper, name="pv_move_reaper"))
 
     # Using a thread to process requests.
     thread_list.append(threading.Thread(target=process_request))
