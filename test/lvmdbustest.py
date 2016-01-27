@@ -917,12 +917,29 @@ class TestDbusService(unittest.TestCase):
 
         self.assertEqual(self._refresh(), 0)
 
+    @staticmethod
+    def _write_some_data(device_path, size):
+        blocks = int(size / 512)
+        block = bytearray(512)
+        for i in range(0, 512):
+            block[i] = i % 255
+
+        with open(device_path, mode='wb') as lv:
+            for i in range(0, blocks):
+                lv.write(block)
+
     def test_snapshot_merge(self):
         # Create a non-thin LV and merge it
-        lv_p = self._create_lv()
+        ss_size = 1024 * 1024 * 512
+
+        lv_p = self._create_lv(size=1024 * 1024 * 1024)
         ss_name = lv_p.LvCommon.Name + '_snap'
-        snapshot_path = lv_p.Lv.Snapshot(ss_name, 1024 * 1024 * 4, -1, {})[0]
+        snapshot_path = lv_p.Lv.Snapshot(ss_name, ss_size, -1, {})[0]
         ss = ClientProxy(self.bus, snapshot_path)
+
+        # Write some data to snapshot so merge takes some time
+        TestDbusService._write_some_data(ss.LvCommon.Path, ss_size / 2)
+
         job_path = ss.Snapshot.Merge(0, {})
 
         self.assertTrue(job_path != '/')
