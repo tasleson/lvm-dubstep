@@ -373,10 +373,10 @@ def lv_cache_lv(cache_pool_full_name, lv_full_name, cache_options):
 def lv_detach_cache(lv_full_name, detach_options, destroy_cache):
     cmd = ['lvconvert']
     if destroy_cache:
-        # Currently fairly dangerous
-        # see: https://bugzilla.redhat.com/show_bug.cgi?id=1248972
         option = '--uncache'
     else:
+        # Currently fairly dangerous
+        # see: https://bugzilla.redhat.com/show_bug.cgi?id=1248972
         option = '--splitcache'
     cmd.extend(options_to_cli_args(detach_options))
     cmd.extend([option, lv_full_name])
