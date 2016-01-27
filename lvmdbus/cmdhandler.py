@@ -377,13 +377,6 @@ def lv_detach_cache(lv_full_name, detach_options):
     return call(cmd)
 
 
-def lv_merge(lv_full_name, merge_options):
-    cmd = ['lvconvert', '--merge']
-    cmd.extend(options_to_cli_args(merge_options))
-    cmd.append(lv_full_name)
-    return call(cmd)
-
-
 def pv_retrieve_with_segs(device=None):
     d = []
 
