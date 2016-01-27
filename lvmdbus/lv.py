@@ -790,35 +790,9 @@ class LvSnapShot(Lv):
         super(LvSnapShot, self).__init__(object_path, object_state)
         self.set_interface(SNAPSHOT_INTERFACE)
 
-    @staticmethod
-    def _lv_merge(lv_uuid, lv_name, merge_options):
-        # Make sure we have a dbus object representing it
-        dbo = cfg.om.get_by_uuid_lvm_id(lv_uuid, lv_name)
-
-        if dbo:
-            rc, out, err = cmdhandler.lv_merge(dbo.lvm_id, merge_options)
-            if rc == 0:
-
-                # Refresh the VG and the PVs and delete the LV that was just
-                # merged
-                cfg.om.remove_object(dbo, True)
-                cfg.load()
-                return "/"
-            else:
-                raise dbus.exceptions.DBusException(
-                    LV_INTERFACE,
-                    'Exit code %s, stderr = %s' % (str(rc), err))
-        else:
-            raise dbus.exceptions.DBusException(
-                LV_INTERFACE, 'LV with uuid %s and name %s not present!' %
-                (lv_uuid, lv_name))
-
     @dbus.service.method(dbus_interface=SNAPSHOT_INTERFACE,
                          in_signature='ia{sv}',
-                         out_signature='o',
-                         async_callbacks=('cb', 'cbe'))
-    def Merge(self, tmo, merge_options, cb, cbe):
-        r = RequestEntry(tmo, LvSnapShot._lv_merge,
-                         (self.Uuid, self.lvm_id, merge_options), cb, cbe,
-                         return_tuple=False)
-        cfg.worker_q.put(r)
+                         out_signature='o')
+    def Merge(self, tmo, merge_options):
+        return background.merge(SNAPSHOT_INTERFACE, self.Uuid, self.lvm_id,
+                                merge_options, tmo)
