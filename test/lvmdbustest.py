@@ -402,7 +402,7 @@ class TestDbusService(unittest.TestCase):
         vg = self._vg_create().Vg
         self._test_lv_create(vg.LvCreate,
                              (rs(8, '_lv'), 1024 * 1024 * 4,
-                              dbus.Array([], '(oii)'), -1, {}),
+                              dbus.Array([], '(ott)'), -1, {}),
                              vg)
 
     def test_lv_create_linear(self):
@@ -456,6 +456,9 @@ class TestDbusService(unittest.TestCase):
         return self._test_lv_create(
             vg.LvCreateLinear,
             (rs(8, '_lv'), size, thinpool, -1, {}), vg)
+
+    def test_lv_create_rounding(self):
+        self._create_lv(size=1024 * 1024 * 2 + 13)
 
     def test_lv_create_thin_pool(self):
         self._create_lv(True)
@@ -548,8 +551,24 @@ class TestDbusService(unittest.TestCase):
 
         return rc
 
+    def test_lv_create_pv_specific(self):
+        vg = self._vg_create().Vg
+
+        pv = vg.Pvs
+
+        self._test_lv_create(vg.LvCreate,
+                             (rs(8, '_lv'), 1024 * 1024 * 4,
+                              dbus.Array([[pv[0], 0, 100]], '(ott)'), -1, {}),
+                             vg)
+
     def test_lv_resize(self):
-        lv = self._create_lv()
+
+        pv_paths = []
+        for pp in self.objs[PV_INT]:
+            pv_paths.append(pp.object_path)
+
+        vg = self._vg_create(pv_paths).Vg
+        lv = self._create_lv(vg=vg)
 
         for size in [lv.LvCommon.SizeBytes + 4194304,
                      lv.LvCommon.SizeBytes - 4194304,
@@ -557,8 +576,18 @@ class TestDbusService(unittest.TestCase):
                      lv.LvCommon.SizeBytes - 2048,
                      lv.LvCommon.SizeBytes]:
 
+            pv_in_use = [i[0] for i in lv.LvCommon.Devices]
+            # Select a PV in the VG that isn't in use
+            pv_empty = [p for p in vg.Pvs if p not in pv_in_use]
+
             prev = lv.LvCommon.SizeBytes
-            rc = lv.Lv.Resize(size, dbus.Array([], '(oii)'), -1, {})
+
+            if len(pv_empty):
+                rc = lv.Lv.Resize(size,
+                                  dbus.Array([[pv_empty[0], 0, 100]], '(oii)'),
+                                  -1, {})
+            else:
+                rc = lv.Lv.Resize(size, dbus.Array([], '(oii)'), -1, {})
 
             self.assertEqual(rc, '/')
             self.assertEqual(self._refresh(), 0)
@@ -711,7 +740,6 @@ class TestDbusService(unittest.TestCase):
 
     def test_pv_tags(self):
         pvs = []
-        t = ['hello', 'world']
 
         pv_paths = []
         for pp in self.objs[PV_INT]:
@@ -723,17 +751,18 @@ class TestDbusService(unittest.TestCase):
         for p in vg.Pvs:
             pvs.append(ClientProxy(self.bus, p).Pv)
 
-        rc = vg.PvTagsAdd(vg.Pvs, ['hello', 'world'], -1, {})
-        self.assertTrue(rc == '/')
+        for tags_value in [['hello'], ['foo', 'bar']]:
+            rc = vg.PvTagsAdd(vg.Pvs, tags_value, -1, {})
+            self.assertTrue(rc == '/')
 
-        for p in pvs:
-            p.update()
-            self.assertTrue(t == p.Tags)
+            for p in pvs:
+                p.update()
+                self.assertTrue(sorted(tags_value) == p.Tags)
 
-        vg.PvTagsDel(vg.Pvs, t, -1, {})
-        for p in pvs:
-            p.update()
-            self.assertTrue([] == p.Tags)
+            vg.PvTagsDel(vg.Pvs, tags_value, -1, {})
+            for p in pvs:
+                p.update()
+                self.assertTrue([] == p.Tags)
 
     def test_vg_tags(self):
         vg = self._vg_create().Vg
@@ -1000,6 +1029,13 @@ class TestDbusService(unittest.TestCase):
                             uncached_lv_path)
 
             vg.Remove(-1, {})
+
+    def test_vg_change(self):
+        vg_proxy = self._vg_create()
+        result = vg_proxy.Vg.Change(-1, {'-a': 'ay'})
+        self.assertTrue(result == '/')
+        result = vg_proxy.Vg.Change(-1, {'-a': 'n'})
+        self.assertTrue(result == '/')
 
 if __name__ == '__main__':
     # Test forking & exec new each time
