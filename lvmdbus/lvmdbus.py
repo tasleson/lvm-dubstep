@@ -122,7 +122,8 @@ def main():
 
     end = time.time()
     log_debug('Service ready! total time= %.2f, lvm time= %.2f count= %d' %
-              (end - start, cmdhandler.total_time, cmdhandler.total_count))
+              (end - start, cmdhandler.total_time, cmdhandler.total_count),
+              'bg_black', 'fg_light_green')
 
     # Add udev watching
     if args.use_udev:
