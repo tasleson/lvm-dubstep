@@ -240,7 +240,7 @@ def parse_tags(tags):
     if len(tags):
         if ',' in tags:
             return tags.split(',')
-        return [tags]
+        return sorted([tags])
     return dbus.Array([], signature='s')
 
 
