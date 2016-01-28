@@ -53,8 +53,6 @@ def rtype(dbus_type):
 def n(v):
     if not v:
         return 0
-    if v.endswith('B'):
-        return int(v[:-1])
     return int(float(v))
 
 
@@ -62,8 +60,6 @@ def n(v):
 def n32(v):
     if not v:
         return 0
-    if v.endswith('B'):
-        return int(v[:-1])
     return int(float(v))
 
 
