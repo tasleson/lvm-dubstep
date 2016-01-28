@@ -14,7 +14,6 @@
 # Copyright 2014-2015, Tony Asleson <tasleson@redhat.com>
 
 import xml.etree.ElementTree as Et
-import hashlib
 import sys
 import inspect
 import ctypes
@@ -31,21 +30,6 @@ except SystemError:
 
 
 STDOUT_TTY = os.isatty(sys.stdout.fileno())
-
-
-def md5(t):
-    # noinspection PyUnresolvedReferences
-    h = hashlib.md5()
-    h.update(t)
-    return h.hexdigest()
-
-
-def is_numeric(s):
-    try:
-        int(s)
-        return True
-    except ValueError:
-        return False
 
 
 def rtype(dbus_type):
