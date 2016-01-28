@@ -18,7 +18,7 @@ import threading
 import traceback
 import dbus
 from . import cfg
-from .utils import log_debug, log_error
+from .utils import log_debug
 from .automatedproperties import AutomatedProperties
 
 
@@ -185,19 +185,6 @@ class ObjectManager(AutomatedProperties):
                 return self.get_by_path(self._id_to_object_path[lvm_id])
             return None
 
-    def query_objects_by_lvm_id(self, lvm_id):
-        rc = []
-        with self.rlock:
-            for k, object_path in self._id_to_object_path.items():
-                if str(lvm_id) in str(k):
-                    o = self.get_by_path(object_path)
-                    if o:
-                        rc.append(o)
-                    else:
-                        log_error("DEBUG: No object for %s" % (k))
-                        traceback.print_stack()
-        return rc
-
     def get_object_path_by_lvm_id(self, uuid, lvm_id, path_create=None,
                                   gen_new=True):
         """
@@ -230,15 +217,6 @@ class ObjectManager(AutomatedProperties):
             #       (uuid, lvm_id, str(path_create), str(gen_new), path))
 
             return path
-
-    def refresh_all(self):
-        with self.rlock:
-            for k, v in list(self._objects.items()):
-                try:
-                    v[0].refresh()
-                except Exception:
-                    log_debug('Object path= ', k)
-                    traceback.print_exc(file=sys.stdout)
 
 
 class ObjectManagerLock(object):
