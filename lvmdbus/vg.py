@@ -132,6 +132,7 @@ class Vg(AutomatedProperties):
     _Lvs_meta = ("ao", VG_INTERFACE)
     _Writeable_meta = ("b", VG_INTERFACE)
     _Readable_meta = ("b", VG_INTERFACE)
+    _Resizeable_meta = ("b", VG_INTERFACE)
     _Exportable_meta = ('b', VG_INTERFACE)
     _Partial_meta = ('b', VG_INTERFACE)
     _AllocContiguous_meta = ('b', VG_INTERFACE)
