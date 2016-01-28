@@ -279,15 +279,11 @@ def handler(signum, frame):
         cfg.loop.quit()
 
 
-def pv_obj_path_generate(object_path=None):
-    if object_path:
-        return object_path
+def pv_obj_path_generate():
     return cfg.PV_OBJ_PATH + "/%d" % next(cfg.pv_id)
 
 
-def vg_obj_path_generate(object_path=None):
-    if object_path:
-        return object_path
+def vg_obj_path_generate():
     return cfg.VG_OBJ_PATH + "/%d" % next(cfg.vg_id)
 
 
@@ -305,33 +301,23 @@ def lv_object_path_method(name, meta):
 # Note: None of the individual LV path generate functions should be called
 # directly, they should only be dispatched through lv_object_path_method
 
-def _lv_obj_path_generate(object_path=None):
-    if object_path:
-        return object_path
+def _lv_obj_path_generate():
     return cfg.LV_OBJ_PATH + "/%d" % next(cfg.lv_id)
 
 
-def _thin_pool_obj_path_generate(object_path=None):
-    if object_path:
-        return object_path
+def _thin_pool_obj_path_generate():
     return cfg.THIN_POOL_PATH + "/%d" % next(cfg.thin_id)
 
 
-def _cache_pool_obj_path_generate(object_path=None):
-    if object_path:
-        return object_path
+def _cache_pool_obj_path_generate():
     return cfg.CACHE_POOL_PATH + "/%d" % next(cfg.cache_pool_id)
 
 
-def _hidden_lv_obj_path_generate(object_path=None):
-    if object_path:
-        return object_path
+def _hidden_lv_obj_path_generate():
     return cfg.HIDDEN_LV_PATH + "/%d" % next(cfg.hidden_lv)
 
 
-def job_obj_path_generate(object_path=None):
-    if object_path:
-        return object_path
+def job_obj_path_generate():
     return cfg.JOB_OBJ_PATH + "/%d" % next(cfg.job_id)
 
 
