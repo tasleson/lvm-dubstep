@@ -90,7 +90,7 @@ class VgState(State):
                  ExtentCount, FreeCount, Profile, MaxLv, MaxPv, PvCount,
                  LvCount, SnapCount, Seqno, MdaCount, MdaFree,
                  MdaSizeBytes, MdaUsedCount, attr, tags):
-        utils.init_class_from_arguments(self, None)
+        utils.init_class_from_arguments(self)
         self.Pvs = self._pv_paths_build()
         self.Lvs = self._lv_paths_build()
 

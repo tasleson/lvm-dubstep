@@ -84,14 +84,10 @@ def n32(v):
 
 
 # noinspection PyProtectedMember
-def init_class_from_arguments(obj_instance, prefix='_'):
+def init_class_from_arguments(obj_instance):
     for k, v in list(sys._getframe(1).f_locals.items()):
         if k != 'self':
-
-            if prefix:
-                nt = '_' + k
-            else:
-                nt = k
+            nt = k
 
             # If the current attribute has a value, but the incoming does
             # not, don't overwrite it.  Otherwise the default values on the

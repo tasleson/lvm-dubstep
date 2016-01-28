@@ -98,7 +98,7 @@ class LvState(State):
                      vg_name, vg_uuid, pool_lv_uuid, PoolLv,
                      origin_uuid, OriginLv, DataPercent, Attr, Tags, active,
                      data_lv, metadata_lv, segtypes, role, layout):
-        utils.init_class_from_arguments(self, None)
+        utils.init_class_from_arguments(self)
 
         # The segtypes is possibly an array with potentially dupes or a single
         # value

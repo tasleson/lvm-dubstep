@@ -82,7 +82,7 @@ class PvState(State):
                  MdaSizeBytes, MdaFreeBytes, BaStart, BaSizeBytes,
                  PeStart, PeCount, PeAllocCount, attr, Tags, vg_name,
                  vg_uuid):
-        utils.init_class_from_arguments(self, None)
+        utils.init_class_from_arguments(self)
         self.pe_segments = cfg.db.pv_pe_segments(Uuid)
 
         self.lv = self._lv_object_list(vg_name)
