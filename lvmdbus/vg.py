@@ -246,10 +246,8 @@ class Vg(AutomatedProperties):
             if rc == 0:
                 dbo.refresh()
 
-                if 'activate' in change_options:
-                    for lv in dbo.lvs:
-                        lv_obj = cfg.om.get_by_path(lv)
-                        lv_obj.refresh()
+                if (('activate' in change_options) or ('-a' in change_options)):
+                    cfg.load()
             else:
                 raise dbus.exceptions.DBusException(
                     VG_INTERFACE,
