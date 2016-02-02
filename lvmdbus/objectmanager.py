@@ -204,14 +204,19 @@ class ObjectManager(AutomatedProperties):
             path = None
 
             if lvm_id in self._id_to_object_path:
-                path = self._id_to_object_path[lvm_id]
+                return self._id_to_object_path[lvm_id]
+            if "/" in lvm_id:
+                vg, lv = lvm_id.split("/", 1)
+                int_lvm_id = vg + "/" + ("[%s]" % lv)
+                if int_lvm_id in self._id_to_object_path:
+                    return self._id_to_object_path[int_lvm_id]
+
+            if uuid and uuid in self._id_to_object_path:
+                path = self._id_to_object_path[uuid]
             else:
-                if uuid and uuid in self._id_to_object_path:
-                    path = self._id_to_object_path[uuid]
-                else:
-                    if gen_new:
-                        path = path_create()
-                        self._lookup_add(None, path, lvm_id, uuid)
+                if gen_new:
+                    path = path_create()
+                    self._lookup_add(None, path, lvm_id, uuid)
 
             # pprint('get_object_path_by_lvm_id(%s, %s, %s, %s: return %s' %
             #       (uuid, lvm_id, str(path_create), str(gen_new), path))
