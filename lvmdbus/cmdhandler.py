@@ -379,6 +379,8 @@ def lv_detach_cache(lv_full_name, detach_options, destroy_cache):
         # see: https://bugzilla.redhat.com/show_bug.cgi?id=1248972
         option = '--splitcache'
     cmd.extend(options_to_cli_args(detach_options))
+    # needed to prevent interactive questions
+    cmd.extend(["--yes", "--force"])
     cmd.extend([option, lv_full_name])
     return call(cmd)
 
