@@ -13,4 +13,4 @@ import sys
 import lvmdbus
 
 if __name__ == '__main__':
-    sys.exit(lvmdbus.main())
+	sys.exit(lvmdbus.main())

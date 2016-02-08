@@ -14,18 +14,17 @@ from . import cfg
 
 
 def load(refresh=True, emit_signal=True, cache_refresh=True, log=True):
+	num_total_changes = 0
 
-    num_total_changes = 0
+	# Go through and load all the PVs, VGs and LVs
+	if cache_refresh:
+		cfg.db.refresh(log)
 
-    # Go through and load all the PVs, VGs and LVs
-    if cache_refresh:
-        cfg.db.refresh(log)
+	num_total_changes += load_pvs(refresh=refresh, emit_signal=emit_signal,
+									cache_refresh=False)[1]
+	num_total_changes += load_vgs(refresh=refresh, emit_signal=emit_signal,
+									cache_refresh=False)[1]
+	num_total_changes += load_lvs(refresh=refresh, emit_signal=emit_signal,
+									cache_refresh=False)[1]
 
-    num_total_changes += load_pvs(refresh=refresh, emit_signal=emit_signal,
-                                  cache_refresh=False)[1]
-    num_total_changes += load_vgs(refresh=refresh, emit_signal=emit_signal,
-                                  cache_refresh=False)[1]
-    num_total_changes += load_lvs(refresh=refresh, emit_signal=emit_signal,
-                                  cache_refresh=False)[1]
-
-    return num_total_changes
+	return num_total_changes

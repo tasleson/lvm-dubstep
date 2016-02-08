@@ -38,7 +38,6 @@ worker_q = queue.Queue()
 # Main event loop
 loop = None
 
-
 BASE_INTERFACE = 'com.redhat.lvmdbus1'
 PV_INTERFACE = BASE_INTERFACE + '.Pv'
 VG_INTERFACE = BASE_INTERFACE + '.Vg'
@@ -51,7 +50,6 @@ SNAPSHOT_INTERFACE = BASE_INTERFACE + '.Snapshot'
 MANAGER_INTERFACE = BASE_INTERFACE + '.Manager'
 JOB_INTERFACE = BASE_INTERFACE + '.Job'
 
-
 BASE_OBJ_PATH = '/' + BASE_INTERFACE.replace('.', '/')
 PV_OBJ_PATH = BASE_OBJ_PATH + '/Pv'
 VG_OBJ_PATH = BASE_OBJ_PATH + '/Vg'
@@ -61,7 +59,6 @@ CACHE_POOL_PATH = BASE_OBJ_PATH + "/CachePool"
 HIDDEN_LV_PATH = BASE_OBJ_PATH + "/HiddenLv"
 MANAGER_OBJ_PATH = BASE_OBJ_PATH + '/Manager'
 JOB_OBJ_PATH = BASE_OBJ_PATH + '/Job'
-
 
 # Counters for object path generation
 pv_id = itertools.count()

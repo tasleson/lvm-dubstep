@@ -16,39 +16,39 @@ observer = None
 
 # noinspection PyUnusedLocal
 def filter_event(action, device):
-    # Filter for events of interest and add a request object to be processed
-    # when appropriate.
-    refresh = False
+	# Filter for events of interest and add a request object to be processed
+	# when appropriate.
+	refresh = False
 
-    if '.ID_FS_TYPE_NEW' in device:
-        fs_type_new = device['.ID_FS_TYPE_NEW']
+	if '.ID_FS_TYPE_NEW' in device:
+		fs_type_new = device['.ID_FS_TYPE_NEW']
 
-        if 'LVM' in fs_type_new:
-            refresh = True
-        elif fs_type_new == '':
-            # Check to see if the device was one we knew about
-            if 'DEVNAME' in device:
-                found = cfg.om.get_by_lvm_id(device['DEVNAME'])
-                if found:
-                    refresh = True
+		if 'LVM' in fs_type_new:
+			refresh = True
+		elif fs_type_new == '':
+			# Check to see if the device was one we knew about
+			if 'DEVNAME' in device:
+				found = cfg.om.get_by_lvm_id(device['DEVNAME'])
+				if found:
+					refresh = True
 
-    if 'DM_LV_NAME' in device:
-        refresh = True
+	if 'DM_LV_NAME' in device:
+		refresh = True
 
-    if refresh:
-        event_add(('udev',))
+	if refresh:
+		event_add(('udev',))
 
 
 def add():
-    global observer
-    context = pyudev.Context()
-    monitor = pyudev.Monitor.from_netlink(context)
-    monitor.filter_by('block')
-    observer = pyudev.MonitorObserver(monitor, filter_event)
-    observer.start()
+	global observer
+	context = pyudev.Context()
+	monitor = pyudev.Monitor.from_netlink(context)
+	monitor.filter_by('block')
+	observer = pyudev.MonitorObserver(monitor, filter_event)
+	observer.start()
 
 
 def remove():
-    global observer
-    observer.stop()
-    observer = None
+	global observer
+	observer.stop()
+	observer = None

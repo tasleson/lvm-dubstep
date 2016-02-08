@@ -11,17 +11,17 @@ from abc import ABCMeta, abstractmethod
 
 
 class State(object, metaclass=ABCMeta):
-    @abstractmethod
-    def lvm_id(self):
-        pass
+	@abstractmethod
+	def lvm_id(self):
+		pass
 
-    @abstractmethod
-    def identifiers(self):
-        pass
+	@abstractmethod
+	def identifiers(self):
+		pass
 
-    @abstractmethod
-    def create_dbus_object(self, path):
-        pass
+	@abstractmethod
+	def create_dbus_object(self, path):
+		pass
 
-    def __str__(self):
-        return '*****\n' + str(self.__dict__) + '\n******\n'
+	def __str__(self):
+		return '*****\n' + str(self.__dict__) + '\n******\n'

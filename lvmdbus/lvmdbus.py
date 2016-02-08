@@ -31,108 +31,110 @@ import argparse
 
 
 class Lvm(objectmanager.ObjectManager):
-    def __init__(self, object_path):
-        super(Lvm, self).__init__(object_path, BASE_INTERFACE)
+	def __init__(self, object_path):
+		super(Lvm, self).__init__(object_path, BASE_INTERFACE)
 
 
 def process_request():
-    while cfg.run.value != 0:
-        try:
-            req = cfg.worker_q.get(True, 5)
+	while cfg.run.value != 0:
+		try:
+			req = cfg.worker_q.get(True, 5)
 
-            start = cfg.db.num_refreshes
+			start = cfg.db.num_refreshes
 
-            log_debug("Running method: %s with args %s" %
-                      (str(req.method), str(req.arguments)))
-            req.run_cmd()
+			log_debug(
+				"Running method: %s with args %s" %
+				(str(req.method), str(req.arguments)))
+			req.run_cmd()
 
-            end = cfg.db.num_refreshes
+			end = cfg.db.num_refreshes
 
-            if end - start > 1:
-                log_debug("Inspect method %s for too many refreshes" %
-                          (str(req.method)))
-            log_debug("Complete ")
-        except queue.Empty:
-            pass
-        except Exception:
-            traceback.print_exc(file=sys.stdout)
-            pass
+			if end - start > 1:
+				log_debug(
+					"Inspect method %s for too many refreshes" %
+					(str(req.method)))
+			log_debug("Complete ")
+		except queue.Empty:
+			pass
+		except Exception:
+			traceback.print_exc(file=sys.stdout)
+			pass
 
 
 def main():
+	# Add simple command line handling
+	parser = argparse.ArgumentParser()
+	parser.add_argument("--udev", action='store_true',
+						help="Use udev for updating state", default=False,
+						dest='use_udev')
+	parser.add_argument("--debug", action='store_true',
+						help="Dump debug messages", default=False,
+						dest='debug')
 
-    # Add simple command line handling
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--udev", action='store_true',
-                        help="Use udev for updating state", default=False,
-                        dest='use_udev')
-    parser.add_argument("--debug", action='store_true',
-                        help="Dump debug messages", default=False,
-                        dest='debug')
+	args = parser.parse_args()
 
-    args = parser.parse_args()
+	cfg.DEBUG = args.debug
 
-    cfg.DEBUG = args.debug
+	# List of threads that we start up
+	thread_list = []
 
-    # List of threads that we start up
-    thread_list = []
+	start = time.time()
 
-    start = time.time()
+	# Install signal handlers
+	for s in [signal.SIGHUP, signal.SIGINT]:
+		try:
+			signal.signal(s, utils.handler)
+		except RuntimeError:
+			pass
 
-    # Install signal handlers
-    for s in [signal.SIGHUP, signal.SIGINT]:
-        try:
-            signal.signal(s, utils.handler)
-        except RuntimeError:
-            pass
+	dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
+	GObject.threads_init()
+	dbus.mainloop.glib.threads_init()
+	cfg.bus = dbus.SystemBus()
+	# The base name variable needs to exist for things to work.
+	# noinspection PyUnusedLocal
+	base_name = dbus.service.BusName(BASE_INTERFACE, cfg.bus)
+	cfg.om = Lvm(BASE_OBJ_PATH)
+	cfg.om.register_object(Manager(MANAGER_OBJ_PATH))
 
-    dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
-    GObject.threads_init()
-    dbus.mainloop.glib.threads_init()
-    cfg.bus = dbus.SystemBus()
-    # The base name variable needs to exist for things to work.
-    # noinspection PyUnusedLocal
-    base_name = dbus.service.BusName(BASE_INTERFACE, cfg.bus)
-    cfg.om = Lvm(BASE_OBJ_PATH)
-    cfg.om.register_object(Manager(MANAGER_OBJ_PATH))
+	cfg.load = load
 
-    cfg.load = load
+	cfg.db = lvmdb.DataStore()
 
-    cfg.db = lvmdb.DataStore()
+	# Start up thread to monitor pv moves
+	thread_list.append(
+		threading.Thread(target=background_reaper, name="pv_move_reaper"))
 
-    # Start up thread to monitor pv moves
-    thread_list.append(
-        threading.Thread(target=background_reaper, name="pv_move_reaper"))
+	# Using a thread to process requests.
+	thread_list.append(threading.Thread(target=process_request))
 
-    # Using a thread to process requests.
-    thread_list.append(threading.Thread(target=process_request))
+	cfg.load(refresh=False, emit_signal=False)
+	cfg.loop = GObject.MainLoop()
 
-    cfg.load(refresh=False, emit_signal=False)
-    cfg.loop = GObject.MainLoop()
+	for process in thread_list:
+		process.damon = True
+		process.start()
 
-    for process in thread_list:
-        process.damon = True
-        process.start()
+	end = time.time()
+	log_debug(
+		'Service ready! total time= %.2f, lvm time= %.2f count= %d' %
+		(end - start, cmdhandler.total_time, cmdhandler.total_count),
+		'bg_black', 'fg_light_green')
 
-    end = time.time()
-    log_debug('Service ready! total time= %.2f, lvm time= %.2f count= %d' %
-              (end - start, cmdhandler.total_time, cmdhandler.total_count),
-              'bg_black', 'fg_light_green')
+	# Add udev watching
+	if args.use_udev:
+		log_debug('Utilizing udev to trigger updates')
+		udevwatch.add()
 
-    # Add udev watching
-    if args.use_udev:
-        log_debug('Utilizing udev to trigger updates')
-        udevwatch.add()
+	try:
+		if cfg.run.value != 0:
+			cfg.loop.run()
 
-    try:
-        if cfg.run.value != 0:
-            cfg.loop.run()
+			if args.use_udev:
+				udevwatch.remove()
 
-            if args.use_udev:
-                udevwatch.remove()
-
-            for process in thread_list:
-                process.join()
-    except KeyboardInterrupt:
-        utils.handler(signal.SIGINT, None)
-    return 0
+			for process in thread_list:
+				process.join()
+	except KeyboardInterrupt:
+		utils.handler(signal.SIGINT, None)
+	return 0

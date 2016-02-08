@@ -14,32 +14,32 @@ from .request import RequestEntry
 from . import cfg
 from . import utils
 
-
 _rlock = threading.RLock()
 _count = 0
 
 
 def handle_external_event(command):
-    utils.log_debug("External event: '%s'" % command)
-    event_complete()
-    cfg.load()
+	utils.log_debug("External event: '%s'" % command)
+	event_complete()
+	cfg.load()
 
 
 def event_add(params):
-    global _rlock
-    global _count
-    with _rlock:
-        if _count == 0:
-            _count += 1
-            r = RequestEntry(-1, handle_external_event,
-                             params, None, None, False)
-            cfg.worker_q.put(r)
+	global _rlock
+	global _count
+	with _rlock:
+		if _count == 0:
+			_count += 1
+			r = RequestEntry(
+				-1, handle_external_event,
+				params, None, None, False)
+			cfg.worker_q.put(r)
 
 
 def event_complete():
-    global _rlock
-    global _count
-    with _rlock:
-        if _count > 0:
-            _count -= 1
-        return _count
+	global _rlock
+	global _count
+	with _rlock:
+		if _count > 0:
+			_count -= 1
+		return _count
