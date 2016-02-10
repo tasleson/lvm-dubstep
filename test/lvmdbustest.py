@@ -566,8 +566,7 @@ class TestDbusService(unittest.TestCase):
 					lv.LvCommon.SizeBytes + 4194304,
 					lv.LvCommon.SizeBytes - 4194304,
 					lv.LvCommon.SizeBytes + 2048,
-					lv.LvCommon.SizeBytes - 2048,
-					lv.LvCommon.SizeBytes]:
+					lv.LvCommon.SizeBytes - 2048]:
 
 			pv_in_use = [i[0] for i in lv.LvCommon.Devices]
 			# Select a PV in the VG that isn't in use
@@ -592,6 +591,17 @@ class TestDbusService(unittest.TestCase):
 			else:
 				# We are testing re-sizing to same size too...
 				self.assertTrue(lv.LvCommon.SizeBytes <= prev)
+
+	def test_lv_resize_same(self):
+		pv_paths = []
+		for pp in self.objs[PV_INT]:
+			pv_paths.append(pp.object_path)
+
+		vg = self._vg_create(pv_paths).Vg
+		lv = self._create_lv(vg=vg)
+
+		with self.assertRaises(dbus.exceptions.DBusException):
+			lv.Lv.Resize(lv.LvCommon.SizeBytes, dbus.Array([], '(oii)'), -1, {})
 
 	def test_lv_move(self):
 		lv = self._create_lv()

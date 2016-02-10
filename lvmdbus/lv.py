@@ -472,10 +472,6 @@ class Lv(LvCommon):
 
 			size_change = new_size_bytes - dbo.SizeBytes
 
-			# Nothing to do
-			if size_change == 0:
-				return '/'
-
 			rc, out, err = cmdhandler.lv_resize(dbo.lvm_id, size_change,
 												pv_dests, resize_options)
 
