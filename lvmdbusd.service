@@ -1,0 +1,11 @@
+[Unit]
+Description=LVM D-Bus service
+Documentation=man:lvmdbusd(8)
+
+[Service]
+Type=dbus
+BusName=com.redhat.lvmdbus1
+ExecStart=/usr/sbin/lvmdbusd --udev
+
+[Install]
+WantedBy=multi-user.target
