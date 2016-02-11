@@ -10,6 +10,11 @@ AC_PYTHON_MODULE([dbus], [Required])
 
 AC_CONFIG_FILES([Makefile])
 
+AC_PATH_PROG(LVM_PATH, lvm)
+if test -n "$LVM_PATH"; then
+	AC_DEFINE_UNQUOTED([LVM_PATH], ["$LVM_PATH"])
+fi
+
 #Setup the unit directory for systemd stuff
 PKG_PROG_PKG_CONFIG
 AC_ARG_WITH([systemdsystemunitdir],
@@ -20,4 +25,4 @@ if test "x$with_systemdsystemunitdir" != xno; then
 fi
 AM_CONDITIONAL(HAVE_SYSTEMD, [test -n "$with_systemdsystemunitdir" -a "x$with_systemdsystemunitdir" != xno ])
 
-AC_OUTPUT
+AC_OUTPUT(lvmdbus/path.py)

@@ -11,8 +11,12 @@ import os
 import multiprocessing
 import queue
 import itertools
+try:
+	from . import path
+except SystemError:
+	import path
 
-LVM_CMD = os.getenv('LVM_DBUSCMD', '/usr/sbin/lvm')
+LVM_CMD = os.getenv('LVM_BINARY', path.LVM_BINARY)
 
 # This is the global object manager
 om = None

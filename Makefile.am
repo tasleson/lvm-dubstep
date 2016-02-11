@@ -33,7 +33,8 @@ lvmdbus_PYTHON = \
 	lvmdbus/state.py \
 	lvmdbus/udevwatch.py \
 	lvmdbus/utils.py \
-	lvmdbus/vg.py
+	lvmdbus/vg.py \
+	lvmdbus/path.py
 
 dist_sbin_SCRIPTS = lvmdbusd
 
