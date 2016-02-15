@@ -357,13 +357,25 @@ class TestDbusService(unittest.TestCase):
 	def test_vg_rename(self):
 		vg = self._vg_create().Vg
 
+		# Do a vg lookup
+		path = self.objs[MANAGER_INT][0].Manager.LookUpByLvmId(vg.Name)
+		prev_path = path
+		self.assertTrue(path != '/', "%s" % (path))
+
 		# Create some LVs in the VG
 		for i in range(0, 5):
 			self._create_lv(size=1024 * 1024 * 16, vg=vg)
 
-		path = vg.Rename('renamed_' + vg.Name, -1, {})
+		new_name = 'renamed_' + vg.Name
+
+		path = vg.Rename(new_name, -1, {})
 		self.assertTrue(path == '/')
 		self.assertEqual(self._refresh(), 0)
+
+		# Do a vg lookup
+		path = self.objs[MANAGER_INT][0].Manager.LookUpByLvmId(new_name)
+		self.assertTrue(path != '/', "%s" % (path))
+		self.assertTrue(prev_path == path, "%s != %s" % (prev_path, path))
 
 		# Go through each LV and make sure it has the correct path back to the
 		# VG
@@ -459,8 +471,17 @@ class TestDbusService(unittest.TestCase):
 	def test_lv_rename(self):
 		# Rename a regular LV
 		lv = self._create_lv()
-		lv.Lv.Rename('renamed_' + lv.LvCommon.Name, -1, {})
+
+		path = self.objs[MANAGER_INT][0].Manager.LookUpByLvmId(lv.LvCommon.Name)
+		prev_path = path
+
+		new_name = 'renamed_' + lv.LvCommon.Name
+		lv.Lv.Rename(new_name, -1, {})
+
+		path = self.objs[MANAGER_INT][0].Manager.LookUpByLvmId(new_name)
+
 		self.assertEqual(self._refresh(), 0)
+		self.assertTrue(prev_path == path, "%s != %s" % (prev_path, path))
 
 	def test_lv_thinpool_rename(self):
 		# Rename a thin pool
