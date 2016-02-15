@@ -158,7 +158,7 @@ class ObjectManager(AutomatedProperties):
 			if emit_signal:
 				self.InterfacesRemoved(path, interfaces)
 
-	def get_by_path(self, path):
+	def get_object_by_path(self, path):
 		"""
 		Given a dbus path return the object registered for it
 		:param path: The dbus path
@@ -169,19 +169,19 @@ class ObjectManager(AutomatedProperties):
 				return self._objects[path][0]
 			return None
 
-	def get_by_uuid_lvm_id(self, uuid, lvm_id):
+	def get_object_by_uuid_lvm_id(self, uuid, lvm_id):
 		with self.rlock:
-			return self.get_by_path(
+			return self.get_object_by_path(
 				self.get_object_path_by_lvm_id(uuid, lvm_id, None, False))
 
-	def get_by_lvm_id(self, lvm_id):
+	def get_object_by_lvm_id(self, lvm_id):
 		"""
 		Given an lvm identifier, return the object registered for it
 		:param lvm_id: The lvm identifier
 		"""
 		with self.rlock:
 			if lvm_id in self._id_to_object_path:
-				return self.get_by_path(self._id_to_object_path[lvm_id])
+				return self.get_object_by_path(self._id_to_object_path[lvm_id])
 			return None
 
 	def _uuid_verify(self, path, lvm_id, uuid):
@@ -197,13 +197,15 @@ class ObjectManager(AutomatedProperties):
 		# uuid is correct too, as they can change
 		if lvm_id != uuid:
 			if uuid not in self._id_to_object_path:
-				obj = self.get_by_path(path)
+				obj = self.get_object_by_path(path)
 				self._lookup_add(obj, path, lvm_id, uuid)
 
 	def get_object_path_by_lvm_id(self, uuid, lvm_id, path_create=None,
 								gen_new=True):
 		"""
-		For a given lvm asset return the dbus object registered to it
+		For a given lvm asset return the dbus object registered to it.  If the
+		object is not found and gen_new == True and path_create is a valid
+		function we will create a new path, register it and return it.
 		:param uuid: The uuid for the lvm object
 		:param lvm_id: The lvm name
 		:param path_create: If true create an object path if not found
@@ -241,7 +243,7 @@ class ObjectManager(AutomatedProperties):
 				# In some cases we are looking up by one or the other, don't
 				# update when they are the same.
 				if uuid != lvm_id:
-					obj = self.get_by_path(path)
+					obj = self.get_object_by_path(path)
 					self._lookup_add(obj, path, lvm_id, uuid)
 			else:
 				if gen_new:

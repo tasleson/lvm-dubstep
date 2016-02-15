@@ -71,7 +71,7 @@ class Manager(AutomatedProperties):
 		pv_devices = []
 
 		for p in pv_object_paths:
-			pv = cfg.om.get_by_path(p)
+			pv = cfg.om.get_object_by_path(p)
 			if pv:
 				pv_devices.append(pv.Name)
 			else:

@@ -138,7 +138,7 @@ class Pv(AutomatedProperties):
 	def _remove(pv_uuid, pv_name, remove_options):
 		# Remove the PV, if successful then remove from the model
 		# Make sure we have a dbus object representing it
-		dbo = cfg.om.get_by_uuid_lvm_id(pv_uuid, pv_name)
+		dbo = cfg.om.get_object_by_uuid_lvm_id(pv_uuid, pv_name)
 
 		if dbo:
 			rc, out, err = cmdhandler.pv_remove(pv_name, remove_options)
@@ -171,7 +171,7 @@ class Pv(AutomatedProperties):
 	@staticmethod
 	def _resize(pv_uuid, pv_name, new_size_bytes, resize_options):
 		# Make sure we have a dbus object representing it
-		dbo = cfg.om.get_by_uuid_lvm_id(pv_uuid, pv_name)
+		dbo = cfg.om.get_object_by_uuid_lvm_id(pv_uuid, pv_name)
 
 		if dbo:
 			rc, out, err = cmdhandler.pv_resize(pv_name, new_size_bytes,
@@ -204,7 +204,7 @@ class Pv(AutomatedProperties):
 	@staticmethod
 	def _allocation_enabled(pv_uuid, pv_name, yes_no, allocation_options):
 		# Make sure we have a dbus object representing it
-		dbo = cfg.om.get_by_uuid_lvm_id(pv_uuid, pv_name)
+		dbo = cfg.om.get_object_by_uuid_lvm_id(pv_uuid, pv_name)
 
 		if dbo:
 			rc, out, err = cmdhandler.pv_allocatable(

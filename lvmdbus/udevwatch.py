@@ -28,7 +28,7 @@ def filter_event(action, device):
 		elif fs_type_new == '':
 			# Check to see if the device was one we knew about
 			if 'DEVNAME' in device:
-				found = cfg.om.get_by_lvm_id(device['DEVNAME'])
+				found = cfg.om.get_object_by_lvm_id(device['DEVNAME'])
 				if found:
 					refresh = True
 

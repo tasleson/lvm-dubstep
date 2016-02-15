@@ -88,14 +88,14 @@ def move(interface_name, lv_name, pv_src_obj, pv_source_range,
 	:return: Object path to job object
 	"""
 	pv_dests = []
-	pv_src = cfg.om.get_by_path(pv_src_obj)
+	pv_src = cfg.om.get_object_by_path(pv_src_obj)
 	if pv_src:
 
 		# Check to see if we are handling a move to a specific
 		# destination(s)
 		if len(pv_dests_and_ranges):
 			for pr in pv_dests_and_ranges:
-				pv_dbus_obj = cfg.om.get_by_path(pr[0])
+				pv_dbus_obj = cfg.om.get_object_by_path(pr[0])
 				if not pv_dbus_obj:
 					raise dbus.exceptions.DBusException(
 						interface_name,
@@ -119,7 +119,7 @@ def move(interface_name, lv_name, pv_src_obj, pv_source_range,
 
 def merge(interface_name, lv_uuid, lv_name, merge_options, time_out):
 	# Make sure we have a dbus object representing it
-	dbo = cfg.om.get_by_uuid_lvm_id(lv_uuid, lv_name)
+	dbo = cfg.om.get_object_by_uuid_lvm_id(lv_uuid, lv_name)
 	if dbo:
 		cmd = lv_merge_cmd(merge_options, dbo.lvm_id)
 		return _move_merge(interface_name, cmd, time_out, True)

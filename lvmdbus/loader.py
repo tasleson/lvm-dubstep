@@ -49,7 +49,7 @@ def common(retrieve, o_type, search_keys,
 		if refresh:
 			# We are refreshing all the PVs from LVM, if this one exists
 			# we need to refresh our state.
-			dbus_object = cfg.om.get_by_uuid_lvm_id(*o.identifiers())
+			dbus_object = cfg.om.get_object_by_uuid_lvm_id(*o.identifiers())
 
 			if dbus_object:
 				del existing_paths[dbus_object.dbus_object_path()]
@@ -77,7 +77,7 @@ def common(retrieve, o_type, search_keys,
 
 	if refresh:
 		for k in list(existing_paths.keys()):
-			cfg.om.remove_object(cfg.om.get_by_path(k), True)
+			cfg.om.remove_object(cfg.om.get_object_by_path(k), True)
 			num_changes += 1
 
 	num_changes += len(rc)

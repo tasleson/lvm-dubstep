@@ -147,7 +147,7 @@ class Vg(AutomatedProperties):
 		full_name = "%s/%s" % (vg_name, lv_name)
 
 		cfg.load()
-		l = cfg.om.get_by_lvm_id(full_name)
+		l = cfg.om.get_object_by_lvm_id(full_name)
 		created_lv = l.dbus_object_path()
 
 		return created_lv
@@ -155,7 +155,7 @@ class Vg(AutomatedProperties):
 	@staticmethod
 	def _rename(uuid, vg_name, new_name, rename_options):
 		# Make sure we have a dbus object representing it
-		dbo = cfg.om.get_by_uuid_lvm_id(uuid, vg_name)
+		dbo = cfg.om.get_object_by_uuid_lvm_id(uuid, vg_name)
 
 		if dbo:
 			rc, out, err = cmdhandler.vg_rename(vg_name, new_name,
@@ -187,7 +187,7 @@ class Vg(AutomatedProperties):
 	@staticmethod
 	def _remove(uuid, vg_name, remove_options):
 		# Make sure we have a dbus object representing it
-		dbo = cfg.om.get_by_uuid_lvm_id(uuid, vg_name)
+		dbo = cfg.om.get_object_by_uuid_lvm_id(uuid, vg_name)
 
 		if dbo:
 			# Remove the VG, if successful then remove from the model
@@ -226,7 +226,7 @@ class Vg(AutomatedProperties):
 
 	@staticmethod
 	def _change(uuid, vg_name, change_options):
-		dbo = cfg.om.get_by_uuid_lvm_id(uuid, vg_name)
+		dbo = cfg.om.get_object_by_uuid_lvm_id(uuid, vg_name)
 
 		if dbo:
 			rc, out, err = cmdhandler.vg_change(change_options, vg_name)
@@ -269,7 +269,7 @@ class Vg(AutomatedProperties):
 	@staticmethod
 	def _reduce(uuid, vg_name, missing, pv_object_paths, reduce_options):
 		# Make sure we have a dbus object representing it
-		dbo = cfg.om.get_by_uuid_lvm_id(uuid, vg_name)
+		dbo = cfg.om.get_object_by_uuid_lvm_id(uuid, vg_name)
 
 		if dbo:
 			pv_devices = []
@@ -277,7 +277,7 @@ class Vg(AutomatedProperties):
 			# If pv_object_paths is not empty, then get the device paths
 			if pv_object_paths and len(pv_object_paths) > 0:
 				for pv_op in pv_object_paths:
-					pv = cfg.om.get_by_path(pv_op)
+					pv = cfg.om.get_object_by_path(pv_op)
 					if pv:
 						pv_devices.append(pv.lvm_id)
 					else:
@@ -313,13 +313,13 @@ class Vg(AutomatedProperties):
 	@staticmethod
 	def _extend(uuid, vg_name, pv_object_paths, extend_options):
 		# Make sure we have a dbus object representing it
-		dbo = cfg.om.get_by_uuid_lvm_id(uuid, vg_name)
+		dbo = cfg.om.get_object_by_uuid_lvm_id(uuid, vg_name)
 
 		if dbo:
 			extend_devices = []
 
 			for i in pv_object_paths:
-				pv = cfg.om.get_by_path(i)
+				pv = cfg.om.get_object_by_path(i)
 				if pv:
 					extend_devices.append(pv.lvm_id)
 				else:
@@ -371,12 +371,12 @@ class Vg(AutomatedProperties):
 			create_options):
 		# Make sure we have a dbus object representing it
 		pv_dests = []
-		dbo = cfg.om.get_by_uuid_lvm_id(uuid, vg_name)
+		dbo = cfg.om.get_object_by_uuid_lvm_id(uuid, vg_name)
 
 		if dbo:
 			if len(pv_dests_and_ranges):
 				for pr in pv_dests_and_ranges:
-					pv_dbus_obj = cfg.om.get_by_path(pr[0])
+					pv_dbus_obj = cfg.om.get_object_by_path(pr[0])
 					if not pv_dbus_obj:
 						raise dbus.exceptions.DBusException(
 							VG_INTERFACE,
@@ -432,7 +432,7 @@ class Vg(AutomatedProperties):
 	def _lv_create_linear(uuid, vg_name, name, size_bytes,
 			thin_pool, create_options):
 		# Make sure we have a dbus object representing it
-		dbo = cfg.om.get_by_uuid_lvm_id(uuid, vg_name)
+		dbo = cfg.om.get_object_by_uuid_lvm_id(uuid, vg_name)
 
 		if dbo:
 			rc, out, err = cmdhandler.vg_lv_create_linear(
@@ -469,7 +469,7 @@ class Vg(AutomatedProperties):
 	def _lv_create_striped(uuid, vg_name, name, size_bytes, num_stripes,
 			stripe_size_kb, thin_pool, create_options):
 		# Make sure we have a dbus object representing it
-		dbo = cfg.om.get_by_uuid_lvm_id(uuid, vg_name)
+		dbo = cfg.om.get_object_by_uuid_lvm_id(uuid, vg_name)
 
 		if dbo:
 			rc, out, err = cmdhandler.vg_lv_create_striped(
@@ -508,7 +508,7 @@ class Vg(AutomatedProperties):
 	def _lv_create_mirror(uuid, vg_name, name, size_bytes,
 			num_copies, create_options):
 		# Make sure we have a dbus object representing it
-		dbo = cfg.om.get_by_uuid_lvm_id(uuid, vg_name)
+		dbo = cfg.om.get_object_by_uuid_lvm_id(uuid, vg_name)
 
 		if dbo:
 			rc, out, err = cmdhandler.vg_lv_create_mirror(
@@ -546,7 +546,7 @@ class Vg(AutomatedProperties):
 	def _lv_create_raid(uuid, vg_name, name, raid_type, size_bytes,
 						num_stripes, stripe_size_kb, create_options):
 		# Make sure we have a dbus object representing it
-		dbo = cfg.om.get_by_uuid_lvm_id(uuid, vg_name)
+		dbo = cfg.om.get_object_by_uuid_lvm_id(uuid, vg_name)
 
 		if dbo:
 			rc, out, err = cmdhandler.vg_lv_create_raid(
@@ -585,11 +585,11 @@ class Vg(AutomatedProperties):
 	def _create_pool(uuid, vg_name, meta_data_lv, data_lv,
 						create_options, create_method):
 		# Make sure we have a dbus object representing it
-		dbo = cfg.om.get_by_uuid_lvm_id(uuid, vg_name)
+		dbo = cfg.om.get_object_by_uuid_lvm_id(uuid, vg_name)
 
 		# Retrieve the full names for the metadata and data lv
-		md = cfg.om.get_by_path(meta_data_lv)
-		data = cfg.om.get_by_path(data_lv)
+		md = cfg.om.get_object_by_path(meta_data_lv)
+		data = cfg.om.get_object_by_path(data_lv)
 
 		if dbo and md and data:
 
@@ -658,12 +658,12 @@ class Vg(AutomatedProperties):
 		pv_devices = []
 
 		# Make sure we have a dbus object representing it
-		dbo = cfg.om.get_by_uuid_lvm_id(uuid, vg_name)
+		dbo = cfg.om.get_object_by_uuid_lvm_id(uuid, vg_name)
 
 		if dbo:
 			# Check for existence of pv object paths
 			for p in pv_object_paths:
-				pv = cfg.om.get_by_path(p)
+				pv = cfg.om.get_object_by_path(p)
 				if pv:
 					pv_devices.append(pv.Name)
 				else:
@@ -714,7 +714,7 @@ class Vg(AutomatedProperties):
 	@staticmethod
 	def _vg_add_rm_tags(uuid, vg_name, tags_add, tags_del, tag_options):
 		# Make sure we have a dbus object representing it
-		dbo = cfg.om.get_by_uuid_lvm_id(uuid, vg_name)
+		dbo = cfg.om.get_object_by_uuid_lvm_id(uuid, vg_name)
 
 		if dbo:
 
@@ -761,7 +761,7 @@ class Vg(AutomatedProperties):
 	@staticmethod
 	def _vg_change_set(uuid, vg_name, method, value, options):
 		# Make sure we have a dbus object representing it
-		dbo = cfg.om.get_by_uuid_lvm_id(uuid, vg_name)
+		dbo = cfg.om.get_object_by_uuid_lvm_id(uuid, vg_name)
 
 		if dbo:
 			rc, out, err = method(vg_name, value, options)
@@ -837,7 +837,7 @@ class Vg(AutomatedProperties):
 	def _vg_activate_deactivate(uuid, vg_name, activate, control_flags,
 								options):
 		# Make sure we have a dbus object representing it
-		dbo = cfg.om.get_by_uuid_lvm_id(uuid, vg_name)
+		dbo = cfg.om.get_object_by_uuid_lvm_id(uuid, vg_name)
 
 		if dbo:
 			rc, out, err = cmdhandler.activate_deactivate(

@@ -68,7 +68,7 @@ class LvState(State):
 		return dbus.Array(rc, signature="(oa(tts))")
 
 	def vg_name_lookup(self):
-		return cfg.om.get_by_path(self.Vg).Name
+		return cfg.om.get_object_by_path(self.Vg).Name
 
 	@property
 	def lvm_id(self):
@@ -315,7 +315,7 @@ class Lv(LvCommon):
 	@staticmethod
 	def _remove(lv_uuid, lv_name, remove_options):
 		# Make sure we have a dbus object representing it
-		dbo = cfg.om.get_by_uuid_lvm_id(lv_uuid, lv_name)
+		dbo = cfg.om.get_object_by_uuid_lvm_id(lv_uuid, lv_name)
 
 		if dbo:
 			# Remove the LV, if successful then remove from the model
@@ -351,7 +351,7 @@ class Lv(LvCommon):
 	@staticmethod
 	def _rename(lv_uuid, lv_name, new_name, rename_options):
 		# Make sure we have a dbus object representing it
-		dbo = cfg.om.get_by_uuid_lvm_id(lv_uuid, lv_name)
+		dbo = cfg.om.get_object_by_uuid_lvm_id(lv_uuid, lv_name)
 
 		if dbo:
 			# Rename the logical volume
@@ -399,7 +399,7 @@ class Lv(LvCommon):
 	def _snap_shot(lv_uuid, lv_name, name, optional_size,
 			snapshot_options):
 		# Make sure we have a dbus object representing it
-		dbo = cfg.om.get_by_uuid_lvm_id(lv_uuid, lv_name)
+		dbo = cfg.om.get_object_by_uuid_lvm_id(lv_uuid, lv_name)
 
 		if dbo:
 			# If you specify a size you get a 'thick' snapshot even if
@@ -452,13 +452,13 @@ class Lv(LvCommon):
 				resize_options):
 		# Make sure we have a dbus object representing it
 		pv_dests = []
-		dbo = cfg.om.get_by_uuid_lvm_id(lv_uuid, lv_name)
+		dbo = cfg.om.get_object_by_uuid_lvm_id(lv_uuid, lv_name)
 
 		if dbo:
 			# If we have PVs, verify them
 			if len(pv_dests_and_ranges):
 				for pr in pv_dests_and_ranges:
-					pv_dbus_obj = cfg.om.get_by_path(pr[0])
+					pv_dbus_obj = cfg.om.get_object_by_path(pr[0])
 					if not pv_dbus_obj:
 						raise dbus.exceptions.DBusException(
 							LV_INTERFACE,
@@ -516,7 +516,7 @@ class Lv(LvCommon):
 	def _lv_activate_deactivate(uuid, lv_name, activate, control_flags,
 								options):
 		# Make sure we have a dbus object representing it
-		dbo = cfg.om.get_by_uuid_lvm_id(uuid, lv_name)
+		dbo = cfg.om.get_object_by_uuid_lvm_id(uuid, lv_name)
 
 		if dbo:
 			rc, out, err = cmdhandler.activate_deactivate(
@@ -564,7 +564,7 @@ class Lv(LvCommon):
 	@staticmethod
 	def _add_rm_tags(uuid, lv_name, tags_add, tags_del, tag_options):
 		# Make sure we have a dbus object representing it
-		dbo = cfg.om.get_by_uuid_lvm_id(uuid, lv_name)
+		dbo = cfg.om.get_object_by_uuid_lvm_id(uuid, lv_name)
 
 		if dbo:
 
@@ -621,7 +621,7 @@ class LvThinPool(Lv):
 		# The name is vg/name
 		full_name = "%s/%s" % (self.vg_name_lookup(), name)
 
-		o = cfg.om.get_by_lvm_id(full_name)
+		o = cfg.om.get_object_by_lvm_id(full_name)
 		if o:
 			return o.dbus_object_path()
 
@@ -649,7 +649,7 @@ class LvThinPool(Lv):
 	@staticmethod
 	def _lv_create(lv_uuid, lv_name, name, size_bytes, create_options):
 		# Make sure we have a dbus object representing it
-		dbo = cfg.om.get_by_uuid_lvm_id(lv_uuid, lv_name)
+		dbo = cfg.om.get_object_by_uuid_lvm_id(lv_uuid, lv_name)
 
 		lv_created = '/'
 
@@ -695,15 +695,15 @@ class LvCachePool(Lv):
 	def _cache_lv(lv_uuid, lv_name, lv_object_path, cache_options):
 
 		# Make sure we have a dbus object representing cache pool
-		dbo = cfg.om.get_by_uuid_lvm_id(lv_uuid, lv_name)
+		dbo = cfg.om.get_object_by_uuid_lvm_id(lv_uuid, lv_name)
 
 		# Make sure we have dbus object representing lv to cache
-		lv_to_cache = cfg.om.get_by_path(lv_object_path)
+		lv_to_cache = cfg.om.get_object_by_path(lv_object_path)
 
 		if dbo and lv_to_cache:
-			full_cache_name = lv_to_cache.lv_full_name()
+			fcn = lv_to_cache.lv_full_name()
 			rc, out, err = cmdhandler.lv_cache_lv(
-				dbo.lv_full_name(), full_cache_name, cache_options)
+				dbo.lv_full_name(), fcn, cache_options)
 			if rc == 0:
 				# When we cache an LV, the cache pool and the lv that is getting
 				# cached need to be removed from the object manager and
@@ -713,7 +713,7 @@ class LvCachePool(Lv):
 				cfg.load()
 
 				lv_converted = \
-					cfg.om.get_by_lvm_id(full_cache_name).dbus_object_path()
+					cfg.om.get_object_by_lvm_id(fcn).dbus_object_path()
 
 			else:
 				raise dbus.exceptions.DBusException(
@@ -760,12 +760,12 @@ class LvCacheLv(Lv):
 	@staticmethod
 	def _detach_lv(lv_uuid, lv_name, detach_options, destroy_cache):
 		# Make sure we have a dbus object representing cache pool
-		dbo = cfg.om.get_by_uuid_lvm_id(lv_uuid, lv_name)
+		dbo = cfg.om.get_object_by_uuid_lvm_id(lv_uuid, lv_name)
 
 		if dbo:
 
 			# Get current cache name
-			cache_pool = cfg.om.get_by_path(dbo.CachePool)
+			cache_pool = cfg.om.get_object_by_path(dbo.CachePool)
 
 			rc, out, err = cmdhandler.lv_detach_cache(
 				dbo.lv_full_name(), detach_options, destroy_cache)
@@ -777,7 +777,7 @@ class LvCacheLv(Lv):
 				cfg.load()
 
 				uncached_lv_path = \
-					cfg.om.get_by_lvm_id(lv_name).dbus_object_path()
+					cfg.om.get_object_by_lvm_id(lv_name).dbus_object_path()
 
 			else:
 				raise dbus.exceptions.DBusException(
