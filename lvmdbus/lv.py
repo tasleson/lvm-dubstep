@@ -358,11 +358,7 @@ class Lv(LvCommon):
 			rc, out, err = cmdhandler.lv_rename(lv_name, new_name,
 												rename_options)
 			if rc == 0:
-				# Refresh the VG
-				vg_name = dbo.vg_name_lookup()
-				dbo.refresh("%s/%s" % (vg_name, new_name))
-				cfg.load(cache_refresh=False)
-
+				cfg.load()
 			else:
 				# Need to work on error handling, need consistent
 				raise dbus.exceptions.DBusException(

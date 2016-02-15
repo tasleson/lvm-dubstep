@@ -161,12 +161,7 @@ class Vg(AutomatedProperties):
 			rc, out, err = cmdhandler.vg_rename(vg_name, new_name,
 												rename_options)
 			if rc == 0:
-
-				# The refresh will fix up all the lookups for this object,
-				# however the LVs will still have the wrong lookup entries, so
-				# we need to update them too.
-				dbo.refresh(new_name)
-				cfg.load(cache_refresh=False)
+				cfg.load()
 			else:
 				# Need to work on error handling, need consistent
 				raise dbus.exceptions.DBusException(
