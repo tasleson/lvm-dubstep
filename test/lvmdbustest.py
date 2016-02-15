@@ -395,10 +395,97 @@ class TestDbusService(unittest.TestCase):
 			lv_proxy = ClientProxy(self.bus, l).LvCommon
 			self.assertTrue(lv_proxy.Vg == vg.object_path, "%s != %s" %
 							(lv_proxy.Vg, vg.object_path))
-			full_name = "%s/%s" % (new_name, lv_t.LvCommon.Name)
+			full_name = "%s/%s" % (new_name, lv_proxy.Name)
 			lv_path = mgr.LookUpByLvmId(full_name)
-			self.assertTrue(lv_path == lv_t.object_path, "%s != %s" %
-							(lv_path, lv_t.object_path))
+			self.assertTrue(lv_path == lv_proxy.object_path, "%s != %s" %
+							(lv_path, lv_proxy.object_path))
+
+	def _verify_hidden_lookups(self, lv_common_object, vgname):
+		mgr = self.objs[MANAGER_INT][0].Manager
+
+		hidden_lv_paths = lv_common_object.HiddenLvs
+
+		for h in hidden_lv_paths:
+			h_lv = ClientProxy(self.bus, h).LvCommon
+
+			if len(h_lv.HiddenLvs) > 0:
+				self._verify_hidden_lookups(h_lv, vgname)
+
+			# print("Hidden check %s %s" % (h, h_lv.Name))
+			full_name = "%s/%s" % (vgname, h_lv.Name)
+			lookup_path = mgr.LookUpByLvmId(full_name)
+			self.assertTrue(lookup_path != '/')
+			self.assertTrue(lookup_path == h_lv.object_path)
+
+	def test_vg_rename_with_thin_pool(self):
+
+		pv_paths = []
+		for pp in self.objs[PV_INT]:
+			pv_paths.append(pp.object_path)
+
+		vg = self._vg_create(pv_paths).Vg
+
+		vg_name_start = vg.Name
+
+		mgr = self.objs[MANAGER_INT][0].Manager
+
+		# Let's create a thin pool which uses a raid 5 meta and raid5 data
+		# areas
+		lv_meta_path = vg.LvCreateRaid(
+			"meta_r5", "raid5", 1024 * 1024 * 16, 0, 0, -1, {})[0]
+
+		lv_data_path = vg.LvCreateRaid(
+			"data_r5", "raid5", 1024 * 1024 * 512, 0, 0, -1, {})[0]
+
+		thin_pool_path = vg.CreateThinPool(
+			lv_meta_path, lv_data_path, -1, {})[0]
+
+		# Lets create some thin LVs
+		thin_pool = ClientProxy(self.bus, thin_pool_path)
+
+		# noinspection PyTypeChecker
+		self._verify_hidden_lookups(thin_pool.LvCommon, vg_name_start)
+
+		for i in range(0, 5):
+			lv_name = rs(8, '_lv')
+
+			thin_lv_path = thin_pool.ThinPool.LvCreate(
+				lv_name, 1024 * 1024 * 16, -1, {})[0]
+
+			self.assertTrue(thin_lv_path != '/')
+
+			full_name = "%s/%s" % (vg_name_start, lv_name)
+
+			lookup_lv_path = mgr.LookUpByLvmId(full_name)
+			self.assertTrue(thin_lv_path == lookup_lv_path,
+							"%s != %s" % (thin_lv_path, lookup_lv_path))
+
+		# Rename the VG
+		new_name = 'renamed_' + vg.Name
+
+		path = vg.Rename(new_name, -1, {})
+		self.assertTrue(path == '/')
+		self.assertEqual(self._refresh(), 0)
+
+		# Go through each LV and make sure it has the correct path back to the
+		# VG
+		vg.update()
+		thin_pool.update()
+
+		lv_paths = vg.Lvs
+
+		for l in lv_paths:
+			lv_proxy = ClientProxy(self.bus, l).LvCommon
+			self.assertTrue(lv_proxy.Vg == vg.object_path, "%s != %s" %
+							(lv_proxy.Vg, vg.object_path))
+			full_name = "%s/%s" % (new_name, lv_proxy.Name)
+			# print('Full Name %s' % (full_name))
+			lv_path = mgr.LookUpByLvmId(full_name)
+			self.assertTrue(lv_path == lv_proxy.object_path, "%s != %s" %
+							(lv_path, lv_proxy.object_path))
+
+		# noinspection PyTypeChecker
+		self._verify_hidden_lookups(thin_pool.LvCommon, new_name)
 
 	def _test_lv_create(self, method, params, vg):
 		lv = None
