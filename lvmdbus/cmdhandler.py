@@ -316,6 +316,14 @@ def vg_create_cache_pool(md_full_name, data_full_name, create_options):
 	return call(cmd)
 
 
+def vg_create_thin_pool(md_full_name, data_full_name, create_options):
+	cmd = ['lvconvert']
+	cmd.extend(options_to_cli_args(create_options))
+	cmd.extend(['--type', 'thin-pool', '--force', '-y',
+				'--poolmetadata', md_full_name, data_full_name])
+	return call(cmd)
+
+
 def lv_remove(lv_path, remove_options):
 	cmd = ['lvremove']
 	cmd.extend(options_to_cli_args(remove_options))

@@ -587,8 +587,8 @@ class Vg(AutomatedProperties):
 		cfg.worker_q.put(r)
 
 	@staticmethod
-	def _create_cache_pool(uuid, vg_name, meta_data_lv, data_lv,
-			create_options):
+	def _create_pool(uuid, vg_name, meta_data_lv, data_lv,
+						create_options, create_method):
 		# Make sure we have a dbus object representing it
 		dbo = cfg.om.get_by_uuid_lvm_id(uuid, vg_name)
 
@@ -600,7 +600,7 @@ class Vg(AutomatedProperties):
 
 			new_name = data.Name
 
-			rc, out, err = cmdhandler.vg_create_cache_pool(
+			rc, out, err = create_method(
 				md.lv_full_name(), data.lv_full_name(), create_options)
 			if rc == 0:
 				cfg.om.remove_object(md, emit_signal=True)
@@ -639,9 +639,22 @@ class Vg(AutomatedProperties):
 	def CreateCachePool(self, meta_data_lv, data_lv, tmo, create_options,
 						cb, cbe):
 		r = RequestEntry(
-			tmo, Vg._create_cache_pool,
+			tmo, Vg._create_pool,
 			(self.state.Uuid, self.state.lvm_id, meta_data_lv,
-			data_lv, create_options), cb, cbe)
+			data_lv, create_options, cmdhandler.vg_create_cache_pool), cb, cbe)
+		cfg.worker_q.put(r)
+
+	@dbus.service.method(
+		dbus_interface=VG_INTERFACE,
+		in_signature='ooia{sv}',
+		out_signature='(oo)',
+		async_callbacks=('cb', 'cbe'))
+	def CreateThinPool(self, meta_data_lv, data_lv, tmo, create_options,
+						cb, cbe):
+		r = RequestEntry(
+			tmo, Vg._create_pool,
+			(self.state.Uuid, self.state.lvm_id, meta_data_lv,
+			data_lv, create_options, cmdhandler.vg_create_thin_pool), cb, cbe)
 		cfg.worker_q.put(r)
 
 	@staticmethod
