@@ -184,6 +184,22 @@ class ObjectManager(AutomatedProperties):
 				return self.get_by_path(self._id_to_object_path[lvm_id])
 			return None
 
+	def _uuid_verify(self, path, lvm_id, uuid):
+		"""
+		Ensure uuid is present for a successful lvm_id lookup
+		NOTE: Internal call, assumes under object manager lock
+		:param path: 		Path to object we looked up
+		:param lvm_id:		lvm_id used to find object
+		:param uuid: 		lvm uuid to verify
+		:return: None
+		"""
+		# This gets called when we found an object based on lvm_id, ensure
+		# uuid is correct too, as they can change
+		if lvm_id != uuid:
+			if uuid not in self._id_to_object_path:
+				obj = self.get_by_path(path)
+				self._lookup_add(obj, path, lvm_id, uuid)
+
 	def get_object_path_by_lvm_id(self, uuid, lvm_id, path_create=None,
 								gen_new=True):
 		"""
@@ -203,15 +219,30 @@ class ObjectManager(AutomatedProperties):
 			path = None
 
 			if lvm_id in self._id_to_object_path:
-				return self._id_to_object_path[lvm_id]
+				path = self._id_to_object_path[lvm_id]
+				self._uuid_verify(path, lvm_id, uuid)
+				return path
 			if "/" in lvm_id:
 				vg, lv = lvm_id.split("/", 1)
 				int_lvm_id = vg + "/" + ("[%s]" % lv)
 				if int_lvm_id in self._id_to_object_path:
-					return self._id_to_object_path[int_lvm_id]
+					path = self._id_to_object_path[int_lvm_id]
+					self._uuid_verify(path, int_lvm_id, uuid)
+					return path
 
 			if uuid and uuid in self._id_to_object_path:
+				# If we get here it indicates that we found the object, but
+				# the lvm_id lookup failed.  In the case of a rename, the uuid
+				# will be correct, but the lvm_id will be wrong and vise versa.
+				# If the lvm_id does not equal the uuid, lets fix up the table
+				# so that lookups will be handled correctly.
 				path = self._id_to_object_path[uuid]
+
+				# In some cases we are looking up by one or the other, don't
+				# update when they are the same.
+				if uuid != lvm_id:
+					obj = self.get_by_path(path)
+					self._lookup_add(obj, path, lvm_id, uuid)
 			else:
 				if gen_new:
 					path = path_create()

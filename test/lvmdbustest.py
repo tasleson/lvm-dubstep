@@ -357,14 +357,21 @@ class TestDbusService(unittest.TestCase):
 	def test_vg_rename(self):
 		vg = self._vg_create().Vg
 
+		mgr = self.objs[MANAGER_INT][0].Manager
+
 		# Do a vg lookup
 		path = self.objs[MANAGER_INT][0].Manager.LookUpByLvmId(vg.Name)
+
+		vg_name_start = vg.Name
 		prev_path = path
 		self.assertTrue(path != '/', "%s" % (path))
 
 		# Create some LVs in the VG
 		for i in range(0, 5):
-			self._create_lv(size=1024 * 1024 * 16, vg=vg)
+			lv_t = self._create_lv(size=1024 * 1024 * 16, vg=vg)
+			full_name = "%s/%s" % (vg_name_start, lv_t.LvCommon.Name)
+			lv_path = mgr.LookUpByLvmId(full_name)
+			self.assertTrue(lv_path == lv_t.object_path)
 
 		new_name = 'renamed_' + vg.Name
 
@@ -373,7 +380,7 @@ class TestDbusService(unittest.TestCase):
 		self.assertEqual(self._refresh(), 0)
 
 		# Do a vg lookup
-		path = self.objs[MANAGER_INT][0].Manager.LookUpByLvmId(new_name)
+		path = mgr.LookUpByLvmId(new_name)
 		self.assertTrue(path != '/', "%s" % (path))
 		self.assertTrue(prev_path == path, "%s != %s" % (prev_path, path))
 
@@ -388,6 +395,10 @@ class TestDbusService(unittest.TestCase):
 			lv_proxy = ClientProxy(self.bus, l).LvCommon
 			self.assertTrue(lv_proxy.Vg == vg.object_path, "%s != %s" %
 							(lv_proxy.Vg, vg.object_path))
+			full_name = "%s/%s" % (new_name, lv_t.LvCommon.Name)
+			lv_path = mgr.LookUpByLvmId(full_name)
+			self.assertTrue(lv_path == lv_t.object_path, "%s != %s" %
+							(lv_path, lv_t.object_path))
 
 	def _test_lv_create(self, method, params, vg):
 		lv = None
