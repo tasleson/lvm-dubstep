@@ -155,7 +155,7 @@ class AutomatedProperties(dbus.service.Object):
 		old_id = self.state.identifiers()
 		new_id = new_state.identifiers()
 		if old_id[0] != new_id[0] or old_id[1] != new_id[1]:
-			cfg.om.lookup_update(self)
+			cfg.om.lookup_update(self, new_id[0], new_id[1])
 
 		# Grab the properties values, then replace the state of the object
 		# and retrieve the new values

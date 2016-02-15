@@ -97,13 +97,13 @@ class ObjectManager(AutomatedProperties):
 			del self._id_to_object_path[uuid]
 			del self._objects[obj_path]
 
-	def lookup_update(self, dbus_obj):
+	def lookup_update(self, dbus_obj, new_uuid, new_lvm_id):
 		with self.rlock:
 			obj_path = dbus_obj.dbus_object_path()
 			self._lookup_remove(obj_path)
 			self._lookup_add(
 				dbus_obj, obj_path,
-				dbus_obj.lvm_id, dbus_obj.Uuid)
+				new_lvm_id, new_uuid)
 
 	def object_paths_by_type(self, o_type):
 		with self.rlock:
