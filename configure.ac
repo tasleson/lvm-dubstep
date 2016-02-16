@@ -1,4 +1,4 @@
-AC_INIT([LVM D-Bus Service], [1.0.0])
+AC_INIT([LVM dbus service], [1.0.0])
 
 AC_CONFIG_MACRO_DIR([m4])
 

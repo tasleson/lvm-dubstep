@@ -6,6 +6,9 @@ dbusservicedir = $(datadir)/dbus-1/system-services
 dist_dbusservice_DATA = com.redhat.lvmdbus1.service
 
 
+AM_DISTCHECK_CONFIGURE_FLAGS = \
+        --with-systemdsystemunitdir=$$dc_install_base/$(systemdsystemunitdir)
+
 if HAVE_SYSTEMD
 systemdsystemunit_DATA = lvmdbusd.service
 endif
@@ -39,3 +42,5 @@ lvmdbus_PYTHON = \
 dist_sbin_SCRIPTS = lvmdbusd
 
 lsmdbusd_MANS = lvmdbus.8
+
+EXTRA_DIST = lvmdbusd.service
