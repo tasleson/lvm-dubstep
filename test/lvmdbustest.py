@@ -39,8 +39,8 @@ CACHE_LV_INT = BUSNAME + ".CachedLv"
 THINPOOL_LV_PATH = '/' + THINPOOL_INT.replace('.', '/')
 
 
-def rs(length, suffix):
-	return ''.join(random.choice(string.ascii_lowercase)
+def rs(length, suffix, character_set=string.ascii_lowercase):
+	return ''.join(random.choice(character_set)
 				for _ in range(length)) + suffix
 
 
@@ -1158,6 +1158,96 @@ class TestDbusService(unittest.TestCase):
 		self.assertTrue(result == '/')
 		result = vg_proxy.Vg.Change(-1, {'-a': 'n'})
 		self.assertTrue(result == '/')
+
+	def _invalid_vg_lv_name_characters(self):
+		bad_vg_lv_set = set(string.printable) - \
+			set(string.ascii_letters + string.digits + '.-_+')
+		return ''.join(bad_vg_lv_set)
+
+	def test_invalid_names(self):
+		mgr = self.objs[MANAGER_INT][0].Manager
+
+		# Pv device path
+		with self.assertRaises(dbus.exceptions.DBusException):
+			mgr.PvCreate("/dev/space in name", -1, {})
+
+		# VG Name testing...
+		# Go through all bad characters
+		pv_paths = [self.objs[PV_INT][0].object_path]
+		bad_chars = self._invalid_vg_lv_name_characters()
+		for c in bad_chars:
+			with self.assertRaises(dbus.exceptions.DBusException):
+				mgr.VgCreate("name%s" % (c), pv_paths, -1, {})
+
+		# Bad names
+		for bad in [".", ".."]:
+			with self.assertRaises(dbus.exceptions.DBusException):
+				mgr.VgCreate(bad, pv_paths, -1, {})
+
+		# Exceed name length
+		for i in [128, 1024, 4096]:
+			with self.assertRaises(dbus.exceptions.DBusException):
+				mgr.VgCreate('T' * i, pv_paths, -1, {})
+
+		# Create a VG and try to create LVs with different bad names
+		vg_path = mgr.VgCreate("test", pv_paths, -1, {})[0]
+		vg_proxy = ClientProxy(self.bus, vg_path)
+
+		for c in bad_chars:
+			with self.assertRaises(dbus.exceptions.DBusException):
+				vg_proxy.Vg.LvCreateLinear(rs(8, '_lv') + c,
+					1024 * 1024 * 4, False, -1, {})
+
+		for r in ("_cdata", "_cmeta", "_corig", "_mimage", "_mlog",
+			"_pmspare", "_rimage", "_rmeta", "_tdata", "_tmeta", "_vorigin"):
+			with self.assertRaises(dbus.exceptions.DBusException):
+				vg_proxy.Vg.LvCreateLinear(rs(8, '_lv') + r,
+					1024 * 1024 * 4, False, -1, {})
+
+		for r in ("snapshot", "pvmove"):
+			with self.assertRaises(dbus.exceptions.DBusException):
+				vg_proxy.Vg.LvCreateLinear(r + rs(8, '_lv'),
+					1024 * 1024 * 4, False, -1, {})
+
+	_ALLOWABLE_TAG_CH = string.ascii_letters + string.digits + "._-+/=!:&#"
+
+	def _invalid_tag_characters(self):
+		bad_tag_ch_set = set(string.printable) - set(self._ALLOWABLE_TAG_CH)
+		return ''.join(bad_tag_ch_set)
+
+	def test_invalid_tags(self):
+		mgr = self.objs[MANAGER_INT][0].Manager
+		pv_paths = [self.objs[PV_INT][0].object_path]
+
+		vg_path = mgr.VgCreate("test", pv_paths, -1, {})[0]
+		vg_proxy = ClientProxy(self.bus, vg_path)
+
+		for c in self._invalid_tag_characters():
+			with self.assertRaises(dbus.exceptions.DBusException):
+				vg_proxy.Vg.TagsAdd([c], -1, {})
+
+		for c in self._invalid_tag_characters():
+			with self.assertRaises(dbus.exceptions.DBusException):
+				vg_proxy.Vg.TagsAdd(["a%sb" % (c)], -1, {})
+
+	def test_tag_names(self):
+		mgr = self.objs[MANAGER_INT][0].Manager
+		pv_paths = [self.objs[PV_INT][0].object_path]
+
+		vg_path = mgr.VgCreate("test", pv_paths, -1, {})[0]
+		vg_proxy = ClientProxy(self.bus, vg_path)
+
+		for i in range(1, 64):
+			tag = rs(i, "", self._ALLOWABLE_TAG_CH)
+			r = vg_proxy.Vg.TagsAdd([tag], -1, {})
+			self.assertTrue(r == '/')
+			vg_proxy.update()
+
+			self.assertTrue(tag in vg_proxy.Vg.Tags, "%s not in %s" %
+				(tag, str(vg_proxy.Vg.Tags)))
+
+			self.assertEqual(i, len(vg_proxy.Vg.Tags), "%d != %d" %
+				(i, len(vg_proxy.Vg.Tags)))
 
 
 if __name__ == '__main__':
