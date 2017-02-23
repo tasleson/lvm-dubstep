@@ -8,7 +8,7 @@ function _g
     echo "executing: $@"
     eval "$@"
     local rc=$?
-    if [ $rc -ne 0 ]; then
+    if [ ${rc} -ne 0 ]; then
         # We don't do clean on error in case we need to investigate.
        	vgremove -f doc_vg
         exit 1
