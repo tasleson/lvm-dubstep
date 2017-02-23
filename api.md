@@ -10,13 +10,16 @@
   * Returns
       * Structure (Object path, Object path)
 
-#### Properties (None) ####
+#### Properties ####
+* DataLv (Object path)
+* MetaDataLv (Object path)
 
 ## Interface com.redhat.lvmdbus1.CachedLv ##
 
 #### Methods ####
 * DetachCachePool
   * Arguments
+      * destroy_cache (Boolean (0 is false, 1 is true))
       * tmo (int32_t)
       * detach_options (Dictionary:{String, Variant})
   * Returns
@@ -41,7 +44,7 @@
 #### Properties ####
 * Complete (Boolean (0 is false, 1 is true))
 * GetError (Structure (int32_t, String))
-* Percent (uint8_t)
+* Percent (double)
 * Result (Object path)
 
 ## Interface com.redhat.lvmdbus1.Lv ##
@@ -119,16 +122,12 @@
 ## Interface com.redhat.lvmdbus1.LvCommon ##
 
 #### Methods ####
-* _Future
-  * Arguments
-      * tmo (int32_t)
-      * open_options (Dictionary:{String, Variant})
-  * Returns
-      * Object path
 
 #### Properties ####
 * Active (Boolean (0 is false, 1 is true))
 * AllocationPolicy (Structure (String, String))
+* Attr (String)
+* CopyPercent (uint32_t)
 * DataPercent (uint32_t)
 * Devices (Array of Structure (Object path, Array of Structure (uint64_t, uint64_t, String)))
 * FixedMinor (Boolean (0 is false, 1 is true))
@@ -136,15 +135,21 @@
 * HiddenLvs (Array of Object path )
 * IsThinPool (Boolean (0 is false, 1 is true))
 * IsThinVolume (Boolean (0 is false, 1 is true))
+* MetaDataPercent (uint32_t)
+* MetaDataSizeBytes (uint64_t)
+* MovePv (Object path)
 * Name (String)
 * OriginLv (Object path)
 * Path (String)
 * Permissions (Structure (String, String))
 * PoolLv (Object path)
+* Roles (Array of String )
 * SegType (Array of String )
 * SizeBytes (uint64_t)
 * SkipActivation (Boolean (0 is false, 1 is true))
+* SnapPercent (uint32_t)
 * State (Structure (String, String))
+* SyncPercent (uint32_t)
 * Tags (Array of String )
 * TargetType (Structure (String, String))
 * Uuid (String)
@@ -190,7 +195,7 @@
   * Arguments
       * yes_no (Boolean (0 is false, 1 is true))
   * Returns
-      * None
+      * Boolean (0 is false, 1 is true)
 * VgCreate
   * Arguments
       * name (String)
@@ -201,7 +206,7 @@
       * Structure (Object path, Object path)
 
 #### Properties ####
-* Version (uint64_t)
+* Version (String)
 
 ## Interface com.redhat.lvmdbus1.Pv ##
 
@@ -302,6 +307,14 @@
   * Returns
       * Object path
 * CreateCachePool
+  * Arguments
+      * meta_data_lv (Object path)
+      * data_lv (Object path)
+      * tmo (int32_t)
+      * create_options (Dictionary:{String, Variant})
+  * Returns
+      * Structure (Object path, Object path)
+* CreateThinPool
   * Arguments
       * meta_data_lv (Object path)
       * data_lv (Object path)
@@ -479,6 +492,7 @@
 * PvCount (uint64_t)
 * Pvs (Array of Object path )
 * Readable (Boolean (0 is false, 1 is true))
+* Resizeable (Boolean (0 is false, 1 is true))
 * Seqno (uint64_t)
 * SizeBytes (uint64_t)
 * SnapCount (uint64_t)
