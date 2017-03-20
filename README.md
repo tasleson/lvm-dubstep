@@ -1,7 +1,7 @@
 Notice
 =========
 As of 2/17/2016 the code has been integrated with LVM git repo:
-https://git.fedorahosted.org/cgit/lvm2.git/tree/daemons/lvmdbusd
+https://sourceware.org/git/?p=lvm2.git;a=tree;f=daemons/lvmdbusd
 
 This repo remains to maintain the history of changes in development up until this point.
 
