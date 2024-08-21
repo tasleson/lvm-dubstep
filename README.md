@@ -1,7 +1,7 @@
 Notice
 =========
 As of 2/17/2016 the code has been integrated with LVM git repo:
-https://sourceware.org/git/?p=lvm2.git;a=tree;f=daemons/lvmdbusd
+https://gitlab.com/lvmteam/lvm2/-/tree/main/daemons/lvmdbusd
 
 This repo remains to maintain the history of changes in development up until this point.
 
